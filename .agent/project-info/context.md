@@ -12,6 +12,7 @@ Project bootstrap: initializing the project-info core files from the newly writt
 * Project-info template customized to this project (`instructions.md` core-file structure in place).
 * `.initialized` template marker present — being removed during this initialization.
 * Git branch `feat/project-bootstrap` created for bootstrap work.
+* `README.md` replaced with initial project info for the Rust YouTube Streamer Service (detailed README deferred to future sessions).
 
 ## Immediate Next Steps
 
