@@ -13,6 +13,7 @@ Project bootstrap: initializing the project-info core files from the newly writt
 * `.initialized` template marker present — being removed during this initialization.
 * Git branch `feat/project-bootstrap` created for bootstrap work.
 * `README.md` replaced with initial project info for the Rust YouTube Streamer Service (detailed README deferred to future sessions).
+* Initial structure scaffolded: `config/`, `credentials/`, `fonts/`, `logs/` and `src/{app,config,youtube,chat,renderer,streaming}` folders with `.gitkeep` placeholders; `.gitignore` logs rule adjusted; `project-structure.md` updated.
 
 ## Immediate Next Steps
 

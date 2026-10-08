@@ -15,7 +15,10 @@ Thumbs.db
 
 # Logs
 *.log
-logs/
+logs/*
+
+# Keep folder placeholder under version control
+!logs/.gitkeep
 
 # Environment variables
 .env
