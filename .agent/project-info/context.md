@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Project bootstrap: initializing the project-info core files from the newly written brief. The repository is not yet scaffolded — no `Cargo.toml` exists and `src/` is empty (only `.gitkeep`).
+Project bootstrap complete: brief defined, project-info initialized, README initial version written, and structure folders scaffolded. No `Cargo.toml` yet; `src/` contains only module folders with `.gitkeep` placeholders.
 
 ## Recent Changes (2026-10-08)
 
@@ -17,9 +17,9 @@ Project bootstrap: initializing the project-info core files from the newly writt
 
 ## Immediate Next Steps
 
-1. Update `README.md` with initial project info (TODO item 2).
-2. Create initial structure folders with `.gitkeep` placeholders per brief §4 (TODO item 3).
-3. After bootstrap: Cargo scaffolding, module skeleton under `src/`, then MVP pipeline implementation.
+1. Future session: Cargo scaffolding (`Cargo.toml`, `src/main.rs`, module skeleton per brief §4).
+2. Future session: detailed README expansion (user-stated deferral).
+3. Implementation of MVP modules per brief.
 
 ## Notes
 
