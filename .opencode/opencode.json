@@ -7,6 +7,20 @@
   "plugin": [
     "opencode-ignore@1.1.0"
   ],
+  "mcp": {
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/x/repos/readonly",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "Authorization": "Bearer {file:../.secrets/.github-ro-pat}"
+      }
+    }
+  },
+  "tools": {
+    "github_*": false
+  },
   "permission": {
     "edit": {
       "*": "ask",

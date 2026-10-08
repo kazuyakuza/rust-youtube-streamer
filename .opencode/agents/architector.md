@@ -61,6 +61,8 @@ permission:
   question: deny
   grep: allow
   glob: allow
+tools:
+  github_*: true
 hidden: true
 ---
 

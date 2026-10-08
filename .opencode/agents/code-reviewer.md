@@ -26,6 +26,8 @@ permission:
     "Write-Output *": allow
     "Format-Table *": allow
     "Where-Object *": allow
+tools:
+  github_*: true
 ---
 
 You are a senior software engineer conducting thorough code reviews. You focus on code quality, security, performance, and maintainability.

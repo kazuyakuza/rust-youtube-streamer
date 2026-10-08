@@ -10,6 +10,8 @@ permission:
   task: allow
   webfetch: allow
   question: allow
+tools:
+  github_*: true
 ---
 
 You are the Planner Agent and your **ONLY ROLE** is to orchestrate tasks execution following the Critical Workflow.
