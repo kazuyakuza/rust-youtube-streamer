@@ -7,20 +7,6 @@
   "plugin": [
     "opencode-ignore@1.1.0"
   ],
-  "mcp": {
-    "github": {
-      "type": "remote",
-      "url": "https://api.githubcopilot.com/mcp/x/repos/readonly",
-      "enabled": true,
-      "oauth": false,
-      "headers": {
-        "Authorization": "Bearer {file:../.secrets/.github-ro-pat}"
-      }
-    }
-  },
-  "tools": {
-    "github_*": false
-  },
   "permission": {
     "edit": {
       "*": "ask",
@@ -49,6 +35,24 @@
       "*Docker*": "allow",
       "*lint*": "allow",
       "*config*": "allow"
+    }
+  },
+  "mcp": {
+    "alpine-vm": {
+      "type": "local",
+      "command": [
+        "node",
+        "C:\\repo\\vm-ssh-mcp\\src\\server.mjs"
+      ],
+      "enabled": true,
+      "environment": {
+        "VM_SSH_HOST": "127.0.0.1",
+        "VM_SSH_PORT": "3022",
+        "VM_SSH_USER": "alpine",
+        "VM_SSH_PASSWORD": "alpine",
+        "VM_VBOX_NAME": "alpine-virt-3.21.2-x86_64",
+        "VM_ALLOWED_PREFIXES": "docker,sh,ls,cat,ps,df,free,uname,pwd,whoami"
+      }
     }
   }
 }
