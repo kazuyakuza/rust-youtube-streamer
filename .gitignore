@@ -32,6 +32,7 @@ dist/
 
 # Tokens and secrets
 .git-credentials
+.secrets
 
 # Kilo agent manager
 .kilo/agent-manager.json
