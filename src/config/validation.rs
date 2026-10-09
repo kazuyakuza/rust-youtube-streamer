@@ -1,0 +1,150 @@
+//! Semantic validation rules applied after deserialization. Each rule is
+//! checked independently and every violation is collected into a single
+//! [`ConfigError::Validation`], so one load reports all problems at once.
+//! File existence and process-start checks intentionally do not belong here;
+//! they are the responsibility of the component that uses each resource.
+
+use crate::config::error::{ConfigError, ConfigIssue};
+use crate::config::model::{AppConfig, RendererConfig, VideoConfig};
+
+const REQUIRED_PIXEL_FORMAT: &str = "rgb24";
+const SUPPORTED_PRIVACY_STATUSES: [&str; 3] = ["private", "public", "unlisted"];
+const BLANK_VALUE_PROBLEM: &str = "must not be empty or whitespace-only";
+
+/// Validates every loaded setting against the MVP rules. Returns `Ok(())`
+/// only when all rules pass; otherwise one error holding all field-level
+/// issues.
+pub(super) fn validate(config: &AppConfig) -> Result<(), ConfigError> {
+    let mut issues = Vec::new();
+    validate_video(config, &mut issues);
+    validate_renderer(config, &mut issues);
+    validate_required_strings(config, &mut issues);
+    validate_privacy_status(config, &mut issues);
+    if issues.is_empty() {
+        Ok(())
+    } else {
+        Err(ConfigError::Validation { issues })
+    }
+}
+
+fn validate_video(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
+    let video = &config.video;
+    if video.width == 0 {
+        issues.push(positive_value_issue("video.width", video.width));
+    }
+    if video.height == 0 {
+        issues.push(positive_value_issue("video.height", video.height));
+    }
+    if video.fps == 0 {
+        issues.push(positive_value_issue("video.fps", video.fps));
+    }
+    if video.pixel_format != REQUIRED_PIXEL_FORMAT {
+        issues.push(ConfigIssue::new(
+            "video.pixel_format".to_string(),
+            format!(
+                "unsupported pixel format '{}'; the MVP requires '{}'",
+                video.pixel_format, REQUIRED_PIXEL_FORMAT
+            ),
+        ));
+    }
+}
+
+fn validate_renderer(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
+    let renderer = &config.renderer;
+    if renderer.font_size == 0 {
+        issues.push(positive_value_issue(
+            "renderer.font_size",
+            renderer.font_size,
+        ));
+    }
+    if renderer.line_height == 0 {
+        issues.push(positive_value_issue(
+            "renderer.line_height",
+            renderer.line_height,
+        ));
+    }
+    if is_unusable_vertical_layout(&config.video, renderer) {
+        issues.push(vertical_layout_issue(&config.video, renderer));
+    }
+}
+
+fn validate_required_strings(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
+    let broadcast = &config.youtube.broadcast;
+    let renderer = &config.renderer;
+    let ffmpeg = &config.ffmpeg;
+    issues.extend(blank_issue("youtube.broadcast.title", &broadcast.title));
+    issues.extend(blank_issue(
+        "youtube.broadcast.description",
+        &broadcast.description,
+    ));
+    issues.extend(blank_issue("renderer.font", &renderer.font));
+    issues.extend(blank_issue("renderer.text_color", &renderer.text_color));
+    issues.extend(blank_issue(
+        "renderer.background_color",
+        &renderer.background_color,
+    ));
+    issues.extend(blank_issue("chat.log_file", &config.chat.log_file));
+    issues.extend(blank_issue("ffmpeg.executable", &ffmpeg.executable));
+    issues.extend(blank_issue("ffmpeg.video_codec", &ffmpeg.video_codec));
+    issues.extend(blank_issue("ffmpeg.preset", &ffmpeg.preset));
+    issues.extend(blank_issue("ffmpeg.bitrate", &ffmpeg.bitrate));
+}
+
+fn validate_privacy_status(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
+    let privacy_status = &config.youtube.broadcast.privacy_status;
+    if is_unsupported_privacy_status(privacy_status) {
+        issues.push(ConfigIssue::new(
+            "youtube.broadcast.privacy_status".to_string(),
+            format!(
+                "unsupported privacy status '{}'; expected one of: {}",
+                privacy_status,
+                SUPPORTED_PRIVACY_STATUSES.join(", ")
+            ),
+        ));
+    }
+}
+
+fn positive_value_issue(field: &str, value: u32) -> ConfigIssue {
+    ConfigIssue::new(field.to_string(), format!("must be positive (got {value})"))
+}
+
+fn is_unusable_vertical_layout(video: &VideoConfig, renderer: &RendererConfig) -> bool {
+    // u64 arithmetic keeps u32 margin/line-height sums overflow-free.
+    let occupied_height = u64::from(renderer.top_margin)
+        + u64::from(renderer.bottom_margin)
+        + u64::from(renderer.line_height);
+    occupied_height > u64::from(video.height)
+}
+
+fn vertical_layout_issue(video: &VideoConfig, renderer: &RendererConfig) -> ConfigIssue {
+    ConfigIssue::new(
+        "renderer.vertical_layout".to_string(),
+        format!(
+            "vertical layout leaves no room for at least one text line (height {}, top_margin {}, bottom_margin {}, line_height {})",
+            video.height, renderer.top_margin, renderer.bottom_margin, renderer.line_height
+        ),
+    )
+}
+
+fn blank_issue(field: &str, value: &str) -> Option<ConfigIssue> {
+    if is_blank(value) {
+        Some(ConfigIssue::new(
+            field.to_string(),
+            BLANK_VALUE_PROBLEM.to_string(),
+        ))
+    } else {
+        None
+    }
+}
+
+fn is_blank(value: &str) -> bool {
+    value.trim().is_empty()
+}
+
+fn is_unsupported_privacy_status(value: &str) -> bool {
+    !SUPPORTED_PRIVACY_STATUSES.contains(&value)
+}
+
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod validation_tests;
