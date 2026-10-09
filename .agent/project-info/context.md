@@ -4,9 +4,7 @@
 
 ## Current Work Focus
 
-Phase 00 (repository foundation and build baseline) is complete: the minimal Cargo package,
-Docker-based build checks via the Alpine VM, and repository hygiene are in place. The next phase
-will begin the first real application module.
+Phase 00 (repository foundation and build baseline) and Phase 00.1 (reproducible development checks) are complete. Phase 01 is now defined in `.agent/todos/20261009/20261009-todo-2.md`: configuration loading/validation, CLI and application skeleton, and structured logging. No Phase 01 implementation has started.
 
 ## Recent Changes (2026-10-08)
 
@@ -38,9 +36,14 @@ will begin the first real application module.
 
 ## Immediate Next Steps
 
-1. Plan next phase TODO (first application module) in a new chat session referencing updated project info.
-2. In later phases, re-read the current repository and project info before drafting each new TODO, as requested.
+1. Execute `.agent/todos/20261009/20261009-todo-2.md` through the repository's Critical Workflow to implement Phase 01.
+2. Re-read the live repository and all relevant project-info/workflow files before drafting each later phase TODO.
 3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
+
+## Recent Changes (2026-10-09, continued)
+
+* Reviewed the updated `main` repository after Phase 00 and Phase 00.1 completion, including the project brief, current Cargo/Docker baseline, developer-check script, structure map, and Critical Workflow conventions.
+* Created `.agent/todos/20261009/20261009-todo-2.md` defining Phase 01 — Configuration and Application Skeleton. Scope covers typed JSON config and validation, example config, `auth`/`run` CLI placeholders, structured logging, tests, and documentation. OAuth, YouTube API, renderer, chat, FFmpeg process execution, and platform-service behavior remain explicitly out of scope.
 
 ## Scope Decisions
 
