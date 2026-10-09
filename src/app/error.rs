@@ -85,19 +85,21 @@ impl fmt::Display for LogInitError {
 mod tests {
     use super::*;
 
+    fn subscriber_install_startup_error() -> StartupError {
+        StartupError::LogInit(LogInitError::SubscriberInstall {
+            reason: "already set".to_string(),
+        })
+    }
+
     #[test]
     fn log_init_subscriber_install_maps_to_startup_failure_exit() {
-        let startup_error = StartupError::LogInit(LogInitError::SubscriberInstall {
-            reason: "already set".to_string(),
-        });
+        let startup_error = subscriber_install_startup_error();
         assert_eq!(startup_error.exit_code(), STARTUP_FAILURE_EXIT);
     }
 
     #[test]
     fn subscriber_install_display_wraps_message_and_keeps_reason() {
-        let startup_error = StartupError::LogInit(LogInitError::SubscriberInstall {
-            reason: "already set".to_string(),
-        });
+        let startup_error = subscriber_install_startup_error();
         let message = format!("{startup_error}");
         assert!(message.starts_with("failed to initialize logging: "));
         assert!(message.contains("failed to install logging subscriber"));
