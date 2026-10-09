@@ -5,7 +5,8 @@
 # (only Cargo.lock is intentionally generated there).
 services:
   rust:
-    image: rust:1.82
+    build:
+      context: .
     working_dir: /rust-youtube-streamer
     volumes:
       - /rust-youtube-streamer:/rust-youtube-streamer
