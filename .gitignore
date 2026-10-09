@@ -39,3 +39,14 @@ dist/
 
 # Kilo agent manager
 .kilo/agent-manager.json
+
+# Rust build output (appended by Phase 00 Task 4)
+/target/
+!Cargo.lock
+
+# Real application configuration (config.example.json stays versioned; the real file carries secrets)
+/config/config.json
+
+# OAuth credentials and tokens (placeholder stays versioned)
+credentials/*
+!credentials/.gitkeep
