@@ -58,14 +58,72 @@ impl fmt::Display for StartupError {
     }
 }
 
-/// Failure raised while initializing structured logging. The current
-/// logging seam is infallible, so this type has no constructors yet; a
-/// later phase shapes it when logger initialization can genuinely fail.
+/// Fatal failures raised while initializing structured logging. Every
+/// variant aborts startup with exit code 1 through [`StartupError::LogInit`].
 #[derive(Debug)]
-pub(super) enum LogInitError {}
+pub(super) enum LogInitError {
+    /// A malformed logging filter directive (operator-supplied, e.g. an invalid
+    /// RUST_LOG value) prevented filter construction; startup aborts so the bad
+    /// value is never silently substituted.
+    FilterInvalid { directive: String },
+    /// The global default subscriber could not be installed. Unreachable while
+    /// the startup funnel calls `init_logging` exactly once, and reported here
+    /// so a future second call site can never silently drop logs.
+    SubscriberInstall { reason: String },
+}
 
 impl fmt::Display for LogInitError {
-    fn fmt(&self, _formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogInitError::FilterInvalid { directive } => {
+                write!(formatter, "invalid logging filter directive '{directive}'")
+            }
+            LogInitError::SubscriberInstall { reason } => {
+                write!(formatter, "failed to install logging subscriber: {reason}")
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn log_init_filter_invalid_maps_to_startup_failure_exit() {
+        let startup_error = StartupError::LogInit(LogInitError::FilterInvalid {
+            directive: "app=banana".to_string(),
+        });
+        assert_eq!(startup_error.exit_code(), STARTUP_FAILURE_EXIT);
+    }
+
+    #[test]
+    fn log_init_subscriber_install_maps_to_startup_failure_exit() {
+        let startup_error = StartupError::LogInit(LogInitError::SubscriberInstall {
+            reason: "already set".to_string(),
+        });
+        assert_eq!(startup_error.exit_code(), STARTUP_FAILURE_EXIT);
+    }
+
+    #[test]
+    fn filter_invalid_display_wraps_message_and_keeps_directive() {
+        let startup_error = StartupError::LogInit(LogInitError::FilterInvalid {
+            directive: "app=banana".to_string(),
+        });
+        let message = format!("{startup_error}");
+        assert!(message.starts_with("failed to initialize logging: "));
+        assert!(message.contains("invalid logging filter directive"));
+        assert!(message.contains("app=banana"));
+    }
+
+    #[test]
+    fn subscriber_install_display_wraps_message_and_keeps_reason() {
+        let startup_error = StartupError::LogInit(LogInitError::SubscriberInstall {
+            reason: "already set".to_string(),
+        });
+        let message = format!("{startup_error}");
+        assert!(message.starts_with("failed to initialize logging: "));
+        assert!(message.contains("failed to install logging subscriber"));
+        assert!(message.contains("already set"));
     }
 }

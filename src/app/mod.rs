@@ -20,6 +20,7 @@ use std::process::ExitCode;
 use crate::config::{self, AppConfig};
 use cli::ParseOutcome;
 use error::StartupError;
+use tracing::info;
 
 /// Raw command-line tokens that follow the program name. They are kept as
 /// [`OsString`]s so platform arguments with unusual encoding can never panic
@@ -67,9 +68,30 @@ fn start_mode(invocation: cli::Invocation) -> u8 {
     if let Err(startup_error) = initialize_logging() {
         return report_failure(startup_error);
     }
+    info!(
+        command = command_name(&invocation.mode),
+        config_path = %invocation.config_path,
+        "mode selected"
+    );
     match load_configuration(&invocation.config_path) {
-        Ok(app_config) => dispatch(&invocation.mode, &app_config),
+        Ok(app_config) => {
+            info!("configuration loaded and validated");
+            let code = dispatch(&invocation.mode, &app_config);
+            info!(
+                command = command_name(&invocation.mode),
+                exit_code = code,
+                "mode finished"
+            );
+            code
+        }
         Err(startup_error) => report_failure(startup_error),
+    }
+}
+
+fn command_name(mode: &cli::Mode) -> &'static str {
+    match mode {
+        cli::Mode::Auth => "auth",
+        cli::Mode::Run => "run",
     }
 }
 
