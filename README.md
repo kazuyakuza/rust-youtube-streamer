@@ -50,7 +50,30 @@ Build the image once:
 docker compose -f /rust-youtube-streamer/docker-compose.yml build rust
 ```
 
-Then run each check via the `rust` Compose service:
+Standard way — one command runs every check via the repository script `scripts/dev-checks.sh`
+(POSIX sh; build the image once first, as shown above):
+
+```
+docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh
+```
+
+The script runs `cargo fmt --check`, `cargo check --locked`, `cargo test --locked` and
+`cargo clippy --locked -- -D warnings` in that order and prints a per-check
+`PASS|FAIL <name> exit=<code> (<duration>s)` line plus a final summary (`ALL CHECKS PASSED` or
+`N CHECK(S) FAILED`); its exit code is `0` when all checks pass and `1` when any check fails.
+Output is also written to a UTC-timestamped log under `logs/checks/` (a gitignored directory)
+whose path is printed. The script never modifies source files and never applies `cargo fmt`
+fixes.
+
+Failure-path validation hook: `FORCE_FAIL` set to `fmt-check`, `check`, `test` or `clippy` makes
+exactly that check fail with a synthetic exit code 7 while the other checks still run. Leave
+`FORCE_FAIL` unset in normal use. Example:
+
+```
+docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm -e FORCE_FAIL=test rust sh scripts/dev-checks.sh
+```
+
+Fallback/reference — run the individual checks manually via the `rust` Compose service:
 
 ```
 docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust cargo fmt --check
