@@ -1,0 +1,17 @@
+# Local development checks only. Runs Rust/Cargo commands against the shared
+# project directory from the Alpine VM's Docker engine. Build artifacts are
+# redirected to the named volume "rust-streamer-target" via CARGO_TARGET_DIR
+# so no artifact files are generated inside the mounted project directory
+# (only Cargo.lock is intentionally generated there).
+services:
+  rust:
+    image: rust:1.82
+    working_dir: /rust-youtube-streamer
+    volumes:
+      - /rust-youtube-streamer:/rust-youtube-streamer
+      - rust-streamer-target:/rust-streamer-target
+    environment:
+      CARGO_TARGET_DIR: /rust-streamer-target
+
+volumes:
+  rust-streamer-target:
