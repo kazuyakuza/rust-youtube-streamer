@@ -27,6 +27,14 @@ will begin the first real application module.
 * Feature branch merged (fast-forward) into `main` and pushed to `origin/main`; final commit `86e9c51`.
 * `src/main.rs` gained a 2-line crate-level `//!` overview comment (comment-only); `cargo fmt --check` re-validated with exit 0 on the final tree.
 
+## Recent Changes (2026-10-09)
+
+* Phase 00.1 (reproducible dev checks, branch `feat/dev-checks-script`): added `scripts/dev-checks.sh` (commit `12aaf37`) — POSIX-sh runner that executes `cargo fmt --check`, `cargo check --locked`, `cargo test --locked` and `cargo clippy --locked -- -D warnings` inside the Compose `rust` service; per-check `PASS|FAIL <name> exit=<code> (<duration>s)` lines with merged output, `--- Summary ---` block printing `ALL CHECKS PASSED`/`N CHECK(S) FAILED`, UTC-timestamped log under gitignored `logs/checks/`, aggregate exit code (0 when all pass, 1 when any fails), no source mutation, no fmt auto-apply; includes a `FORCE_FAIL=<check>` hook (synthetic exit 7) for failure-path validation.
+* First full green run via the standard invocation `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh`: exit 0 with four PASS lines (`fmt-check`, `check`, `test`, `clippy`), summary `ALL CHECKS PASSED`, log `logs/checks/20261009T152555Z.log`.
+* Failure-path validation with `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm -e FORCE_FAIL=test rust sh scripts/dev-checks.sh`: exit 1 with `FAIL test exit=7` plus three PASS lines, summary `1 CHECK(S) FAILED`, log `logs/checks/20261009T152623Z.log`; no source files touched in either run.
+* README 'Build Checks (Docker via Alpine VM)' updated: script invocation documented as the standard way; manual per-check commands kept as clearly-labeled fallback/reference; commit `docs: document dev-checks script usage`.
+* `project-structure.md` updated with the `scripts/` folder entry and the check-log note for gitignored `logs/checks/`; this context file updated; commit `docs: record dev-checks script in structure and context`.
+
 ## Immediate Next Steps
 
 1. Plan next phase TODO (first application module) in a new chat session referencing updated project info.

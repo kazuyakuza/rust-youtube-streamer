@@ -26,5 +26,6 @@
 - config/ - runtime JSON configuration files
 - credentials/ - OAuth credentials and token storage location (no files committed here)
 - docs/ - Documentation files
+- scripts/ - developer check utilities; `dev-checks.sh` runs format/check/test/clippy checks in the Compose `rust` service and writes UTC-timestamped logs to the gitignored `logs/checks/` directory
 - fonts/ - font files used by the renderer
 - logs/ - application/chat log output directory (contents ignored; only .gitkeep placeholder versioned)
