@@ -4,6 +4,17 @@ A Rust-based service that autonomously creates and manages a YouTube Live broadc
 The initial MVP displays a black screen with incoming YouTube Live Chat messages rendered as white text; it validates the complete technical pipeline before any game logic, graphics, or interactive mechanics.
 The repository is the architectural foundation for future YouTube chat-controlled games; the MVP is functionally simple but built as a modular, maintainable, testable, and extensible service.
 
+## Table of Contents
+
+- [MVP Summary](#mvp-summary)
+- [Key Technologies](#key-technologies)
+- [Current Status](#current-status)
+- [Commands and Configuration](#commands-and-configuration)
+- [Logging (RUST_LOG)](#logging-rust_log)
+- [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm)
+- [AI Agents](#ai-agents)
+- [How to Start a Task](#how-to-start-a-task)
+
 ## MVP Summary
 
 - Authenticate with YouTube via OAuth 2.0.
@@ -24,12 +35,51 @@ The result is not yet a game — it is the reusable streaming foundation for fut
 
 ## Current Status
 
-Phase 00 (repository foundation and build baseline) is complete:
-a minimal Cargo package exists (`rust-youtube-streamer-service`, Rust edition 2021, no dependencies)
-with `src/main.rs` as the smallest buildable entry point. Build checks run inside Docker on the
-Alpine VM — see [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm) below.
-No application feature (OAuth, chat, rendering, streaming) exists yet; each feature module will be
-added by its own phase.
+Phase 00 (repository foundation and build baseline) is complete: a minimal Cargo package exists (`rust-youtube-streamer-service`, Rust edition 2021) with `src/main.rs` as the smallest buildable entry point; build checks run inside Docker on the Alpine VM — see [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm) below.
+
+Phase 01 application foundation is implemented on top of it:
+
+- a typed JSON configuration module (`src/config/`) with load-and-validate semantics and the committed template `config/config.example.json`;
+- two CLI commands `auth` and `run` plus the `--config <path>` option and the default path `config/config.json` (see [Commands and Configuration](#commands-and-configuration));
+- structured logging via `tracing`/`tracing-subscriber` to stderr, controlled by `RUST_LOG` (see [Logging (RUST_LOG)](#logging-rust_log)).
+
+Both `auth` and `run` are placeholders until later phases: after configuration is loaded and validated, each prints a "not implemented yet" error and exits with code 3; neither contacts YouTube, requests credentials, creates broadcast resources, or starts FFmpeg.
+
+FFmpeg remains a separately provided external prerequisite — it is not installed by this phase and this phase does not launch it.
+
+Build checks validate the build inside the Linux container only; there is no native Windows/Linux runtime validation yet.
+
+## Commands and Configuration
+
+Usage (full text available via `--help`):
+
+```
+usage: rust-youtube-streamer-service [--config <path>] <command>
+```
+
+- `auth` — runs the OAuth authorization flow (**not implemented yet**: prints an error and exits 3 after config validation).
+- `run` — starts the streaming runtime (**not implemented yet**: prints an error and exits 3 after config validation; never starts FFmpeg).
+- `--config <path>` — configuration file to load; accepted before or after the command; default `config/config.json` when absent.
+- `--help` — prints usage to stdout; exit 0.
+- Exit codes: 0 = help/success, 1 = configuration or logging startup failure, 2 = usage error, 3 = mode not implemented yet.
+
+The default configuration path is `config/config.json`. To create it, copy `config/config.example.json` (the committed example, safe non-secret values) to `config/config.json` and edit it — `config/config.json` is gitignored and must never be committed. Full field-by-field reference: [`docs/configuration.md`](docs/configuration.md).
+
+FFmpeg is a separately provided external prerequisite; this phase neither installs nor launches it.
+
+## Logging (RUST_LOG)
+
+- Logs go to standard error as structured events via `tracing`/`tracing-subscriber`.
+- The level filter comes from the environment variable `RUST_LOG` (exact, case-sensitive name).
+- Default is `info` when `RUST_LOG` is unset, empty, or whitespace-only — applied silently, with no warning.
+- An invalid non-empty `RUST_LOG` value additionally prints exactly one `warning:` line to stderr and then still falls back to `info`.
+- A valid value (e.g. `debug`, `trace`) is honored verbatim after trimming surrounding whitespace.
+
+Example:
+
+```
+RUST_LOG=debug rust-youtube-streamer-service run
+```
 
 ## Build Checks (Docker via Alpine VM)
 
