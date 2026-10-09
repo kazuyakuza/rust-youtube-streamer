@@ -3,7 +3,10 @@
 //! Every fatal failure funnels through typed [`StartupError`] values so the
 //! process writes each error exactly once and exits with a stable code. The
 //! pipeline works in raw `u8` exit codes so tests can assert them; [`run`]
-//! performs the single `ExitCode` conversion at the process boundary.
+//! performs the single `ExitCode` conversion at the process boundary. The
+//! exit codes are a stable contract: 1 = configuration or logging-init
+//! startup failure, 2 = command-line usage error, 3 = selected mode not
+//! implemented yet (both modes stay placeholders until later phases).
 
 mod cli;
 mod error;
@@ -31,6 +34,7 @@ pub(crate) fn run(args: &ArgsTokens) -> ExitCode {
     ExitCode::from(evaluate(args))
 }
 
+/// Executes every startup stage in order and returns the raw exit code.
 fn evaluate(args: &ArgsTokens) -> u8 {
     let tokens = match string_tokens(args) {
         Ok(tokens) => tokens,

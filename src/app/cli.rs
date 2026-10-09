@@ -1,12 +1,19 @@
 //! Command-line parsing for the service executable. The accepted surface is
-//! exactly two commands (`auth`, `run`), one option (`--config <path>`), and
-//! `--help`, so a small deterministic standard-library matcher covers it
-//! without adding a CLI framework dependency.
+//! exactly two commands (`auth`, `run`), one option (`--config <path>`) that
+//! may appear before or after the command and at most once, and `--help`,
+//! which is accepted only before the command and prints the usage text to
+//! standard output before exiting successfully. When `--config` is absent,
+//! the default path [`DEFAULT_CONFIG_PATH`] is used. The surface is fixed
+//! and minimal, so a small deterministic standard-library matcher covers it
+//! cleanly; per the project dependency policy, a crate is not added when the
+//! standard library suffices, which rules out a CLI framework here.
 
 use super::error::StartupError;
 
-/// Configuration file used whenever `--config` is absent. The committed
-/// example template is never referenced, defaulted, or implicitly loaded.
+/// Configuration file used whenever `--config` is absent; an explicit
+/// `--config <path>` overrides it. The example template
+/// `config/config.example.json` is never referenced, defaulted to, or
+/// implicitly loaded as a live configuration.
 pub(crate) const DEFAULT_CONFIG_PATH: &str = "config/config.json";
 
 /// Usage text printed on standard output for `--help`.

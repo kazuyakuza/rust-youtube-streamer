@@ -9,8 +9,11 @@ use crate::config::AppConfig;
 /// Exit code reported while a mode exists only as a documented placeholder.
 pub(super) const NOT_IMPLEMENTED_EXIT: u8 = 3;
 
-/// Placeholder for the OAuth authorization flow. Takes the validated
-/// configuration only to enforce that startup completed first.
+/// `auth` placeholder until a later phase: the configuration is already
+/// loaded and validated when this runs (the parameter enforces that
+/// ordering), the handler reports that authentication is not implemented yet
+/// on standard error, and returns `NOT_IMPLEMENTED_EXIT` (3). It never
+/// contacts YouTube and never requests or stores credentials.
 pub(super) fn auth(_config: &AppConfig) -> u8 {
     eprintln!(
         "error: authentication is not implemented yet: the OAuth authorization \
@@ -19,8 +22,11 @@ pub(super) fn auth(_config: &AppConfig) -> u8 {
     NOT_IMPLEMENTED_EXIT
 }
 
-/// Placeholder for the streaming runtime pipeline. Takes the validated
-/// configuration only to enforce that startup completed first.
+/// `run` placeholder until a later phase: the configuration is already
+/// loaded and validated when this runs (the parameter enforces that
+/// ordering), the handler reports that the runtime pipeline is not
+/// implemented yet on standard error, and returns `NOT_IMPLEMENTED_EXIT`
+/// (3). It never creates YouTube resources and never starts FFmpeg.
 pub(super) fn run(_config: &AppConfig) -> u8 {
     eprintln!(
         "error: runtime pipeline is not implemented yet: the YouTube/FFmpeg \

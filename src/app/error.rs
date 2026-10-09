@@ -13,14 +13,20 @@ pub(super) const STARTUP_FAILURE_EXIT: u8 = 1;
 /// Exit code for command-line usage errors.
 pub(super) const USAGE_ERROR_EXIT: u8 = 2;
 
-/// All fatal failures produced while starting the application.
+/// All fatal failures produced while starting the application. Each variant
+/// is one user-facing failure class with a fixed exit code; every value
+/// funnels through the setup pipeline to `main` and is reported exactly once
+/// there, never at the layer that produced it.
 #[derive(Debug)]
 pub(super) enum StartupError {
-    /// The command line could not be parsed; holds the actionable message.
+    /// Bad command line (missing, unknown, or repeated token). Holds the
+    /// actionable message; exits with code 2.
     Usage(String),
     /// The configuration file could not be read, parsed, or validated.
+    /// Startup failure; exits with code 1.
     Configuration(ConfigError),
-    /// Structured logging could not be initialized.
+    /// Structured logging could not be initialized. Startup failure;
+    /// exits with code 1.
     LogInit(LogInitError),
 }
 
@@ -52,9 +58,9 @@ impl fmt::Display for StartupError {
     }
 }
 
-/// Failure raised while initializing structured logging. The Task 2 seam is
-/// infallible, so this type has no constructors yet; Task 3 shapes it when
-/// tracing initialization can genuinely fail.
+/// Failure raised while initializing structured logging. The current
+/// logging seam is infallible, so this type has no constructors yet; a
+/// later phase shapes it when logger initialization can genuinely fail.
 #[derive(Debug)]
 pub(super) enum LogInitError {}
 
