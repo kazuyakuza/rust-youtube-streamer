@@ -1,0 +1,35 @@
+{
+  "youtube": {
+    "broadcast": {
+      "title": "Rust YouTube Streamer Prototype",
+      "description": "YouTube Live streaming prototype",
+      "privacy_status": "unlisted"
+    }
+  },
+  "video": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "pixel_format": "rgb24"
+  },
+  "renderer": {
+    "font": "fonts/console.ttf",
+    "font_size": 32,
+    "line_height": 40,
+    "left_margin": 20,
+    "top_margin": 20,
+    "right_margin": 20,
+    "bottom_margin": 20,
+    "text_color": "#FFFFFF",
+    "background_color": "#000000"
+  },
+  "chat": {
+    "log_file": "logs/chat.log"
+  },
+  "ffmpeg": {
+    "executable": "ffmpeg",
+    "video_codec": "libx264",
+    "preset": "veryfast",
+    "bitrate": "6000k"
+  }
+}
