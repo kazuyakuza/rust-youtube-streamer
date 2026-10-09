@@ -1,3 +1,6 @@
+//! Configuration loading pipeline: read one explicit file, deserialize it,
+//! then validate it before anything is returned.
+
 use std::fs;
 use std::path::Path;
 
@@ -5,6 +8,15 @@ use crate::config::error::ConfigError;
 use crate::config::model::AppConfig;
 use crate::config::validation;
 
+/// Loads and validates the JSON configuration stored at `path`.
+///
+/// The path is used exactly as provided — resolved by the caller, with no
+/// current-working-directory assumptions inside this module. A successful
+/// return means the configuration passed every validation rule. Failures
+/// stop the call with a typed [`ConfigError`]: `Io` when the file cannot be
+/// read, `Deserialization` when the JSON is malformed or violates the
+/// schema, and `Validation` when semantic rules report all collected issues
+/// together. Expected file, JSON, and validation errors never panic.
 pub fn load_from_path(path: &Path) -> Result<AppConfig, ConfigError> {
     let raw = read_file(path)?;
     let config = parse(path, &raw)?;

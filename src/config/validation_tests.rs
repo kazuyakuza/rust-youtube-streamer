@@ -1,3 +1,7 @@
+//! Validation-rule tests: geometry, pixel format, privacy status, blank
+//! values, and multi-issue aggregation, run on in-memory configuration
+//! variants.
+
 use crate::config::test_fixtures::valid_config;
 use crate::config::validation::validate;
 

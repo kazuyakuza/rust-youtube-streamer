@@ -1,3 +1,6 @@
+//! Loading-pipeline tests: valid load, missing or unreadable files, malformed
+//! JSON, and schema violations, all against temporary files only.
+
 use std::path::PathBuf;
 
 use crate::config::test_fixtures::valid_config;

@@ -1,8 +1,14 @@
+//! Typed configuration errors. Each variant names the failed loading stage and
+//! the offending file or fields, so callers can report actionable messages
+//! without matching on error strings.
+
 use std::error::Error;
 use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
+/// One field-level validation problem: the dotted JSON field path and a
+/// human-readable description of why the value is invalid.
 #[derive(Debug)]
 pub struct ConfigIssue {
     field: String,
@@ -21,10 +27,22 @@ impl fmt::Display for ConfigIssue {
     }
 }
 
+/// All failures produced while loading a configuration file, one variant per
+/// stage of the loading pipeline.
 #[derive(Debug)]
 pub enum ConfigError {
+    /// The file could not be read (missing, unreadable, or a directory).
+    /// Produced by the loader's read step with the offending path and the
+    /// underlying I/O cause.
     Io { path: PathBuf, source: io::Error },
+    /// The contents are not valid JSON or do not match the required schema
+    /// (missing or unknown fields, wrong value types). Produced by the
+    /// loader's deserialization step; `message` carries the `serde_json`
+    /// explanation.
     Deserialization { path: PathBuf, message: String },
+    /// The document parsed successfully but violates semantic rules. Produced
+    /// by the validation module and always carries every issue found in one
+    /// validation pass rather than only the first.
     Validation { issues: Vec<ConfigIssue> },
 }
 

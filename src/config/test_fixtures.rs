@@ -1,3 +1,7 @@
+//! Test-only builders for an in-memory [`AppConfig`] mirroring the values of
+//! the committed `config/config.example.json`, so tests never depend on a
+//! developer's real configuration file.
+
 use super::*;
 
 pub(super) fn valid_config() -> AppConfig {

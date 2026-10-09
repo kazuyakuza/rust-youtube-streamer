@@ -1,3 +1,9 @@
+//! Semantic validation rules applied after deserialization. Each rule is
+//! checked independently and every violation is collected into a single
+//! [`ConfigError::Validation`], so one load reports all problems at once.
+//! File existence and process-start checks intentionally do not belong here;
+//! they are the responsibility of the component that uses each resource.
+
 use crate::config::error::{ConfigError, ConfigIssue};
 use crate::config::model::{AppConfig, RendererConfig, VideoConfig};
 
@@ -5,6 +11,9 @@ const REQUIRED_PIXEL_FORMAT: &str = "rgb24";
 const SUPPORTED_PRIVACY_STATUSES: [&str; 3] = ["private", "public", "unlisted"];
 const BLANK_VALUE_PROBLEM: &str = "must not be empty or whitespace-only";
 
+/// Validates every loaded setting against the MVP rules. Returns `Ok(())`
+/// only when all rules pass; otherwise one error holding all field-level
+/// issues.
 pub(super) fn validate(config: &AppConfig) -> Result<(), ConfigError> {
     let mut issues = Vec::new();
     validate_video(config, &mut issues);
