@@ -59,7 +59,7 @@ docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scr
 
 The script runs `cargo fmt --check`, `cargo check --locked`, `cargo test --locked` and
 `cargo clippy --locked -- -D warnings` in that order and prints a per-check
-`PASS|FAIL <name> exit=<code> (<duration>s)` line plus a final summary (`ALL CHECKS PASSED` or
+`PASS|FAIL <name> exit=<code> (<duration> s)` line plus a final summary (`ALL CHECKS PASSED` or
 `N CHECK(S) FAILED`); its exit code is `0` when all checks pass and `1` when any check fails.
 Output is also written to a UTC-timestamped log under `logs/checks/` (a gitignored directory)
 whose path is printed. The script never modifies source files and never applies `cargo fmt`
