@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file has been renamed with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-3-DONE.md`) and branch `feat/phase01-config-app-skeleton` has been merged into `main`. Phase 01 is defined in `.agent/todos/20261009/20261009-todo-3.md` (revising the earlier `todo-2` draft; config instructions moved into `docs/configuration.md`, README gained a TOC).
+Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file has been renamed with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-3-DONE.md`) and branch `feat/phase01-config-app-skeleton` has been merged into `main`. Phase 01 was defined in `.agent/todos/20261009/20261009-todo-3-DONE.md` (revising the earlier `todo-2` draft; config instructions moved into `docs/configuration.md`, README gained a TOC).
 
 ## Recent Changes (2026-10-08)
 
