@@ -23,6 +23,9 @@ will begin the first real application module.
 * Task 4 of Phase 00: `.gitignore` extended — `/target/`, `/config/config.json`, `credentials/*` with `!credentials/.gitkeep`, and a `!Cargo.lock` guard. Build artifacts never written to project root (named-volume redirect; `Cargo.lock` is the sole root exception, tracked).
 * Task 5 of Phase 00: README 'Current Status' rewritten to the build baseline; new 'Build Checks (Docker via Alpine VM)' section added; `project-structure.md` updated with root files and placeholder note; this context file updated.
 * README documents that the implementation-agent host needs no Rust/Cargo install, and distinguishes container-only build checks from native Windows/Linux runtime validation.
+* Phase 00 closed: all 15 acceptance criteria checked; the TODO file was renamed with the `-DONE` suffix (`.agent/todos/20261008/20261008-todo-2-DONE.md`).
+* Feature branch merged (fast-forward) into `main` and pushed to `origin/main`; final commit `86e9c51`.
+* `src/main.rs` gained a 2-line crate-level `//!` overview comment (comment-only); `cargo fmt --check` re-validated with exit 0 on the final tree.
 
 ## Immediate Next Steps
 
