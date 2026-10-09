@@ -25,6 +25,11 @@ pub(super) enum StartupError {
 }
 
 impl StartupError {
+    /// Usage failure for a token that cannot appear where it was found.
+    pub(super) fn unexpected_argument(token: &str) -> Self {
+        StartupError::Usage(format!("unexpected argument '{token}'"))
+    }
+
     /// Maps each failure class to its stable process exit code: usage errors
     /// exit 2, configuration and logging startup failures exit 1.
     pub(super) fn exit_code(&self) -> u8 {

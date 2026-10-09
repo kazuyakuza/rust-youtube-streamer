@@ -27,6 +27,11 @@ fn default_config_path_constant_is_stable() {
 }
 
 #[test]
+fn usage_text_advertises_default_config_path() {
+    assert!(USAGE.contains(DEFAULT_CONFIG_PATH));
+}
+
+#[test]
 fn parses_auth_and_run_alone_with_default_path() {
     let auth = parsed_invocation(&["auth"]);
     assert_eq!(auth.mode, Mode::Auth);

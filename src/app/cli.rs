@@ -75,9 +75,7 @@ pub(super) fn parse(args: &[String]) -> Result<ParseOutcome, StartupError> {
 fn help_result(mode: &Option<Mode>) -> Result<ParseOutcome, StartupError> {
     match mode {
         None => Ok(ParseOutcome::Help),
-        Some(_) => Err(StartupError::Usage(format!(
-            "unexpected argument '{HELP_FLAG}'"
-        ))),
+        Some(_) => Err(StartupError::unexpected_argument(HELP_FLAG)),
     }
 }
 
@@ -109,9 +107,7 @@ fn config_value(tokens: &mut TokenCursor<'_>, already_given: bool) -> Result<Str
 
 fn resolved_mode(token: &str, already_given: bool) -> Result<Mode, StartupError> {
     if already_given {
-        return Err(StartupError::Usage(format!(
-            "unexpected argument '{token}'"
-        )));
+        return Err(StartupError::unexpected_argument(token));
     }
     match token {
         AUTH_COMMAND => Ok(Mode::Auth),

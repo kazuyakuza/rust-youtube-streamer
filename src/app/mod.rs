@@ -51,11 +51,7 @@ fn string_token(token: &OsString) -> Result<String, StartupError> {
     token
         .to_str()
         .map(str::to_string)
-        .ok_or_else(|| non_utf8_usage_error(token))
-}
-
-fn non_utf8_usage_error(token: &OsString) -> StartupError {
-    StartupError::Usage(format!("unexpected argument '{}'", token.to_string_lossy()))
+        .ok_or_else(|| StartupError::unexpected_argument(&token.to_string_lossy()))
 }
 
 fn print_help() -> u8 {
