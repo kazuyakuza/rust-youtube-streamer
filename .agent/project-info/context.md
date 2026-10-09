@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 00 (repository foundation and build baseline) and Phase 00.1 (reproducible development checks) are complete. Phase 01 is now defined in `.agent/todos/20261009/20261009-todo-2.md`: configuration loading/validation, CLI and application skeleton, and structured logging. No Phase 01 implementation has started.
+Phase 01 (Configuration and Application Skeleton) is essentially complete: Tasks 1–3 (config module, application/CLI skeleton, structured logging) are implemented, reviewed, and marked `[DONE]`; Task 4 (documentation and project metadata) is finishing — README + `docs/configuration.md` are committed and this context/structure-map update is the final metadata step. Phase 01 is defined in `.agent/todos/20261009/20261009-todo-3.md` (revising the earlier `todo-2` draft; config instructions moved into `docs/configuration.md`, README gained a TOC).
 
 ## Recent Changes (2026-10-08)
 
@@ -34,16 +34,37 @@ Phase 00 (repository foundation and build baseline) and Phase 00.1 (reproducible
 * `project-structure.md` updated with the `scripts/` folder entry and the check-log note for gitignored `logs/checks/`; this context file updated; commit `docs: record dev-checks script in structure and context`.
 * alpine-vm MCP output contract update landed and was verified (dual channels + combined output + exit codes; cargo stderr visible); MCP request TODO closed with `-DONE` (`.agent/todos/20261009/20261009-todo-1-DONE.md`).
 
-## Immediate Next Steps
-
-1. Execute `.agent/todos/20261009/20261009-todo-2.md` through the repository's Critical Workflow to implement Phase 01.
-2. Re-read the live repository and all relevant project-info/workflow files before drafting each later phase TODO.
-3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
-
 ## Recent Changes (2026-10-09, continued)
 
 * Reviewed the updated `main` repository after Phase 00 and Phase 00.1 completion, including the project brief, current Cargo/Docker baseline, developer-check script, structure map, and Critical Workflow conventions.
 * Created `.agent/todos/20261009/20261009-todo-2.md` defining Phase 01 — Configuration and Application Skeleton. Scope covers typed JSON config and validation, example config, `auth`/`run` CLI placeholders, structured logging, tests, and documentation. OAuth, YouTube API, renderer, chat, FFmpeg process execution, and platform-service behavior remain explicitly out of scope.
+
+## Recent Changes (2026-10-09, Phase 01 execution)
+
+All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Critical Workflow (planner + architector + implementer + code-reviewer/code-simplifier + docs-specialist, one 4.1–4.6 cycle per task). Shipped state:
+
+* Version bump `chore: bump version to 0.2.0` (`c62e937`); `Cargo.lock` refreshed via container `cargo check` and re-verified with `--locked`.
+* Task 1 — `src/config` module: strongly typed structs mirroring `config/config.example.json` (`serde` derive, `deny_unknown_fields`, `u32` numerics), explicit-path loading API `load_from_path`, 3-step read/parse/validate pipeline, aggregated typed errors `ConfigError { Io, Deserialization, Validation }` with `ConfigIssue` field-path Display contracts (no panics, no thiserror — hand-written Display per dependency policy), 18 distinct validation checks (5 positive numeric values incl. width/height/fps/font size/line height; exact `rgb24`; 1 vertical layout ≥ 1 visible line; 10 non-blank required strings incl. FFmpeg fields; 1 privacy enum ∈ private|public|unlisted; no existence checks for font/FFmpeg files). 16 unit tests via temp dirs. New deps: serde 1.0.229 (derive), serde_json 1.0.151, dev-dep tempfile pinned 3.14.0 via lockfile `--precise` (tempfile 3.27 needs edition 2024, unsupported by pinned rust:1.82).
+* Task 2 — `src/app` skeleton: std-library CLI parser (no clap; dependency policy), commands `auth`/`run`, `--config <path>` before/after command (at most once), `--help` before command (stdout, exit 0), default path constant `config/config.json` (tested; `config.example.json` never implicitly loaded); usage errors → one `error:` line on stderr, exit 2; config/log-init failures → exit 1 single funnel; placeholder modes (config validated first) report not-implemented and exit 3; no YouTube/FFmpeg/network credentials touched; `#[allow(` removed everywhere in `src/` (Task 1's temporary allow retired).
+* Task 3 — structured logging: `tracing 0.1.44` + `tracing-subscriber 0.3.23` (`env-filter`; MSRV-safe, no pins; >= 0.3.20 ANSI-CVE floor). Subscriber on stderr (default fmt layout), installed once (`set_global_default` is the guard), seam signature unchanged. `RUST_LOG` honored case-sensitively; default filter `info`; unset/non-unicode/empty/whitespace → default silently; INVALID non-empty value → exactly one stderr `warning:` line + default (user-approved policy superseding the plan's fatal-filter choice; `FilterInvalid` variant removed; `LogInit → exit 1` mapping test retained via `SubscriberInstall`). Exactly 3 info events in the funnel with whitelisted fields only (`command`, `config_path`, `exit_code`); no secrets/tokens/stream keys/config values logged; fatal startup failures keep the single stderr `error:` line (no duplicate cross-layer reporting). No Tokio.
+* Tests: final suite counts 46 tests, all passing; full standard gate `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh` exit 0 (`ALL CHECKS PASSED`) repeatedly, including on the final docs tree (log `logs/checks/20261009T225539Z.log`).
+* Task 4 — README updated in place (TOC added; Current Status rewritten to Phase 01 foundation; new `Commands and Configuration` + `Logging (RUST_LOG)` sections; FFmpeg stated as separately provided external prerequisite not installed or launched by this phase; `Build Checks` section preserved) with commits `5eb824b`, `635a044` (`docs/configuration.md`, 118 lines, TOC, gitignored `config.json` copy/edit steps, `--config` option, field reference, back-link to README).
+* Planner-owned metadata updated: `.agent/project-structure.md` (full module map) and this context file.
+* Each task's planning documents tracked under `.kilo/plans/` (global phase plan + per-task plans/fix plans); TODO Tasks 1–3 headers marked `[DONE]` (`f98bc78`, `776a41a`, `b200aed`).
+
+## Known Deviations and Limitations (Phase 01)
+
+* `auth`/`run` are placeholders (exit 3 after config validation) until later phases; no OAuth, YouTube API, chat, renderer, or FFmpeg process behavior exists.
+* Verification is container-only (Linux checks on the Alpine VM); no native Windows/Linux runtime validation was performed and must not be claimed.
+* No subscriber side-effect (stderr delivery) unit test — documented boundary; filter resolution is tested as a pure function.
+* The invalid-`RUST_LOG` fallback design (one warning + default `info`) is user-approved and differs from the original task-3 plan's fatal choice; the TODO's literal wording governs.
+
+## Immediate Next Steps
+
+1. Execute `.agent/todos/20261009/20261009-todo-3.md` remaining workflow steps: mark Task 4 `[DONE]`, rename the file with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-3-DONE.md`), merge `feat/phase01-config-app-skeleton` into `main`, and push to `origin` only.
+2. Re-read the live repository and all relevant project-info/workflow files before drafting each later phase TODO.
+3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
+4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
 
 ## Scope Decisions
 
