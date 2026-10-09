@@ -34,6 +34,7 @@ will begin the first real application module.
 * Failure-path validation with `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm -e FORCE_FAIL=test rust sh scripts/dev-checks.sh`: exit 1 with `FAIL test exit=7` plus three PASS lines, summary `1 CHECK(S) FAILED`, log `logs/checks/20261009T152623Z.log`; no source files touched in either run.
 * README 'Build Checks (Docker via Alpine VM)' updated: script invocation documented as the standard way; manual per-check commands kept as clearly-labeled fallback/reference; commit `docs: document dev-checks script usage`.
 * `project-structure.md` updated with the `scripts/` folder entry and the check-log note for gitignored `logs/checks/`; this context file updated; commit `docs: record dev-checks script in structure and context`.
+* alpine-vm MCP output contract update landed and was verified (dual channels + combined output + exit codes; cargo stderr visible); MCP request TODO closed with `-DONE` (`.agent/todos/20261009/20261009-todo-1-DONE.md`).
 
 ## Immediate Next Steps
 
