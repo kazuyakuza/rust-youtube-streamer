@@ -2,9 +2,12 @@
 //! the committed `config/config.example.json`, so tests never depend on a
 //! developer's real configuration file.
 
-use super::*;
+use crate::config::model::{
+    AppConfig, BroadcastConfig, ChatConfig, FfmpegConfig, RendererConfig, VideoConfig,
+    YouTubeConfig,
+};
 
-pub(super) fn valid_config() -> AppConfig {
+pub(crate) fn valid_config() -> AppConfig {
     AppConfig {
         youtube: YouTubeConfig {
             broadcast: BroadcastConfig {

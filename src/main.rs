@@ -1,11 +1,12 @@
-//! Phase 00 build baseline: minimal executable proving the Cargo package builds.
-//! Real application startup arrives with later feature phases.
+//! `rust-youtube-streamer-service` process entry point. Delegates to the
+//! application layer for command-line parsing, logging initialization,
+//! configuration loading, and mode dispatch.
 
-// Temporary until Task 2's app layer consumes the config module.
-// unused_imports covers the unreferenced pub use re-exports of this binary crate.
-#[allow(dead_code, unused_imports)]
+mod app;
 mod config;
 
-fn main() {
-    println!("rust-youtube-streamer-service");
+use std::process::ExitCode;
+
+fn main() -> ExitCode {
+    app::run(&std::env::args_os().skip(1).collect::<Vec<_>>())
 }

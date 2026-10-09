@@ -21,9 +21,13 @@ mod validation;
 #[cfg(test)]
 mod test_fixtures;
 
-pub use error::{ConfigError, ConfigIssue};
+// Test-only crate-wide alias so in-crate tests outside `config` (for example
+// the application mode tests) build sample configurations through the same
+// fixture instead of duplicating it. The `config` module's normal public
+// surface is unchanged.
+#[cfg(test)]
+pub(crate) use test_fixtures::valid_config;
+
+pub use error::ConfigError;
 pub use loader::load_from_path;
-pub use model::{
-    AppConfig, BroadcastConfig, ChatConfig, FfmpegConfig, RendererConfig, VideoConfig,
-    YouTubeConfig,
-};
+pub use model::AppConfig;
