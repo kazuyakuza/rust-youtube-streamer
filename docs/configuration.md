@@ -18,7 +18,7 @@ The service loads a JSON configuration file at startup; two live paths exist —
 - `config/config.json` is gitignored — never commit it, and do not rely on commit review to protect anything you put in it.
 - `config/config.example.json` is committed as a safe, non-secret starting template; its example `privacy_status` is `unlisted`.
 - The example is never loaded implicitly: when `--config` is absent, the executable always resolves to `config/config.json`.
-- Only one configuration file is used per run: the default path or the single `--config <path>` value, which may be given at most once.
+- Only one configuration file is used per run: the default path or a single `--config <path>` value.
 
 ## Getting Started (Create the Real Configuration)
 
@@ -33,11 +33,11 @@ rust-youtube-streamer-service --config path/to/config.json run
 rust-youtube-streamer-service --help
 ```
 
-The example contains no secrets today, but treat the real `config/config.json` as private: it is gitignored, must never be committed, and carries no commit-review protection.
+The example contains no secrets today, but treat the real `config/config.json` as private and keep it out of version control.
 
 ## Field Reference
 
-All five top-level sections are required. Each field below lists its rule and the value from `config/config.example.json`. Section and field names must match exactly as written; unknown or misspelled fields are rejected.
+All five top-level sections are required. Each field below lists its rule and the value from `config/config.example.json`. Section and field names must match exactly as written.
 
 ### youtube.broadcast
 
@@ -85,8 +85,7 @@ Existence of the font file or the FFmpeg executable is checked by the consuming 
   - Renderer margins must be 0 or greater, and `top_margin + bottom_margin + line_height` must not exceed `video.height`.
   - `privacy_status` must be one of `private`, `public`, `unlisted` (case-sensitive).
   - Required strings must be non-blank: broadcast `title` and `description`, `renderer.font`, `renderer.text_color`, `renderer.background_color`, `chat.log_file`, and all four `ffmpeg` fields.
-- On failure: one actionable error names the configuration file and field, and the process exits with code 1.
-- A missing or unreadable configuration file is also a configuration failure: reported and exited with code 1.
+- On failure (including a missing or unreadable configuration file): one actionable error names the configuration file and field, and the process exits with code 1.
 
 ## Command-Line Usage and Exit Codes
 

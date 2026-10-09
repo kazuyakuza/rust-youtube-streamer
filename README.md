@@ -57,13 +57,13 @@ Usage (full text available via `--help`):
 usage: rust-youtube-streamer-service [--config <path>] <command>
 ```
 
-- `auth` — runs the OAuth authorization flow (**not implemented yet**: prints an error and exits 3 after config validation).
-- `run` — starts the streaming runtime (**not implemented yet**: prints an error and exits 3 after config validation; never starts FFmpeg).
+- `auth` — runs the OAuth authorization flow (**not implemented yet**).
+- `run` — starts the streaming runtime (**not implemented yet**; never starts FFmpeg).
 - `--config <path>` — configuration file to load; accepted before or after the command; default `config/config.json` when absent.
 - `--help` — prints usage to stdout; exit 0.
 - Exit codes: 0 = help/success, 1 = configuration or logging startup failure, 2 = usage error, 3 = mode not implemented yet.
 
-The default configuration path is `config/config.json`. To create it, copy `config/config.example.json` (the committed example, safe non-secret values) to `config/config.json` and edit it — `config/config.json` is gitignored and must never be committed. Full field-by-field reference: [`docs/configuration.md`](docs/configuration.md).
+Create the default `config/config.json` by copying `config/config.example.json` (the committed example, safe non-secret values) and editing it — `config/config.json` is gitignored and must never be committed. Full field-by-field reference: [`docs/configuration.md`](docs/configuration.md).
 
 FFmpeg is a separately provided external prerequisite; this phase neither installs nor launches it.
 
