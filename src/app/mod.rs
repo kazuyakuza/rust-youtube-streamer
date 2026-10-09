@@ -64,6 +64,12 @@ fn print_help() -> u8 {
     SUCCESS_EXIT
 }
 
+/// Runs the mode for a parsed invocation: initialize logging, emit the
+/// mode-selected event, load and validate configuration, then dispatch and
+/// emit the completion event. These three `info` events are the only tracing
+/// output on the success path, and every field they carry comes from the
+/// whitelist (`command`, `config_path`, `exit_code`) — never configuration
+/// values.
 fn start_mode(invocation: cli::Invocation) -> u8 {
     if let Err(startup_error) = initialize_logging() {
         return report_failure(startup_error);
@@ -110,6 +116,9 @@ fn dispatch(mode: &cli::Mode, app_config: &AppConfig) -> u8 {
     }
 }
 
+/// Reports a fatal startup failure as exactly one `error:` line on standard
+/// error and returns its mapped exit code. The failure is never re-emitted
+/// through tracing, so it is not reported at two layers.
 fn report_failure(startup_error: StartupError) -> u8 {
     eprintln!("error: {startup_error}");
     startup_error.exit_code()

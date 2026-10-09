@@ -71,6 +71,10 @@ pub(super) enum LogInitError {
     SubscriberInstall { reason: String },
 }
 
+/// Formats the variant as the logging-failure message that
+/// [`StartupError::LogInit`] prepends its `failed to initialize logging:`
+/// wrapper to, forming the single stderr line reported for a fatal logging
+/// failure.
 impl fmt::Display for LogInitError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

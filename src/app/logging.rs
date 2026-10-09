@@ -2,13 +2,23 @@
 //! exactly once per process, before any configuration load or mode handler
 //! runs; the binding is the process's one logging boundary. Call sites depend
 //! only on this function's signature, never on logger internals, which keeps
-//! logging machinery out of the pipeline and the mode handlers.
+//! logging machinery out of the pipeline and the mode handlers. The init-once
+//! invariant is that single call site plus `set_global_default`, which refuses
+//! a second subscriber and reports the clash as `SubscriberInstall` instead of
+//! silently dropping logs.
 //!
-//! The log filter is read from `RUST_LOG` once at startup: unset, empty,
-//! whitespace-only, or malformed directive values resolve to
-//! [`DEFAULT_FILTER`]; a malformed directive additionally emits exactly one
-//! `warning:` line on standard error before startup continues. Application
-//! logs go to standard error.
+//! The stack is `tracing-subscriber`'s default `fmt` layout, writing to
+//! standard error, with an `env-filter` (`EnvFilter`) supplying the level
+//! filter. The directive comes from the environment variable named exactly
+//! `RUST_LOG` (the name is case-sensitive), read once at startup and resolved
+//! in order: unset or a non-UTF-8 value falls back to [`DEFAULT_FILTER`]
+//! silently; an empty or whitespace-only value does the same; a directive that
+//! fails to compile under `EnvFilter` emits exactly one `warning:` line on
+//! standard error, then falls back to [`DEFAULT_FILTER`]; a valid directive is
+//! used verbatim after trimming surrounding whitespace.
+//!
+//! [`DEFAULT_FILTER`] is `info`. Operator guidance for `RUST_LOG` lives in the
+//! project README.
 //!
 //! Secrets rule: log events may only carry the whitelisted fields `command`
 //! (`auth`/`run`), `config_path` (operator-supplied path text), and
@@ -20,18 +30,20 @@
 use super::error::LogInitError;
 use tracing_subscriber::EnvFilter;
 
-/// Filter directive applied when `RUST_LOG` is unset, empty,
-/// whitespace-only, or malformed.
+/// Filter directive applied when `RUST_LOG` is unset (including a
+/// non-UTF-8 value), empty, whitespace-only, or malformed. The value is
+/// `info`.
 pub(super) const DEFAULT_FILTER: &str = "info";
 
 const RUST_LOG: &str = "RUST_LOG";
 
-/// Initializes structured application logging once.
+/// Initializes structured application logging once at startup.
 ///
-/// Reads `RUST_LOG` once: unset, empty, whitespace-only, or malformed
-/// directives resolve to [`DEFAULT_FILTER`], and a malformed value emits one
-/// `warning:` line on standard error before startup continues. Output goes to
-/// standard error.
+/// Resolves the `RUST_LOG` directive as described in the module header,
+/// builds a `tracing-subscriber` `fmt` layer writing to standard error with an
+/// `EnvFilter`, and installs it as the global default subscriber. A failed
+/// installation returns [`LogInitError::SubscriberInstall`]; no other outcome
+/// fails startup.
 pub(super) fn init_logging() -> Result<(), LogInitError> {
     let raw = std::env::var(RUST_LOG).ok();
     warn_about_invalid_directive(raw.as_deref());
