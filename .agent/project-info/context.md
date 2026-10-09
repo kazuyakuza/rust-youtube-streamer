@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 01 (Configuration and Application Skeleton) is essentially complete: Tasks 1–3 (config module, application/CLI skeleton, structured logging) are implemented, reviewed, and marked `[DONE]`; Task 4 (documentation and project metadata) is finishing — README + `docs/configuration.md` are committed and this context/structure-map update is the final metadata step. Phase 01 is defined in `.agent/todos/20261009/20261009-todo-3.md` (revising the earlier `todo-2` draft; config instructions moved into `docs/configuration.md`, README gained a TOC).
+Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file has been renamed with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-3-DONE.md`) and branch `feat/phase01-config-app-skeleton` has been merged into `main`. Phase 01 is defined in `.agent/todos/20261009/20261009-todo-3.md` (revising the earlier `todo-2` draft; config instructions moved into `docs/configuration.md`, README gained a TOC).
 
 ## Recent Changes (2026-10-08)
 
@@ -61,7 +61,7 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 
 ## Immediate Next Steps
 
-1. Execute `.agent/todos/20261009/20261009-todo-3.md` remaining workflow steps: mark Task 4 `[DONE]`, rename the file with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-3-DONE.md`), merge `feat/phase01-config-app-skeleton` into `main`, and push to `origin` only.
+1. None for Phase 01 — completed and merged.
 2. Re-read the live repository and all relevant project-info/workflow files before drafting each later phase TODO.
 3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
 4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
