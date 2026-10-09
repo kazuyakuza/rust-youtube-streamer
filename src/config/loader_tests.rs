@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 
-use crate::config::model::{
-    BroadcastConfig, ChatConfig, FfmpegConfig, RendererConfig, VideoConfig, YouTubeConfig,
-};
+use crate::config::test_fixtures::valid_config;
 
 use super::*;
 
@@ -11,7 +9,7 @@ fn loads_valid_example_config() {
     let dir = tempfile::tempdir().expect("temp dir must be created");
     let path = write_temp_config(&dir, &example_json());
     let loaded = load_from_path(&path).expect("example config must load");
-    assert_eq!(loaded, example_app_config());
+    assert_eq!(loaded, valid_config());
 }
 
 #[test]
@@ -152,42 +150,4 @@ fn example_json() -> String {
 
 fn example_json_value() -> serde_json::Value {
     serde_json::from_str(&example_json()).expect("embedded example JSON must be valid")
-}
-
-fn example_app_config() -> AppConfig {
-    AppConfig {
-        youtube: YouTubeConfig {
-            broadcast: BroadcastConfig {
-                title: "Rust YouTube Streamer Prototype".to_string(),
-                description: "YouTube Live streaming prototype".to_string(),
-                privacy_status: "unlisted".to_string(),
-            },
-        },
-        video: VideoConfig {
-            width: 1920,
-            height: 1080,
-            fps: 30,
-            pixel_format: "rgb24".to_string(),
-        },
-        renderer: RendererConfig {
-            font: "fonts/console.ttf".to_string(),
-            font_size: 32,
-            line_height: 40,
-            left_margin: 20,
-            top_margin: 20,
-            right_margin: 20,
-            bottom_margin: 20,
-            text_color: "#FFFFFF".to_string(),
-            background_color: "#000000".to_string(),
-        },
-        chat: ChatConfig {
-            log_file: "logs/chat.log".to_string(),
-        },
-        ffmpeg: FfmpegConfig {
-            executable: "ffmpeg".to_string(),
-            video_codec: "libx264".to_string(),
-            preset: "veryfast".to_string(),
-            bitrate: "6000k".to_string(),
-        },
-    }
 }

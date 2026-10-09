@@ -63,24 +63,22 @@ fn validate_required_strings(config: &AppConfig, issues: &mut Vec<ConfigIssue>) 
     let broadcast = &config.youtube.broadcast;
     let renderer = &config.renderer;
     let ffmpeg = &config.ffmpeg;
-    push_blank_issue_if_needed("youtube.broadcast.title", &broadcast.title, issues);
-    push_blank_issue_if_needed(
+    issues.extend(blank_issue("youtube.broadcast.title", &broadcast.title));
+    issues.extend(blank_issue(
         "youtube.broadcast.description",
         &broadcast.description,
-        issues,
-    );
-    push_blank_issue_if_needed("renderer.font", &renderer.font, issues);
-    push_blank_issue_if_needed("renderer.text_color", &renderer.text_color, issues);
-    push_blank_issue_if_needed(
+    ));
+    issues.extend(blank_issue("renderer.font", &renderer.font));
+    issues.extend(blank_issue("renderer.text_color", &renderer.text_color));
+    issues.extend(blank_issue(
         "renderer.background_color",
         &renderer.background_color,
-        issues,
-    );
-    push_blank_issue_if_needed("chat.log_file", &config.chat.log_file, issues);
-    push_blank_issue_if_needed("ffmpeg.executable", &ffmpeg.executable, issues);
-    push_blank_issue_if_needed("ffmpeg.video_codec", &ffmpeg.video_codec, issues);
-    push_blank_issue_if_needed("ffmpeg.preset", &ffmpeg.preset, issues);
-    push_blank_issue_if_needed("ffmpeg.bitrate", &ffmpeg.bitrate, issues);
+    ));
+    issues.extend(blank_issue("chat.log_file", &config.chat.log_file));
+    issues.extend(blank_issue("ffmpeg.executable", &ffmpeg.executable));
+    issues.extend(blank_issue("ffmpeg.video_codec", &ffmpeg.video_codec));
+    issues.extend(blank_issue("ffmpeg.preset", &ffmpeg.preset));
+    issues.extend(blank_issue("ffmpeg.bitrate", &ffmpeg.bitrate));
 }
 
 fn validate_privacy_status(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
@@ -119,12 +117,14 @@ fn vertical_layout_issue(video: &VideoConfig, renderer: &RendererConfig) -> Conf
     )
 }
 
-fn push_blank_issue_if_needed(field: &str, value: &str, issues: &mut Vec<ConfigIssue>) {
+fn blank_issue(field: &str, value: &str) -> Option<ConfigIssue> {
     if is_blank(value) {
-        issues.push(ConfigIssue::new(
+        Some(ConfigIssue::new(
             field.to_string(),
             BLANK_VALUE_PROBLEM.to_string(),
-        ));
+        ))
+    } else {
+        None
     }
 }
 
@@ -135,3 +135,7 @@ fn is_blank(value: &str) -> bool {
 fn is_unsupported_privacy_status(value: &str) -> bool {
     !SUPPORTED_PRIVACY_STATUSES.contains(&value)
 }
+
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod validation_tests;

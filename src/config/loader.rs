@@ -25,3 +25,7 @@ fn parse(path: &Path, raw: &str) -> Result<AppConfig, ConfigError> {
         message: error.to_string(),
     })
 }
+
+#[cfg(test)]
+#[path = "loader_tests.rs"]
+mod loader_tests;

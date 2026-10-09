@@ -4,9 +4,7 @@ mod model;
 mod validation;
 
 #[cfg(test)]
-mod loader_tests;
-#[cfg(test)]
-mod validation_tests;
+mod test_fixtures;
 
 pub use error::{ConfigError, ConfigIssue};
 pub use loader::load_from_path;
