@@ -23,17 +23,9 @@ impl fmt::Display for ConfigIssue {
 
 #[derive(Debug)]
 pub enum ConfigError {
-    Io {
-        path: PathBuf,
-        source: io::Error,
-    },
-    Deserialization {
-        path: PathBuf,
-        message: String,
-    },
-    Validation {
-        issues: Vec<ConfigIssue>,
-    },
+    Io { path: PathBuf, source: io::Error },
+    Deserialization { path: PathBuf, message: String },
+    Validation { issues: Vec<ConfigIssue> },
 }
 
 impl fmt::Display for ConfigError {

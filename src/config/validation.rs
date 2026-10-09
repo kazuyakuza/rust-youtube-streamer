@@ -43,7 +43,10 @@ fn validate_video(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
 fn validate_renderer(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
     let renderer = &config.renderer;
     if renderer.font_size == 0 {
-        issues.push(positive_value_issue("renderer.font_size", renderer.font_size));
+        issues.push(positive_value_issue(
+            "renderer.font_size",
+            renderer.font_size,
+        ));
     }
     if renderer.line_height == 0 {
         issues.push(positive_value_issue(
@@ -118,7 +121,10 @@ fn vertical_layout_issue(video: &VideoConfig, renderer: &RendererConfig) -> Conf
 
 fn push_blank_issue_if_needed(field: &str, value: &str, issues: &mut Vec<ConfigIssue>) {
     if is_blank(value) {
-        issues.push(ConfigIssue::new(field.to_string(), BLANK_VALUE_PROBLEM.to_string()));
+        issues.push(ConfigIssue::new(
+            field.to_string(),
+            BLANK_VALUE_PROBLEM.to_string(),
+        ));
     }
 }
 
