@@ -12,6 +12,7 @@ The repository is the architectural foundation for future YouTube chat-controlle
 - [Commands and Configuration](#commands-and-configuration)
 - [Logging (RUST_LOG)](#logging-rust_log)
 - [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm)
+- [Release Build (Linux Artifact)](#release-build-linux-artifact)
 - [AI Agents](#ai-agents)
 - [How to Start a Task](#how-to-start-a-task)
 
@@ -145,6 +146,24 @@ Run checks sequentially when a later command needs output from an earlier one.
 - MCP-based agents: cargo's stderr (e.g., `Finished` lines) may not appear in captured MCP/VM
   output. The command exit status is the authoritative success evidence; a missing `Finished` line
   is not a failure.
+
+## Release Build (Linux Artifact)
+
+To produce a distributable release executable (not just validate the code), run the repository's
+build script through the same Compose `rust` service used for the checks above:
+
+```
+docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/build-linux.sh
+```
+
+On success the command exits `0` and leaves a Linux release executable at `dist/rust-youtube-streamer-service`
+(a gitignored directory). It compiles inside the pinned Linux Rust container, so the artifact is a Linux
+executable — not a Windows `.exe`, and building it does not validate native Windows/Linux runtime behavior.
+Full prerequisites, output path, rebuild/overwrite behavior, failure semantics and limitations:
+[`docs/build.md`](docs/build.md).
+
+This is a different job from `scripts/dev-checks.sh`: that script validates formatting/types/tests/lints
+and produces no artifact, while the build command produces the distributable executable.
 
 ## AI Agents
 
