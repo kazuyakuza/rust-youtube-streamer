@@ -24,7 +24,7 @@
 
 # Root files
 
-- Cargo.toml - Rust package manifest: `rust-youtube-streamer-service` v0.3.0, edition 2021; deps: serde (derive), serde_json, tracing, tracing-subscriber (env-filter); dev-dep: tempfile
+- Cargo.toml - Rust package manifest: `rust-youtube-streamer-service` v0.4.0, edition 2021; deps: serde (derive), serde_json, tracing, tracing-subscriber (env-filter); dev-dep: tempfile
 - Cargo.lock - tracked lockfile for the executable package (sole root-level generated artifact)
 - src/main.rs - entry point delegating to the `app` layer (`mod app; mod config;`, no lint suppressions)
 - Dockerfile - pinned official `rust:1.82` base; installs rustfmt/clippy components for checks, `gcc-mingw-w64-x86-64` (Windows GNU cross toolchain: fallback linker route + objdump import audit) and the `x86_64-pc-windows-gnu` Rust target for the Windows cross-build
@@ -38,8 +38,8 @@
 - .opencode/ - opencode integration: agents/, commands/ and opencode.json
 - config/ - runtime JSON configuration files; `config.example.json` is tracked; real `config.json` is gitignored
 - credentials/ - OAuth credentials and token storage location (no files committed here)
-- docs/ - Documentation files: `configuration.md` (configuration setup + CLI usage guide), `build.md` (Linux release build guide: prerequisites, standard invocation, output, failure semantics, limitations), build-windows.md (Windows x86-64 GNU cross-build guide: prerequisites incl. image rebuild, invocation, output, failure semantics, toolchain/target choice, runtime DLLs, limitations), plus agent how-to guides
-- scripts/ - developer utilities; `dev-checks.sh` runs format/check/test/clippy checks in the Compose `rust` service and writes UTC-timestamped logs to the gitignored `logs/checks/` directory; `build-linux.sh` builds the release with the tracked lockfile in the same service and copies the final Linux executable to gitignored `dist/`; build-windows.sh cross-compiles the Windows x86-64 GNU release in the same service (cargo build --release --locked --target x86_64-pc-windows-gnu) and copies the final .exe to gitignored dist/windows/
+- docs/ - Documentation files: `configuration.md` (configuration setup + CLI usage guide), `build.md` (Linux release build guide: prerequisites, standard invocation, output, failure semantics, limitations), `build-windows.md` (Windows x86-64 GNU cross-build guide: prerequisites incl. image rebuild, invocation, output, failure semantics, toolchain/target choice, runtime DLLs, limitations), plus agent how-to guides
+- scripts/ - developer utilities; `dev-checks.sh` runs format/check/test/clippy checks in the Compose `rust` service and writes UTC-timestamped logs to the gitignored `logs/checks/` directory; `build-linux.sh` builds the release with the tracked lockfile in the same service and copies the final Linux executable to gitignored `dist/`; `build-windows.sh` cross-compiles the Windows x86-64 GNU release in the same service (`cargo build --release --locked --target x86_64-pc-windows-gnu`) and copies the final .exe to gitignored `dist/windows/`
 - fonts/ - font files used by the renderer
 - logs/ - application/chat log output directory (contents ignored; only .gitkeep placeholder versioned)
-- dist/ - gitignored release-build output; `build-linux.sh` writes only the final Linux executable `rust-youtube-streamer-service` here; build-windows.sh writes only the final Windows executable rust-youtube-streamer-service.exe under dist/windows/; the explicitly approved exception to the no-root-generated-files rule (contents never committed)
+- dist/ - gitignored release-build output; `build-linux.sh` writes only the final Linux executable `rust-youtube-streamer-service` here; `build-windows.sh` writes only the final Windows executable `rust-youtube-streamer-service.exe` under `dist/windows/`; the explicitly approved exception to the no-root-generated-files rule (contents never committed)
