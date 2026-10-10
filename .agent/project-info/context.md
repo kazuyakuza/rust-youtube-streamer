@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. The next task is Phase 01.1 — Reproducible Linux Build Artifact, defined in `.agent/todos/20261009/20261009-todo-4.md`. It adds a release build script that writes only the final Linux executable into ignored root-level `dist/`, plus documentation and a tracked completion report. No Phase 01.1 implementation has started.
+Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. Phase 01.1 implementation is underway: Task 1 (`scripts/build-linux.sh`) and Task 2 (artifact ignore semantics) are done and verified; Task 3 (this change) documents the build workflow in `docs/build.md`, the README, `.agent/project-structure.md` and this file; Task 4 (tracked completion report at `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`) remains. No Phase 02 work has started.
 
 ## Recent Changes (2026-10-08)
 
@@ -54,6 +54,22 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 * Planner-owned metadata updated: `.agent/project-structure.md` (full module map) and this context file.
 * Each task's planning documents tracked under `.kilo/plans/` (global phase plan + per-task plans/fix plans); TODO Tasks 1–3 headers marked `[DONE]` (`f98bc78`, `776a41a`, `b200aed`).
 
+## Recent Changes (2026-10-09, Phase 01.1)
+
+* Branch `feat/linux-release-build-artifact`; version bumped to `0.3.0` (`f9a6b0e`).
+* Task 1 — `scripts/build-linux.sh` (commit `92880c7`, review fix `6118322`): POSIX-sh release builder; asserts the documented Compose working directory and a non-empty `CARGO_TARGET_DIR`; runs `cargo build --release --locked`; verifies the built binary exists non-empty; creates `dist/` if needed; copies only `dist/rust-youtube-streamer-service` and re-verifies non-empty; prints start/result messages with the exact output path and size; never suppresses Cargo diagnostics; never touches files elsewhere under `dist/`.
+* Standard invocation `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/build-linux.sh` verified exit 0; observed success messages:
+  * `Building Linux release executable using the tracked lockfile: cargo build --release --locked`
+  * `Release build succeeded.`
+  * `Build succeeded: saved the Linux release executable to dist/rust-youtube-streamer-service (1715296 bytes).`
+  * `The artifact is a Linux executable built inside the Linux Rust container; it is not a Windows .exe.`
+* A cold full compile showed Cargo `Finished` in 33.04 s; no `target/` directory appears in the project root; Cargo intermediates remain in the named volume `rust-streamer-target`.
+* Artifact observed as mode `-rwxrwx---` `root:vboxsf` on the shared mount; `dist/` is ignored via the existing generic `dist/` `.gitignore` rule; nothing was unignored; the artifact is never staged or committed.
+* Failure paths verified: wrong working directory → exit 1 with `build-linux: error: expected the current working directory to be /rust-youtube-streamer (the documented Compose working directory); got: /tmp`; empty `CARGO_TARGET_DIR` → exit 1 with `build-linux: error: CARGO_TARGET_DIR is unset or empty; it must point at the release output directory (docker-compose.yml sets it to /rust-streamer-target)`.
+* Task 2 — `.gitignore` reviewed: the existing `dist/` rule already covers the artifact; nothing was unignored; no build artifacts were staged or committed; any Windows/macOS cross-build or multi-platform matrix remains out of scope per the TODO constraints.
+* Task 3 (this change) — `docs/build.md` (purpose, prerequisites, standard command, expected output, overwrite/rebuild behavior, failure semantics table, what-the-build-does-not-prove, dev-checks comparison); README gained the `Release Build (Linux Artifact)` section + TOC entry linking `docs/build.md`; project-structure.md gained build-linux.sh/build.md/dist entries and the v0.3.0 refresh.
+* Task 3 verification is a docs-only self-check (TOC anchors, relative links); the final-tree `dev-checks.sh` run and the completion report belong to Task 4.
+
 ## Known Deviations and Limitations (Phase 01)
 
 * `auth`/`run` are placeholders (exit 3 after config validation) until later phases; no OAuth, YouTube API, chat, renderer, or FFmpeg process behavior exists.
@@ -63,7 +79,7 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 
 ## Immediate Next Steps
 
-1. Execute `.agent/todos/20261009/20261009-todo-4.md` through the Critical Workflow.
+1. Finish Phase 01.1 by recording the tracked completion report (TODO Task 4) at `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`, then mark and rename the TODO.
 2. After Phase 01.1 is complete, proceed to Phase 02 — Renderer and Chat Store; re-read the updated repository before drafting that TODO.
 3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
 4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
