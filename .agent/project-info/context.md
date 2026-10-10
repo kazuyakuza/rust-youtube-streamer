@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. Phase 01.1 implementation is underway: Task 1 (`scripts/build-linux.sh`) and Task 2 (artifact ignore semantics) are done and verified; Task 3 (this change) documents the build workflow in `docs/build.md`, the README, `.agent/project-structure.md` and this file; Task 4 (tracked completion report at `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`) remains. No Phase 02 work has started.
+Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. Phase 01.1 (Reproducible Linux Build Artifact) is complete: all 4 tasks (`scripts/build-linux.sh`, artifact ignore semantics, build-workflow documentation, tracked completion report) are implemented, reviewed, verified, and marked `[DONE]`; all 11 acceptance-criteria checkboxes are checked; the tracked completion report is `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`. The only remaining Phase 01.1 workflow steps are the TODO file rename (`-DONE` suffix) and the feature-branch merge/push (`feat/linux-release-build-artifact`). No Phase 02 work has started.
 
 ## Recent Changes (2026-10-08)
 
@@ -69,6 +69,10 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 * Task 2 — `.gitignore` reviewed: the existing `dist/` rule already covers the artifact; nothing was unignored; no build artifacts were staged or committed; any Windows/macOS cross-build or multi-platform matrix remains out of scope per the TODO constraints.
 * Task 3 (this change) — `docs/build.md` (purpose, prerequisites, standard command, expected output, overwrite/rebuild behavior, failure semantics table, what-the-build-does-not-prove, dev-checks comparison); README gained the `Release Build (Linux Artifact)` section + TOC entry linking `docs/build.md`; project-structure.md gained build-linux.sh/build.md/dist entries and the v0.3.0 refresh.
 * Task 3 verification is a docs-only self-check (TOC anchors, relative links); the final-tree `dev-checks.sh` run and the completion report belong to Task 4.
+* Task 4 — standard gate re-ran on the final tree via the Alpine VM MCP (`docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh`): exit 0 with four PASS lines (`fmt-check`, `check`, `test`, `clippy`) and summary `ALL CHECKS PASSED`; log `logs/checks/20261010T034008Z.log`.
+* Task 4 — tracking re-checks (fresh): `git check-ignore -v dist/rust-youtube-streamer-service` → `.gitignore:34:dist/`; `git ls-files dist/` → empty; `git status --porcelain --ignored=matching -- dist/` → `!! dist/` (single ignored entry); artifact re-observed at 1715296 bytes on `ls -l /rust-youtube-streamer/dist`.
+* Tracked completion report created: `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md` (commit `634d395`; 174 lines; files changed, exact commands/exit statuses with the dev-checks gate, artifact path/size/mode/owner, `dist/` ignore confirmation, known limitations with the container-only caveat, evidence index with commit list and linked per-task planning/adherence files).
+* TODO Tasks 3–4 marked `[DONE]` (`080b534`, `4cea176`); all 11 acceptance-criteria checkboxes flipped to `[x]` (`4cea176`, mirroring the Phase-01 precedent).
 
 ## Known Deviations and Limitations (Phase 01)
 
@@ -79,7 +83,7 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 
 ## Immediate Next Steps
 
-1. Finish Phase 01.1 by recording the tracked completion report (TODO Task 4) at `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`, then mark and rename the TODO.
+1. Finish the Phase 01.1 workflow bookkeeping: rename the TODO file with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-4-DONE.md`), commit pending project-info changes, merge `feat/linux-release-build-artifact` into `main`, and push to `origin` only.
 2. After Phase 01.1 is complete, proceed to Phase 02 — Renderer and Chat Store; re-read the updated repository before drafting that TODO.
 3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
 4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
