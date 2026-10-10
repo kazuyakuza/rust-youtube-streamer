@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. Phase 01.1 (Reproducible Linux Build Artifact) is complete: all 4 tasks (`scripts/build-linux.sh`, artifact ignore semantics, build-workflow documentation, tracked completion report) are implemented, reviewed, verified, and marked `[DONE]`; all 11 acceptance-criteria checkboxes are checked; the tracked completion report is `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`. The only remaining Phase 01.1 workflow steps are the TODO file rename (`-DONE` suffix) and the feature-branch merge/push (`feat/linux-release-build-artifact`). No Phase 02 work has started.
+Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. Phase 01.1 (Reproducible Linux Build Artifact) is complete: `scripts/build-linux.sh`, artifact ignore semantics, build-workflow documentation, and the tracked completion report are implemented and verified; see `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`. The Linux release artifact is produced at `dist/rust-youtube-streamer-service`; it is Linux-only and is not suitable for direct execution on Windows. No Phase 02 work has started. The next task is Phase 01.2 — Reproducible Windows Executable Build, specified in `.agent/todos/20261010/20261010-todo-1.md`.
 
 ## Recent Changes (2026-10-08)
 
@@ -39,7 +39,8 @@ Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (conf
 * Reviewed the updated `main` repository after Phase 00 and Phase 00.1 completion, including the project brief, current Cargo/Docker baseline, developer-check script, structure map, and Critical Workflow conventions.
 * Created `.agent/todos/20261009/20261009-todo-2.md` as the initial Phase 01 draft; the final Phase 01 TODO was `.agent/todos/20261009/20261009-todo-3-DONE.md`. Scope covers typed JSON config and validation, example config, `auth`/`run` CLI placeholders, structured logging, tests, and documentation. OAuth, YouTube API, renderer, chat, FFmpeg process execution, and platform-service behavior remain explicitly out of scope.
 * Reviewed Phase 01's final repository state and completion evidence, including `Cargo.toml`, the Compose toolchain, `scripts/dev-checks.sh`, configuration/CLI implementations, documentation, and updated project structure.
-* Created `.agent/todos/20261009/20261009-todo-4.md` defining Phase 01.1 — Reproducible Linux Build Artifact. The TODO requires `scripts/build-linux.sh`, `docs/build.md`, README and metadata updates, actual Docker/MCP verification, and a tracked completion report at `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`. The final Linux executable under ignored `dist/` is an explicit exception to the usual no-root-generated-files rule; Cargo intermediates remain in the named volume.
+* Created `.agent/todos/20261009/20261009-todo-4.md` defining Phase 01.1 — Reproducible Linux Build Artifact. The completed TODO and tracked report document `scripts/build-linux.sh`, `docs/build.md`, README and metadata updates, Docker/MCP verification, and the Linux artifact under ignored `dist/`; Cargo intermediates remain in the named volume.
+* After reviewing the completed Phase 01.1 report and live build setup, created `.agent/todos/20261010/20261010-todo-1.md` for Phase 01.2 — Reproducible Windows Executable Build. It selects `x86_64-pc-windows-gnu` cross-compilation inside the existing Docker toolchain, preserves the Linux build and dev checks, writes the `.exe` under `dist/windows/`, requires runtime DLL handling to be verified, and requires a tracked completion report. No implementation or Windows build has been run in this planning step.
 
 ## Recent Changes (2026-10-09, Phase 01 execution)
 
@@ -83,8 +84,8 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 
 ## Immediate Next Steps
 
-1. Finish the Phase 01.1 workflow bookkeeping: rename the TODO file with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-4-DONE.md`), commit pending project-info changes, merge `feat/linux-release-build-artifact` into `main`, and push to `origin` only.
-2. After Phase 01.1 is complete, proceed to Phase 02 — Renderer and Chat Store; re-read the updated repository before drafting that TODO.
+1. Execute `.agent/todos/20261010/20261010-todo-1.md` through the Critical Workflow to implement and verify the Docker-based Windows GNU cross-compilation workflow.
+2. After Phase 01.2 is complete, re-review the live repository and proceed to Phase 02 — Renderer and Chat Store.
 3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
 4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
 
