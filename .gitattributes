@@ -1,0 +1,3 @@
+# Force LF line endings for container-executed files; core.autocrlf=true on the Windows host would re-materialize them as CRLF on any future checkout
+*.sh text eol=lf
+Dockerfile text eol=lf
