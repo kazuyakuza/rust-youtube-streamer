@@ -86,4 +86,5 @@ A non-zero exit means no new artifact was produced; fix the reported condition a
 
 - [`README`](../README.md) — project overview, and the Build Checks section covering the Docker environment shared with this workflow.
 - [`scripts/dev-checks.sh`](../scripts/dev-checks.sh) — the fast validation workflow.
+- [`docs/build-windows.md`](build-windows.md) — the Windows counterpart guide: x86-64 GNU cross-compilation producing a Windows `.exe` (three different workflows: dev checks, Linux release build, Windows release build).
 - [`docs/configuration.md`](configuration.md) — how the built executable consumes its configuration file.

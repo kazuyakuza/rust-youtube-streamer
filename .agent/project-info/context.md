@@ -75,6 +75,16 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 * Tracked completion report created: `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md` (commit `634d395`; 174 lines; files changed, exact commands/exit statuses with the dev-checks gate, artifact path/size/mode/owner, `dist/` ignore confirmation, known limitations with the container-only caveat, evidence index with commit list and linked per-task planning/adherence files).
 * TODO Tasks 3–4 marked `[DONE]` (`080b534`, `4cea176`); all 11 acceptance-criteria checkboxes flipped to `[x]` (`4cea176`, mirroring the Phase-01 precedent).
 
+## Recent Changes (2026-10-10, Phase 01.2 implementation)
+
+* Branch `feat/windows-gnu-cross-build`; version bumped `0.3.0 → 0.4.0` (commit `87159a9`).
+* Task 1 (commit `e5505e1`): the Dockerfile now installs `gcc-mingw-w64-x86-64` (Windows GNU cross toolchain: fallback linker route + `x86_64-w64-mingw32-objdump` audit tooling) and adds the Rust target `x86_64-pc-windows-gnu` on the pinned `rust:1.82` Debian base; image rebuilt; probe-verified target/linker/objdump presence inside the container.
+* Environment note + incident: repo-host git `core.autocrlf=true`; a stray working-tree-wide CRLF conversion earlier today broke `sh scripts/build-linux.sh` execution until the files were re-normalized; new tracked `.gitattributes` forces LF for `*.sh` and `Dockerfile` to prevent recurrence. Root `target/` never appears (named-volume redirect holds).
+* Linux artifact fresh observation on the v0.4.0 tree: 1715240 bytes (sizes change with code; no doc hardcoding).
+* Task 2 (commit `e775a7b`): `scripts/build-windows.sh` added — mirrors `build-linux.sh` conventions (`build-windows: error:` prefix, exit 1, no diagnostics suppression, never deletes/prunes); first standard-command run exit 0; artifact `dist/windows/rust-youtube-streamer-service.exe` produced non-empty; DLL decision basis: static GNU runtime link — objdump import audit found no MinGW runtime DLLs, only standard Windows system DLLs (msvcrt.dll, kernel32.dll, ntdll.dll, userenv.dll, ws2_32.dll, api-ms-win-core-synch-l1-2-0.dll, bcryptprimitives.dll); probe-tested failure paths: wrong cwd → exit 1 cwd message; empty `CARGO_TARGET_DIR` → exit 1 compose-reference message; cargo build failure → diagnostics shown + exit 1.
+* Task 3 (this change): `docs/build-windows.md` created; README gained the `Release Build (Windows .exe)` section + TOC entry; `docs/build.md` See Also links the Windows guide; `project-structure.md` and this context file updated. Cross-compilation ≠ native Windows runtime validation is stated wherever claims are made; native Windows validation remains NOT RUN.
+* Task 4 verification is NOT part of this change: the final-tree Linux/Windows/dev-check re-runs and the tracked completion report `.agent/reports/20261010-phase-01-2-windows-build-workflow.md` belong to Task 4.
+
 ## Known Deviations and Limitations (Phase 01)
 
 * `auth`/`run` are placeholders (exit 3 after config validation) until later phases; no OAuth, YouTube API, chat, renderer, or FFmpeg process behavior exists.
@@ -84,10 +94,11 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 
 ## Immediate Next Steps
 
-1. Execute `.agent/todos/20261010/20261010-todo-1.md` through the Critical Workflow to implement and verify the Docker-based Windows GNU cross-compilation workflow.
-2. After Phase 01.2 is complete, re-review the live repository and proceed to Phase 02 — Renderer and Chat Store.
-3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
-4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
+1. Task 4 of Phase 01.2 remains: re-run the documented Windows build and Linux release build commands and the `dev-checks.sh` gate on the final tree via the Alpine VM MCP, record exact exit statuses/artifact sizes, verify `dist/` ignore/tracking state, and create the tracked completion report `.agent/reports/20261010-phase-01-2-windows-build-workflow.md`; then mark TODO tasks done.
+2. Steps 5 of the Critical Workflow remain for Phase 01.2: post-completion TODO rename with `-DONE`, review tmp files, merge the feature branch into `main`, and push to `origin/main` only.
+3. After Phase 01.2 is complete, re-review the live repository and proceed to Phase 02 — Renderer and Chat Store.
+4. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
+5. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
 
 ## Scope Decisions
 

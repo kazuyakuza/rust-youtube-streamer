@@ -13,6 +13,7 @@ The repository is the architectural foundation for future YouTube chat-controlle
 - [Logging (RUST_LOG)](#logging-rust_log)
 - [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm)
 - [Release Build (Linux Artifact)](#release-build-linux-artifact)
+- [Release Build (Windows .exe)](#release-build-windows-exe)
 - [AI Agents](#ai-agents)
 - [How to Start a Task](#how-to-start-a-task)
 
@@ -48,7 +49,7 @@ Both `auth` and `run` are placeholders until later phases: after configuration i
 
 FFmpeg remains a separately provided external prerequisite — it is not installed by this phase and this phase does not launch it.
 
-Build checks validate the build inside the Linux container only; there is no native Windows/Linux runtime validation yet.
+Build checks and both release builds (the Linux artifact and the cross-compiled Windows x86-64 `.exe`) run inside the Linux container only; there is still no native Windows/Linux runtime validation.
 
 ## Commands and Configuration
 
@@ -164,6 +165,27 @@ Full prerequisites, output path, rebuild/overwrite behavior, failure semantics a
 
 This is a different job from `scripts/dev-checks.sh`: that script validates formatting/types/tests/lints
 and produces no artifact, while the build command produces the distributable executable.
+
+## Release Build (Windows .exe)
+
+To produce a distributable Windows x86-64 release executable, run the repository's Windows build
+script through the same Compose `rust` service (build the image once first per the Build Checks
+prerequisites above):
+
+```
+docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/build-windows.sh
+```
+
+On success the command exits `0` and leaves the Windows release executable at
+`dist/windows/rust-youtube-streamer-service.exe` (a gitignored directory), cross-compiled for
+`x86_64-pc-windows-gnu` inside the pinned Linux container using the MinGW-w64 GNU toolchain. The GNU
+runtime is statically linked, so no MinGW runtime DLLs are needed on Windows. This is a
+cross-compilation: it does NOT validate native Windows runtime behavior — the `.exe` must be tested
+separately on Windows (reported as NOT RUN). FFmpeg remains an external prerequisite, not bundled.
+This is a different job from `scripts/dev-checks.sh` (Linux-container checks, no artifact) and from
+`scripts/build-linux.sh` (Linux artifact); `scripts/build-windows.sh` produces only the Windows
+`.exe` above. Full prerequisites, output path, rebuild/overwrite behavior, failure semantics,
+toolchain/target choice, runtime DLLs and limitations: [`docs/build-windows.md`](docs/build-windows.md).
 
 ## AI Agents
 
