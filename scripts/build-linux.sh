@@ -8,7 +8,7 @@
 expected_project_directory="/rust-youtube-streamer"
 release_binary_name="rust-youtube-streamer-service"
 artifact_directory="dist"
-artifact_path="dist/rust-youtube-streamer-service"
+artifact_path="$artifact_directory/$release_binary_name"
 
 print_message() {
     printf '%s\n' "$1"
