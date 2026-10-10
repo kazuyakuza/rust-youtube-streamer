@@ -4,7 +4,7 @@
 
 ## Current Work Focus
 
-Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file has been renamed with the `-DONE` suffix (`.agent/todos/20261009/20261009-todo-3-DONE.md`) and branch `feat/phase01-config-app-skeleton` has been merged into `main`. Phase 01 was defined in `.agent/todos/20261009/20261009-todo-3-DONE.md` (revising the earlier `todo-2` draft; config instructions moved into `docs/configuration.md`, README gained a TOC).
+Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (config module, application/CLI skeleton, structured logging, documentation and project metadata) are implemented, reviewed, and marked `[DONE]`; the phase TODO file is `.agent/todos/20261009/20261009-todo-3-DONE.md`, merged into `main`. The next task is Phase 01.1 — Reproducible Linux Build Artifact, defined in `.agent/todos/20261009/20261009-todo-4.md`. It adds a release build script that writes only the final Linux executable into ignored root-level `dist/`, plus documentation and a tracked completion report. No Phase 01.1 implementation has started.
 
 ## Recent Changes (2026-10-08)
 
@@ -37,7 +37,9 @@ Phase 01 (Configuration and Application Skeleton) is complete: all 4 tasks (conf
 ## Recent Changes (2026-10-09, continued)
 
 * Reviewed the updated `main` repository after Phase 00 and Phase 00.1 completion, including the project brief, current Cargo/Docker baseline, developer-check script, structure map, and Critical Workflow conventions.
-* Created `.agent/todos/20261009/20261009-todo-2.md` defining Phase 01 — Configuration and Application Skeleton. Scope covers typed JSON config and validation, example config, `auth`/`run` CLI placeholders, structured logging, tests, and documentation. OAuth, YouTube API, renderer, chat, FFmpeg process execution, and platform-service behavior remain explicitly out of scope.
+* Created `.agent/todos/20261009/20261009-todo-2.md` as the initial Phase 01 draft; the final Phase 01 TODO was `.agent/todos/20261009/20261009-todo-3-DONE.md`. Scope covers typed JSON config and validation, example config, `auth`/`run` CLI placeholders, structured logging, tests, and documentation. OAuth, YouTube API, renderer, chat, FFmpeg process execution, and platform-service behavior remain explicitly out of scope.
+* Reviewed Phase 01's final repository state and completion evidence, including `Cargo.toml`, the Compose toolchain, `scripts/dev-checks.sh`, configuration/CLI implementations, documentation, and updated project structure.
+* Created `.agent/todos/20261009/20261009-todo-4.md` defining Phase 01.1 — Reproducible Linux Build Artifact. The TODO requires `scripts/build-linux.sh`, `docs/build.md`, README and metadata updates, actual Docker/MCP verification, and a tracked completion report at `.agent/reports/20261009-phase-01-1-build-artifact-workflow.md`. The final Linux executable under ignored `dist/` is an explicit exception to the usual no-root-generated-files rule; Cargo intermediates remain in the named volume.
 
 ## Recent Changes (2026-10-09, Phase 01 execution)
 
@@ -61,8 +63,8 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 
 ## Immediate Next Steps
 
-1. None for Phase 01 — completed and merged.
-2. Re-read the live repository and all relevant project-info/workflow files before drafting each later phase TODO.
+1. Execute `.agent/todos/20261009/20261009-todo-4.md` through the Critical Workflow.
+2. After Phase 01.1 is complete, proceed to Phase 02 — Renderer and Chat Store; re-read the updated repository before drafting that TODO.
 3. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
 4. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
 
