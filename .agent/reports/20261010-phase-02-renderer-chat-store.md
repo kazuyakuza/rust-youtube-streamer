@@ -22,7 +22,7 @@ Phase 02 added two independent runtime components at the `src/` level: a bounded
 
 State at report time: branch `feat/phase02-renderer-chat-store`, HEAD `4d939bb` (`chore(renderer): remove leftover gitkeep placeholder from the renderer module`, observed via `git log --oneline -5` at drafting time), date 2026-10-11; source TODO `.agent/todos/20261010/20261010-todo-2.md`.
 
-Verification is container-only: the fresh dev-checks gate and both release builds below ran inside the pinned `rust:1.82` container on the Alpine VM; no native Windows/Linux runtime validation was performed. The tracked report itself is `.agent/reports/20261010-phase-02-renderer-chat-store.md`.
+Verification is container-only (see Environment Notes below); no native Windows/Linux runtime validation was performed. The tracked report itself is `.agent/reports/20261010-phase-02-renderer-chat-store.md`.
 
 ## Files Created/Changed
 
@@ -285,7 +285,7 @@ c1249d7 feat(chat): add typed chat errors and chat message model
 d86fc0f chore: bump version to 0.5.0
 ```
 
-Pending rows (commits created after this report was written; hashes recorded in the implementer summary, not back-patched):
+Pending rows (see the `pending` convention stated under Files Created/Changed):
 
 | Commit intent | Message | Status |
 | --- | --- | --- |
