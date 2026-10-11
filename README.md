@@ -47,6 +47,8 @@ Phase 01 application foundation is implemented on top of it:
 
 Both `auth` and `run` are placeholders until later phases: after configuration is loaded and validated, each prints a "not implemented yet" error and exits with code 3; neither contacts YouTube, requests credentials, creates broadcast resources, or starts FFmpeg.
 
+Phase 02 adds two independent src-level components on this foundation: a bounded in-memory chat store (`src/chat/`) that appends accepted messages to an independent append-only chat log and keeps only the currently visible messages in a FIFO queue, and an RGB24 text renderer (`src/renderer/`, ab_glyph-based) that turns complete visible multiline text into raw video frames — both implemented with typed errors and unit tests but not yet wired into the `run` pipeline; neither changes any CLI behavior or the placeholders below. The chat store's chat log (config `chat.log_file`) is created only when the (not yet wired) chat store component is used.
+
 FFmpeg remains a separately provided external prerequisite — it is not installed by this phase and this phase does not launch it.
 
 Build checks and both release builds (the Linux artifact and the cross-compiled Windows x86-64 `.exe`) run inside the Linux container only; there is still no native Windows/Linux runtime validation.

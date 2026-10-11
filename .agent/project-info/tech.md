@@ -18,6 +18,7 @@ FFmpeg runs as an external, centrally configurable process (brief §3.4). The ap
 * YouTube integration stays isolated behind the application's own module interfaces so the underlying HTTP, OAuth, or gRPC implementation can be replaced without changing the renderer or application logic.
 * Config and logging (brief §3.5): JSON configuration loading and validation, structured logging, error context, OAuth token persistence, graceful shutdown — favor actively maintained, widely used crates with appropriate licenses; pin dependencies via the Cargo lockfile; avoid redundant dependencies.
 * Exact crate selection happens during implementation, not now.
+* Decided during Phase 02 (renderer): `ab_glyph = "0.2"` for font rasterization — pure Rust, no platform-installed graphics libraries, Rust 1.82/edition-2021 compatible, Windows+Linux, pinned via the tracked lockfile; replaces nothing and is independent of YouTube/streaming crates.
 
 ## Configuration
 
