@@ -69,11 +69,21 @@ impl Frame {
             return;
         }
         let base = (point.y as usize * self.width as usize + point.x as usize) * 3;
-        self.pixels[base] = blend_channel(self.pixels[base], blend.coverage, blend.color.red);
-        self.pixels[base + 1] =
-            blend_channel(self.pixels[base + 1], blend.coverage, blend.color.green);
-        self.pixels[base + 2] =
-            blend_channel(self.pixels[base + 2], blend.coverage, blend.color.blue);
+        self.pixels[base] = blend_channel(ChannelBlend {
+            background: self.pixels[base],
+            coverage: blend.coverage,
+            text: blend.color.red,
+        });
+        self.pixels[base + 1] = blend_channel(ChannelBlend {
+            background: self.pixels[base + 1],
+            coverage: blend.coverage,
+            text: blend.color.green,
+        });
+        self.pixels[base + 2] = blend_channel(ChannelBlend {
+            background: self.pixels[base + 2],
+            coverage: blend.coverage,
+            text: blend.color.blue,
+        });
     }
 
     fn is_inside_frame(&self, point: PixelPoint) -> bool {
@@ -81,20 +91,27 @@ impl Frame {
     }
 }
 
-fn has_non_positive_dimension(width: u32, height: u32) -> bool {
+pub(super) fn has_non_positive_dimension(width: u32, height: u32) -> bool {
     width == 0 || height == 0
 }
 
-fn rgb24_byte_count(width: u32, height: u32) -> Option<usize> {
+pub(super) fn rgb24_byte_count(width: u32, height: u32) -> Option<usize> {
     (width as usize)
         .checked_mul(height as usize)
         .and_then(|pixels| pixels.checked_mul(3))
 }
 
+/// Inputs for blending one channel of one pixel.
+struct ChannelBlend {
+    background: u8,
+    coverage: f32,
+    text: u8,
+}
+
 /// Round-half-up of the linear interpolation between `background` and
 /// `text`; with equal endpoints the result is exactly that endpoint.
-fn blend_channel(background: u8, coverage: f32, text: u8) -> u8 {
-    let delta = text as f32 - background as f32;
-    let blended = background as f32 + (coverage * delta + 0.5).floor();
+fn blend_channel(blend: ChannelBlend) -> u8 {
+    let delta = blend.text as f32 - blend.background as f32;
+    let blended = blend.background as f32 + (blend.coverage * delta + 0.5).floor();
     blended.clamp(0.0, 255.0) as u8
 }

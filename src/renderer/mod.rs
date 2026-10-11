@@ -21,4 +21,6 @@ mod frame_tests;
 #[cfg(test)]
 mod settings_tests;
 #[cfg(test)]
+mod text_test_helpers;
+#[cfg(test)]
 mod text_tests;
