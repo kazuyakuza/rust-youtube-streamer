@@ -10,7 +10,6 @@ const EPOCH_YEAR: u64 = 1_970;
 const SECONDS_PER_DAY: u64 = 86_400;
 const SECONDS_PER_HOUR: u64 = 3_600;
 const SECONDS_PER_MINUTE: u64 = 60;
-const DAYS_PER_4_YEARS: u64 = 1_461;
 const DAYS_PER_400_YEARS: u64 = 146_097;
 const NON_LEAP_YEAR_DAYS: u64 = 365;
 const FEBRUARY_INDEX: usize = 1;
@@ -38,8 +37,6 @@ fn civil_date_from_epoch_days(days: u64) -> (u64, u32, u32) {
     let mut remaining_days = days;
     let mut year = EPOCH_YEAR + 400 * (remaining_days / DAYS_PER_400_YEARS);
     remaining_days %= DAYS_PER_400_YEARS;
-    year += 4 * (remaining_days / DAYS_PER_4_YEARS);
-    remaining_days %= DAYS_PER_4_YEARS;
     year = skip_whole_years(year, &mut remaining_days);
     let (month, day) = month_and_day(year, remaining_days);
     (year, month, day)
