@@ -15,7 +15,7 @@
 
 mod error;
 mod loader;
-mod model;
+pub(crate) mod model;
 mod validation;
 
 #[cfg(test)]

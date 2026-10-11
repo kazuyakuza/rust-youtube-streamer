@@ -3,6 +3,8 @@
 //! configuration loading, and mode dispatch.
 
 mod app;
+#[allow(dead_code)]
+mod chat;
 mod config;
 
 use std::process::ExitCode;
