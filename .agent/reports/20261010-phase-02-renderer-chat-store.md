@@ -217,8 +217,9 @@ Flip rule applied: a box flips `[ ] → [x]` only when every evidence source for
 | 11 | Both Linux and Windows release builds succeed | F2 exit=0 (1715264 bytes), F3 exit=0 (3191353 bytes), F4 cross-check identical | [x] |
 | 12 | Docs accurate; no full-streaming claims | Documentation Accuracy Audit below — all four items hold across README, `docs/configuration.md`, `.agent/project-structure.md`, `.agent/project-info/context.md` | [x] |
 | 13 | Tracked completion report with real evidence | this file `.agent/reports/20261010-phase-02-renderer-chat-store.md`; every value traces to captured output; tracked by commit `docs: add phase 02 renderer chat store completion report` | [x] |
+| 14 | No OAuth, YouTube API, FFmpeg process, audio or live streaming behavior is implemented | box-5 greps (`crate::youtube`, `crate::streaming`, `std::process`) → no matches in `src/chat`/`src/renderer`; docs-accuracy audit item (c) → no implementation claims in README.md/docs/configuration.md/.agent/project-structure.md/.agent/project-info/context.md; `auth`/`run` placeholder tests still exit 3; limitations/NOT-RUN sections | [x] |
 
-All 13 boxes verified → all flip `[ ] → [x]` in the TODO (Commit 4 of this task).
+All 14 boxes verified → all flip `[ ] → [x]` in the TODO (Commit 4 of this task).
 
 ## Documentation Accuracy Audit
 
