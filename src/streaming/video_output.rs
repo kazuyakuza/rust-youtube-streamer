@@ -63,34 +63,34 @@ impl RecordingNameSpec {
         &self,
         exists: &mut dyn FnMut(&Path) -> bool,
     ) -> Result<String, StreamingError> {
-        let base_name = self.base_name();
+        let stem = self.base_stem();
+        let base_name = Self::with_extension(&stem);
         if !exists(&self.output_directory.join(&base_name)) {
             return Ok(base_name);
         }
-        self.first_free_suffixed_name(&base_name, exists)
+        self.first_free_suffixed_name(&stem, exists)
     }
 
-    fn base_name(&self) -> String {
+    fn base_stem(&self) -> String {
         format!(
-            "{}-{}{}{}",
+            "{}-{}",
             self.kind.filename_prefix(),
-            format_utc_timestamp(self.epoch_seconds),
-            FILE_EXTENSION_SEPARATOR,
-            FILENAME_EXTENSION
+            format_utc_timestamp(self.epoch_seconds)
         )
+    }
+
+    fn with_extension(stem: &str) -> String {
+        format!("{stem}{FILE_EXTENSION_SEPARATOR}{FILENAME_EXTENSION}")
     }
 
     fn first_free_suffixed_name(
         &self,
-        base_name: &str,
+        stem: &str,
         exists: &mut dyn FnMut(&Path) -> bool,
     ) -> Result<String, StreamingError> {
-        let extension_suffix = format!("{FILE_EXTENSION_SEPARATOR}{FILENAME_EXTENSION}");
-        let stem = base_name
-            .strip_suffix(&extension_suffix)
-            .unwrap_or(base_name);
         for suffix in FIRST_COLLISION_SUFFIX..=MAX_SUFFIX_ATTEMPTS {
-            let candidate = format!("{stem}{COLLISION_SUFFIX_SEPARATOR}{suffix}{extension_suffix}");
+            let candidate =
+                Self::with_extension(&format!("{stem}{COLLISION_SUFFIX_SEPARATOR}{suffix}"));
             if !exists(&self.output_directory.join(&candidate)) {
                 return Ok(candidate);
             }

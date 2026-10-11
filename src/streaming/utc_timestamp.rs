@@ -12,6 +12,7 @@ const SECONDS_PER_HOUR: u64 = 3_600;
 const SECONDS_PER_MINUTE: u64 = 60;
 const DAYS_PER_400_YEARS: u64 = 146_097;
 const NON_LEAP_YEAR_DAYS: u64 = 365;
+const LEAP_YEAR_DAYS: u64 = 366;
 const FEBRUARY_INDEX: usize = 1;
 const LEAP_DAY_COUNT: u32 = 1;
 const MONTH_LENGTHS: [u32; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
@@ -52,7 +53,7 @@ fn skip_whole_years(mut year: u64, remaining_days: &mut u64) -> u64 {
 
 fn days_in_year(year: u64) -> u64 {
     if is_leap_year(year) {
-        NON_LEAP_YEAR_DAYS + 1
+        LEAP_YEAR_DAYS
     } else {
         NON_LEAP_YEAR_DAYS
     }

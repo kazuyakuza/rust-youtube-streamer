@@ -115,11 +115,11 @@ impl Error for StreamingError {
     }
 }
 
-pub(super) fn is_broken_pipe(source: &io::Error) -> bool {
+fn is_broken_pipe(source: &io::Error) -> bool {
     source.kind() == io::ErrorKind::BrokenPipe
 }
 
-pub(super) fn is_file_not_found(source: &io::Error) -> bool {
+fn is_file_not_found(source: &io::Error) -> bool {
     source.kind() == io::ErrorKind::NotFound
 }
 
@@ -139,16 +139,12 @@ fn format_spawn_error(
         write!(
             formatter,
             "unable to start the FFmpeg executable '{}': {}",
-            executable,
-            source
+            executable, source
         )
     }
 }
 
-fn format_frame_write_error(
-    formatter: &mut fmt::Formatter<'_>,
-    source: &io::Error,
-) -> fmt::Result {
+fn format_frame_write_error(formatter: &mut fmt::Formatter<'_>, source: &io::Error) -> fmt::Result {
     if is_broken_pipe(source) {
         write!(
             formatter,

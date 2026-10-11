@@ -44,7 +44,7 @@ impl FfmpegProcess {
     pub fn start(config: &AppConfig, output_path: PathBuf) -> Result<Self, StreamingError> {
         let arguments = args::build_arguments(config, &output_path)?;
         let mut command = Command::new(&config.ffmpeg.executable);
-        append_arguments(&mut command, &arguments);
+        prepare_piped_command(&mut command, &arguments);
         let mut child = command.spawn().map_err(|source| StreamingError::Spawn {
             executable: config.ffmpeg.executable.clone(),
             source,
@@ -77,11 +77,9 @@ fn missing_stdin_error() -> StreamingError {
     }
 }
 
-fn append_arguments(command: &mut Command, arguments: &[String]) {
-    for argument in arguments {
-        command.arg(argument);
-    }
+fn prepare_piped_command(command: &mut Command, arguments: &[String]) {
     command
+        .args(arguments)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
@@ -101,15 +99,10 @@ fn capture_pipe<R: Read>(pipe: Option<R>) -> CapturedPipe {
         };
     };
     let mut collected_bytes = Vec::new();
-    match pipe.read_to_end(&mut collected_bytes) {
-        Ok(_bytes_read) => CapturedPipe {
-            collected_bytes,
-            final_error: None,
-        },
-        Err(source) => CapturedPipe {
-            collected_bytes,
-            final_error: Some(source),
-        },
+    let final_error = pipe.read_to_end(&mut collected_bytes).err();
+    CapturedPipe {
+        collected_bytes,
+        final_error,
     }
 }
 
