@@ -8,6 +8,9 @@
 
 mod error;
 mod frame;
+mod settings;
 
 #[cfg(test)]
 mod frame_tests;
+#[cfg(test)]
+mod settings_tests;
