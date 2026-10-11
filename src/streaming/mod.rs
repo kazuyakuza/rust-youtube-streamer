@@ -22,4 +22,5 @@
 //! only (tests via `super::*`); the cross-module `pub use` re-exports return
 //! when the first external consumer lands.
 
+mod args;
 mod error;
