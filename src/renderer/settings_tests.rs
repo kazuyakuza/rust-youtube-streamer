@@ -1,6 +1,7 @@
 //! `RendererSettings` derivation and hex color parsing tests. Config
 //! structs are constructed in place; the configuration validation module
-//! is intentionally not invoked.
+//! is intentionally not invoked. Assertions are deterministic and use no
+//! golden image files.
 
 use crate::config::model::{RendererConfig, VideoConfig};
 

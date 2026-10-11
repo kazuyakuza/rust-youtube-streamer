@@ -1,5 +1,7 @@
 //! `TextRenderer` rendering tests: deterministic pixel assertions against
 //! the vendored Exo 2 Light font (never `console.ttf`); no golden files.
+//! Results depend only on the pinned container toolchain and the vendored
+//! font metrics.
 
 use super::*;
 use crate::renderer::text_test_helpers::*;

@@ -4,10 +4,13 @@
 //! `.agent/todos/20261010/20261010-todo-2.md`. The module is a pure local
 //! component: no YouTube API types, chat state, network, or FFmpeg
 //! dependency. Cross-module re-exports return at the Phase 03 wiring step
-//! (precedent: `src/chat/mod.rs`). File/module mapping note: the trait and
-//! `RenderInput` live in `renderer.rs` but are declared as `contract` via
-//! `#[path]` (plan amendment A9 — avoids `clippy::module_inception`);
-//! in-tree consumers import `contract::Renderer` / `contract::RenderInput`.
+//! (precedent: `src/chat/mod.rs`); until then the `#[allow(dead_code)]` on
+//! `mod renderer;` in `main.rs` marks the module as not yet wired and
+//! retires at that same app-wiring step. File/module mapping note: the
+//! trait and `RenderInput` live in `renderer.rs` but are declared as
+//! `contract` via `#[path]` (plan amendment A9 — avoids
+//! `clippy::module_inception`); in-tree consumers import
+//! `contract::Renderer` / `contract::RenderInput`.
 
 #[path = "renderer.rs"]
 mod contract;

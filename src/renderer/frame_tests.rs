@@ -1,4 +1,6 @@
-//! `Frame` construction and blending tests.
+//! `Frame` construction and blending tests. Assertions are deterministic
+//! — no golden image files and no platform-dependent data; the suite runs
+//! on the pinned container toolchain.
 
 use super::*;
 

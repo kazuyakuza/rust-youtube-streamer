@@ -1,7 +1,9 @@
 //! Typed renderer errors. Each variant names the failed stage (geometry,
 //! layout, color, or font loading) with the offending values, mirroring
 //! `src/chat/error.rs`: hand-written `Display`, `std::error::Error` with
-//! `source()`, no panics, no external derive crates.
+//! `source()`, no panics, no external derive crates. Contracts follow
+//! brief §9.2–§9.6; scope authority
+//! `.agent/todos/20261010/20261010-todo-2.md` Task 2.
 
 use std::error::Error;
 use std::fmt;
@@ -13,23 +15,31 @@ use crate::renderer::frame::rgb24_byte_count;
 /// All failures produced by the renderer, one variant per stage.
 #[derive(Debug)]
 pub enum RenderError {
-    /// Frame width or height is not positive (construction input).
+    /// Frame width or height is not positive; raised when settings are
+    /// derived or a frame is sized, carrying the offending dimensions.
     Geometry { width: u32, height: u32 },
-    /// `width * height * 3` overflows or is otherwise unusable.
+    /// `width * height * 3` overflows or is otherwise unusable; raised at
+    /// frame sizing (settings derivation and every render), echoing the
+    /// dimensions that cannot form a buffer.
     FrameSize { width: u32, height: u32 },
-    /// The vertical layout leaves room for less than one visible line.
+    /// The vertical layout leaves room for less than one visible line;
+    /// raised by settings derivation, echoing the height, both vertical
+    /// margins, and the line height.
     Layout {
         height: u32,
         top_margin: u32,
         bottom_margin: u32,
         line_height: u32,
     },
-    /// A configured color is not `#RRGGBB`; `field` is `text_color` or
-    /// `background_color`.
+    /// A configured color is not `#RRGGBB`; raised by settings derivation.
+    /// `field` is `text_color` or `background_color`.
     InvalidColor { field: &'static str, value: String },
-    /// The configured font file could not be opened for reading.
+    /// `TextRenderer::new` could not open the configured font file for
+    /// reading. Carries the font path and the underlying I/O cause.
     FontOpen { path: PathBuf, source: io::Error },
-    /// The opened file is not a parseable font.
+    /// `TextRenderer::new` read the configured file but it is not a
+    /// parseable font. Carries the font path and the underlying parse
+    /// cause.
     FontParse {
         path: PathBuf,
         source: ab_glyph::InvalidFont,

@@ -1,6 +1,9 @@
 //! RGB24 frame buffer: checked-size construction and clipped coverage
 //! blending. Every frame is exactly `width * height * 3` bytes, row-major,
-//! channels in R, G, B order (brief §9.4).
+//! origin at the top-left pixel, channels in R, G, B order (brief §9.4).
+//! Blending one pixel applies a deterministic, gamma-free round-half-up
+//! linear interpolation between the stored background channel and the text
+//! channel for the given coverage.
 
 use crate::renderer::error::RenderError;
 use crate::renderer::settings::Rgb;
@@ -19,7 +22,9 @@ pub struct PixelBlend {
     pub color: Rgb,
 }
 
-/// A full RGB24 frame; constructed only via [`Frame::filled`].
+/// A full RGB24 frame whose pixel buffer is always exactly
+/// `width * height * 3` bytes (row-major, R, G, B per pixel); constructed
+/// only via [`Frame::filled`].
 #[derive(Debug)]
 pub struct Frame {
     width: u32,

@@ -1,6 +1,9 @@
 //! Renderer settings derived from typed configuration: frame geometry,
 //! layout metrics, colors parsed from `#RRGGBB` hex, and the font path.
-//! No file-existence check happens here (Phase 01 config-validation
+//! Settings are built directly from the config data structs; the crate's
+//! config-validation module is never invoked here — geometry, vertical
+//! layout, and color strings are re-checked independently (brief §5). No
+//! file-existence check happens at all (Phase 01 config-validation
 //! precedent); the renderer opens and parses the font at construction.
 
 use std::fmt;
@@ -13,7 +16,9 @@ use crate::renderer::frame::has_non_positive_dimension;
 const TEXT_COLOR_FIELD: &str = "text_color";
 const BACKGROUND_COLOR_FIELD: &str = "background_color";
 
-/// One 8-bit-per-channel color.
+/// One 8-bit-per-channel color. Its `Display` form is the canonical
+/// uppercase `#RRGGBB` string, and its `PartialEq` compares the three
+/// channel bytes.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rgb {
     pub red: u8,
