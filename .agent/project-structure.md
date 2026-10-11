@@ -18,20 +18,20 @@
   - `loader_tests.rs` / `validation_tests.rs` - 16 unit tests (temp files via `tempfile`; no real developer config)
   - `test_fixtures.rs` - shared test fixture builder (`#[cfg(test)]`)
 - youtube/ - YouTube API integration: OAuth auth, broadcast lifecycle, streams, chat transport (placeholder; future phase)
-- chat/ - application-level chat message model and bounded visible-message queue (ChatStore); independent of YouTube API types, network, streaming and FFmpeg (implemented, not yet wired into app::run; the `#[allow(dead_code)]` on `mod chat;` in `src/main.rs` retires at the Phase 03 wiring step)
+- chat/ - application-level chat message model and bounded visible-message queue (ChatStore); independent of YouTube API types, network, streaming and FFmpeg (implemented, not yet wired into app::run)
   - `mod.rs` - module docs: log-append-first contract and scope authority (TODO §1); private submodule declarations (re-exports return at the first external consumer)
   - `model.rs` - `ChatMessage { author, text, message_id: Option, timestamp: Option<u64> }`; builder attachers for optional API metadata; `Display` is exactly `author: text` (metadata never visible); newline normalization flattens line breaks to one space
   - `store.rs` - `ChatStore`: `VecDeque` FIFO of visible messages, log file opened eagerly in append/create mode; `accept` appends the log record FIRST and rejects the message on I/O failure (queue and log never diverge); evicts oldest beyond capacity; `visible_text` joins `author: text` lines with `'\n'`; new stores start empty, the log is never read back
   - `error.rs` - `ChatError { Capacity, LogOpen, LogAppend }`; hand-written `Display` contracts, `std::error::Error::source`, no panics
-  - `model_tests.rs` / `store_tests.rs` - 16 unit tests (display/normalization/metadata; capacity, FIFO eviction, append-only log ordering and I/O-failure semantics) via temp files (`tempfile`)
-- renderer/ - converts RenderInput to complete raw RGB24 frames (width * height * 3 bytes, row-major, R/G/B); independent of YouTube API types, chat state, network and FFmpeg (implemented, not yet wired into app::run; the `#[allow(dead_code)]` on `mod renderer;` in `src/main.rs` retires at the Phase 03 wiring step)
+  - `model_tests.rs` / `store_tests.rs` - 16 unit tests (display/normalization/metadata; capacity, FIFO eviction, append-only log ordering and I/O-failure semantics; temp files via `tempfile`)
+- renderer/ - converts RenderInput to complete raw RGB24 frames (width * height * 3 bytes, row-major, R/G/B); independent of YouTube API types, chat state, network and FFmpeg (implemented, not yet wired into app::run)
   - `mod.rs` - module docs; `#[path = "renderer.rs"] mod contract;` mapping keeps the trait out of `clippy::module_inception`
   - `renderer.rs` - `RenderInput { text }` (complete visible multiline text) and the `Renderer` trait (`render -> Result<Frame, RenderError>`); validation happens at construction, `render` fails only on frame-allocation overflow
   - `settings.rs` - `RendererSettings::from_config` (re-checks positive dimensions, vertical layout ≥ 1 line, parses `#RRGGBB` `Rgb` case-insensitively) and `Rgb` with uppercase `Display`; no file-existence check (Phase 01 precedent)
   - `frame.rs` - `Frame` with checked `width * height * 3` construction (`filled`), `blend_at` no-op outside the frame, deterministic round-half-up coverage blending
   - `text.rs` - `TextRenderer` (ab_glyph `FontVec`, font parsed once at construction, missing/unparseable fonts are typed errors, no silent fallback); line-box placement baseline = `top_margin + ascent + i * line_height`; per-pixel clipping at the physical frame boundary, horizontal cut at `x == width`, no wrapping/font resizing; unknown codepoints render as notdef, skipped with advance kept
   - `error.rs` - `RenderError { Geometry, FrameSize, Layout, InvalidColor, FontOpen, FontParse }`; hand-written `Display`, `source()`, no panics
-  - `*_tests.rs` / `text_test_helpers.rs` - 19 unit tests (`#[cfg(test)] #[path]` in-tree test modules; font fixture `fonts/Exo2-Light.otf`)
+  - `*_tests.rs` / `text_test_helpers.rs` - 19 unit tests (`#[cfg(test)]` in-tree test modules; font fixture `fonts/Exo2-Light.otf`)
 - streaming/ - FFmpeg process supervision and raw-frame input pipeline (placeholder; future phase)
 
 # Root files

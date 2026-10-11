@@ -54,7 +54,7 @@ All five top-level sections are required. Each field below lists its rule and th
 
 ### renderer
 
-- `font` (string) — font file path; must be non-blank. Example: `fonts/console.ttf`. — runtime font must be a parseable font file; the renderer validates it at construction (typed `FontOpen`/`FontParse` errors). Test fixture `fonts/Exo2-Light.otf` ships under the SIL Open Font License 1.1 (`fonts/OFL.txt`); tracked `fonts/console.ttf` predates the renderer, has indeterminate provenance, and is referenced by no test — operators should point `font` at a documented, licensed font file.
+- `font` (string) — font file path; must be non-blank. Example: `fonts/console.ttf`. Runtime font must be a parseable font file; the renderer validates it at construction (typed `FontOpen`/`FontParse` errors). Test fixture `fonts/Exo2-Light.otf` ships under the SIL Open Font License 1.1 (`fonts/OFL.txt`); tracked `fonts/console.ttf` predates the renderer, has indeterminate provenance, and is referenced by no test — operators should point `font` at a documented, licensed font file.
 - `font_size` (integer) — must be greater than 0. Example: `32`.
 - `line_height` (integer) — must be greater than 0. Example: `40`.
 - `left_margin`, `top_margin`, `right_margin`, `bottom_margin` (integers) — each must be 0 or greater. Example: `20` each.
@@ -73,7 +73,7 @@ All five top-level sections are required. Each field below lists its rule and th
 - `preset` (string) — must be non-blank. Example: `veryfast`.
 - `bitrate` (string) — must be non-blank. Example: `6000k`.
 
-Existence of the font file or the FFmpeg executable is checked by the consuming component, not at configuration load: the renderer opens and parses the configured font at construction with typed errors (no file-existence or parseable-font check at configuration load itself — this follows the Phase 01 validation precedent, and the renderer is wired into the runtime in a later phase). FFmpeg itself is a separately provided external prerequisite — this phase neither installs nor launches it.
+Existence of the font file or the FFmpeg executable is checked by the consuming component, not at configuration load: the renderer opens and parses the configured font at construction with typed errors (no file-existence or parseable-font check at configuration load — this follows the Phase 01 validation precedent, and the renderer is wired into the runtime in a later phase). FFmpeg itself is a separately provided external prerequisite — this phase neither installs nor launches it.
 
 ## Validation Rules
 
