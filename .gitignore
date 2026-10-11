@@ -50,3 +50,6 @@ dist/
 # OAuth credentials and tokens (placeholder stays versioned)
 credentials/*
 !credentials/.gitkeep
+
+# Local video recordings (ffmpeg output; never committed)
+videos/
