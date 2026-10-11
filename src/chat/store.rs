@@ -1,9 +1,11 @@
 //! Bounded visible-message queue [`ChatStore`] with an eagerly opened,
-//! append-only chat log. The visible capacity is recomputed from validated
-//! video geometry with overflow-safe `u64` arithmetic, and every accepted
-//! message is appended to the log before it may enter the queue, so a failed
-//! append rejects the message instead of letting queue and log diverge
-//! (brief §8.4 message storage, §11.2 chat log).
+//! append-only chat log that is never read back. The visible capacity is
+//! recomputed from validated video geometry with overflow-safe `u64`
+//! arithmetic, and every accepted message is appended to the log before it
+//! may enter the queue, so a failed append rejects the message instead of
+//! letting queue and log diverge (brief §8.4 message storage, §11.2 chat
+//! log); scope authority `.agent/todos/20261010/20261010-todo-2.md` §1. The
+//! store cannot depend on YouTube API types, network, streaming, or FFmpeg.
 
 use std::collections::VecDeque;
 use std::fs::{self, File};
@@ -120,6 +122,10 @@ impl ChatStore {
         self.messages.is_empty()
     }
 
+    /// Appends one record as `<epoch_seconds> <author>: <text>\n`, using the
+    /// message's own timestamp when present, otherwise its generation time
+    /// in seconds since the UNIX epoch. A single `write_all` surfaces any
+    /// failure per message; `ChatStore::accept` turns it into a rejection.
     fn write_log_record(&mut self, message: &ChatMessage) -> Result<(), ChatError> {
         let generated_seconds = SystemTime::now()
             .duration_since(UNIX_EPOCH)
