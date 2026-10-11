@@ -7,6 +7,9 @@ mod app;
 mod chat;
 mod config;
 
+#[allow(dead_code)]
+mod renderer;
+
 use std::process::ExitCode;
 
 fn main() -> ExitCode {
