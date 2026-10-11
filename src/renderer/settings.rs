@@ -8,6 +8,7 @@ use std::path::PathBuf;
 
 use crate::config::model::{RendererConfig, VideoConfig};
 use crate::renderer::error::RenderError;
+use crate::renderer::frame::has_non_positive_dimension;
 
 const TEXT_COLOR_FIELD: &str = "text_color";
 const BACKGROUND_COLOR_FIELD: &str = "background_color";
@@ -71,7 +72,7 @@ impl RendererSettings {
     /// leaves room for at least one line, and parseable `#RRGGBB` colors.
     /// The font file itself is not touched here.
     pub fn from_config(config: &RendererConfig, video: &VideoConfig) -> Result<Self, RenderError> {
-        if has_non_positive_frame(video) {
+        if has_non_positive_dimension(video.width, video.height) {
             return Err(RenderError::Geometry {
                 width: video.width,
                 height: video.height,
@@ -100,10 +101,6 @@ impl RendererSettings {
     }
 }
 
-fn has_non_positive_frame(video: &VideoConfig) -> bool {
-    video.width == 0 || video.height == 0
-}
-
 fn lacks_visible_line(config: &RendererConfig, video: &VideoConfig) -> bool {
     let occupied = u64::from(config.top_margin)
         + u64::from(config.bottom_margin)
@@ -112,13 +109,10 @@ fn lacks_visible_line(config: &RendererConfig, video: &VideoConfig) -> bool {
 }
 
 fn parse_hex_field(field: &'static str, value: &str) -> Result<Rgb, RenderError> {
-    match parse_six_hex(value) {
-        Some(color) => Ok(color),
-        None => Err(RenderError::InvalidColor {
-            field,
-            value: value.to_string(),
-        }),
-    }
+    parse_six_hex(value).ok_or_else(|| RenderError::InvalidColor {
+        field,
+        value: value.to_string(),
+    })
 }
 
 fn parse_six_hex(value: &str) -> Option<Rgb> {

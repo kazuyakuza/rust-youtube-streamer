@@ -8,6 +8,8 @@ use std::fmt;
 use std::io;
 use std::path::PathBuf;
 
+use crate::renderer::frame::rgb24_byte_count;
+
 /// All failures produced by the renderer, one variant per stage.
 #[derive(Debug)]
 pub enum RenderError {
@@ -42,7 +44,7 @@ impl fmt::Display for RenderError {
                 "renderer frame dimensions must be positive (width {width}, height {height})"
             ),
             RenderError::FrameSize { width, height } => {
-                let expected = expected_buffer_bytes(*width, *height);
+                let expected = rgb24_byte_count(*width, *height).unwrap_or(usize::MAX);
                 write!(
                     formatter,
                     "frame size of width {width} and height {height} does not fit a usable RGB24 buffer of {expected} bytes"
@@ -81,11 +83,4 @@ impl Error for RenderError {
             RenderError::FontParse { source, .. } => Some(source),
         }
     }
-}
-
-fn expected_buffer_bytes(width: u32, height: u32) -> usize {
-    (width as usize)
-        .checked_mul(height as usize)
-        .and_then(|pixels| pixels.checked_mul(3))
-        .unwrap_or(usize::MAX)
 }
