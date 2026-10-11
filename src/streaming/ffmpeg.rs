@@ -49,7 +49,14 @@ impl FfmpegProcess {
             executable: config.ffmpeg.executable.clone(),
             source,
         })?;
-        let stdin = child.stdin.take().ok_or_else(missing_stdin_error)?;
+        let stdin = match child.stdin.take() {
+            Some(stdin) => stdin,
+            None => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(missing_stdin_error());
+            }
+        };
         let stdout_drain = spawn_drain(child.stdout.take());
         let stderr_drain = spawn_drain(child.stderr.take());
         Ok(Self {
@@ -180,9 +187,11 @@ fn output_file_is_non_empty(output_path: &Path) -> bool {
 }
 
 impl Drop for FfmpegProcess {
-    /// Kills a still-running child so an unrevisited `FfmpegProcess` cannot
-    /// leak; kill errors on an already-exited process are ignored.
+    /// Kills a still-running child so an un-awaited `FfmpegProcess` cannot
+    /// leak, then waits to reap it. Errors on an already-exited process are
+    /// ignored.
     fn drop(&mut self) {
         let _kill_result = self.child.kill();
+        let _wait_result = self.child.wait();
     }
 }
