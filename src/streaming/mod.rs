@@ -24,6 +24,7 @@
 
 mod args;
 mod error;
+mod ffmpeg;
 mod sink;
 mod utc_timestamp;
 mod video_output;
