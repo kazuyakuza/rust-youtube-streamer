@@ -162,8 +162,10 @@ fn append_failure_rejects_message_and_log_stays_consistent() {
     let (mut store, _temp, log_path) = exact_geometry_store();
     let hello = ChatMessage::new("alice", "Hello!");
     store.accept(hello).expect("accept");
-    let mut options = fs::OpenOptions::new();
-    let read_only = options.read(true).open(&log_path).expect("open read-only");
+    let read_only = fs::OpenOptions::new()
+        .read(true)
+        .open(&log_path)
+        .expect("open read-only");
     store.log_file = read_only;
     let rejected = ChatMessage::new("bob", "Rejected!");
     let error = store.accept(rejected).expect_err("append must fail");

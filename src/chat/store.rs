@@ -61,7 +61,7 @@ impl ChatStoreSettings {
         let visible_capacity = derive_visible_capacity(&config.video, &config.renderer)?;
         Ok(Self {
             visible_capacity,
-            log_path: PathBuf::from(config.chat.log_file.clone()),
+            log_path: PathBuf::from(&config.chat.log_file),
         })
     }
 }
@@ -80,19 +80,14 @@ impl ChatStore {
     /// fresh store starts with an empty queue regardless of prior log
     /// contents; the log is never read back.
     pub fn new(settings: ChatStoreSettings) -> Result<Self, ChatError> {
-        let log_file = match fs::OpenOptions::new()
+        let log_file = fs::OpenOptions::new()
             .create(true)
             .append(true)
             .open(&settings.log_path)
-        {
-            Ok(log_file) => log_file,
-            Err(source) => {
-                return Err(ChatError::LogOpen {
-                    path: settings.log_path.clone(),
-                    source,
-                })
-            }
-        };
+            .map_err(|source| ChatError::LogOpen {
+                path: settings.log_path.clone(),
+                source,
+            })?;
         Ok(Self {
             settings,
             log_file,
@@ -125,7 +120,7 @@ impl ChatStore {
         self.messages.is_empty()
     }
 
-    fn write_log_record(&self, message: &ChatMessage) -> Result<(), ChatError> {
+    fn write_log_record(&mut self, message: &ChatMessage) -> Result<(), ChatError> {
         let generated_seconds = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map_or(u64::MAX, |elapsed| elapsed.as_secs());
@@ -133,8 +128,7 @@ impl ChatStore {
         let author = message.author();
         let text = message.text();
         let record = format!("{seconds} {author}: {text}\n");
-        let mut shared_handle = &self.log_file;
-        shared_handle
+        self.log_file
             .write_all(record.as_bytes())
             .map_err(|source| ChatError::LogAppend {
                 path: self.settings.log_path.clone(),
