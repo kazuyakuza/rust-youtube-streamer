@@ -31,9 +31,9 @@ pub(crate) fn format_utc_timestamp(epoch_seconds: u64) -> String {
 }
 
 /// Converts whole days since 1970-01-01 into a `(year, month, day)` triple.
-/// Fixed-length 400-year and 4-year blocks skip the bulk arithmetically; the
-/// remaining day count is below one 4-year block, so the year walk stays
-/// within three iterations.
+/// A fixed-length 400-year block skips the bulk arithmetically; the residual
+/// day count is then below one 400-year block, so the remaining years are
+/// stepped one at a time until the day-of-year is located.
 fn civil_date_from_epoch_days(days: u64) -> (u64, u32, u32) {
     let mut remaining_days = days;
     let mut year = EPOCH_YEAR + 400 * (remaining_days / DAYS_PER_400_YEARS);
