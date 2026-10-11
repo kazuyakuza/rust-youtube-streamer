@@ -91,6 +91,17 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 * Task 3 (this change): `docs/build-windows.md` created; README gained the `Release Build (Windows .exe)` section + TOC entry; `docs/build.md` See Also links the Windows guide; `project-structure.md` and this context file updated. Cross-compilation ≠ native Windows runtime validation is stated wherever claims are made; native Windows validation remains NOT RUN.
 * Task 4 (commits `185dadc`, `3c992a3`): fresh final-tree verifications via the Alpine VM MCP all green — Windows build `sh scripts/build-windows.sh` exit 0 (`dist/windows/rust-youtube-streamer-service.exe`, 3191192 bytes); Linux build `sh scripts/build-linux.sh` exit 0 (1715240 bytes); dev-checks gate exit 0 (`PASS fmt-check/check/test/clippy`, `ALL CHECKS PASSED`, 46 tests, log `logs/checks/20261010T183206Z.log`); `dist/` remains ignored (`git check-ignore -v` → `.gitignore:34:dist/`; `git ls-files dist/` empty; `!! dist/`); tracked completion report `.agent/reports/20261010-phase-01-2-windows-build-workflow.md` (311 lines) with observed-only evidence and NOT-RUN limitations (native Windows execution not validated; FFmpeg external). TODO Task 4 marked `[DONE]`; all 10 Phase 01.2 acceptance-criteria checkboxes flipped `[x]`.
 
+## Recent Changes (2026-10-11, Phase 02 Tasks 1–2)
+
+* Branch `feat/phase02-renderer-chat-store`; version already at `0.5.0` this phase; tasks 1–2 executed via the Critical Workflow.
+* Task 1 — `src/chat/`: `ChatMessage` (author/text normalized to one line, optional `message_id`/epoch-second timestamp kept off-screen, `Display` = `author: text`) plus `ChatStore` (bounded `VecDeque` FIFO; visible capacity derived with overflow-safe `u64` floor(`(height − top_margin − bottom_margin) / line_height`), minimum one line required; log opened eagerly append/create; `accept` appends the log record FIRST and a failed append rejects the message from both log and queue; new stores start with an empty queue and never read the log back). Typed `ChatError { Capacity, LogOpen, LogAppend }`. Module documented as independent of YouTube/streaming/FFmpeg; `#[allow(dead_code)] mod chat;` in `src/main.rs` deliberate with a Phase 03 retirement plan.
+* Task 2 — `src/renderer/`: `RenderInput` + `Renderer` trait (declared as `contract` via `#[path = "renderer.rs"]`, plan amendment A9), `RendererSettings::from_config` (re-validates geometry/vertical layout, parses `#RRGGBB` `Rgb`), `Frame` (checked `width * height * 3` byte RGB24 buffer, deterministic round-half-up coverage blending, off-frame blend no-op), `TextRenderer` (ab_glyph 0.2.28; font loaded and parsed exactly once at construction; line-box baseline `top_margin + ascent + i * line_height`; pen starts at `left_margin`; horizontal clipping at `x == width` with no wrapping/font resizing; vertical ink past frame bottom dropped; empty input yields the untouched background frame). Typed `RenderError { Geometry, FrameSize, Layout, InvalidColor, FontOpen, FontParse }`. Right/bottom margins are config-only in the MVP renderer (documented deviation). Unknown codepoints skip drawing but keep advance.
+* Fonts: vendored `fonts/Exo2-Light.otf` + `fonts/OFL.txt` (SIL OFL 1.1; SHA-256 and provenance in `fonts/README.md`; downloaded inside the Compose container); `fonts/console.ttf` predates this phase, tracked, provenance indeterminate, referenced by no test; the runtime font path remains operator-supplied.
+* Dependency: `ab_glyph = "0.2"` (locked 0.2.28) added to `Cargo.toml`/`Cargo.lock` — pure-Rust rasterization, no system graphics libraries, Rust 1.82/edition-2021 compatible, Windows+Linux, pinned via the tracked lockfile; justified under the project's dependency policy (no `google-youtube3`).
+* Tests: 16 chat + 19 renderer unit tests; full standard gate via the Alpine VM MCP `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh` exit 0 (`ALL CHECKS PASSED`, 81 tests, log `logs/checks/20261011T184938Z.log`).
+* Task 3 (this change): project-structure.md per-file maps for `src/chat/` and `src/renderer/`, fonts/ and root-file refreshes; README Current Status paragraph; docs/configuration.md font-existence/provenance corrections; tech.md dependency bullet; context.md itself.
+* No wiring into `app::run`, no config/schema expansion, no YouTube/FFmpeg/OAuth/streaming behavior added (TODO constraints honored).
+
 ## Known Deviations and Limitations (Phase 01)
 
 * `auth`/`run` are placeholders (exit 3 after config validation) until later phases; no OAuth, YouTube API, chat, renderer, or FFmpeg process behavior exists.
@@ -98,9 +109,20 @@ All Phase 01 work ran on branch `feat/phase01-config-app-skeleton` via the Criti
 * No subscriber side-effect (stderr delivery) unit test — documented boundary; filter resolution is tested as a pure function.
 * The invalid-`RUST_LOG` fallback design (one warning + default `info`) is user-approved and differs from the original task-3 plan's fatal choice; the TODO's literal wording governs.
 
+## Known Deviations and Limitations (Phase 02, Tasks 1–2)
+
+* Chat log record format is `<epoch_seconds> <author>: <text>\n` (single ASCII space separators) — a deliberate deviation from brief §11.2's RFC3339-style example (simpler, timezone-free, lossless ordering); flagged here, brief not rewritten.
+* Renderer MVP drops ink beyond the physical frame bottom and treats `right_margin`/`bottom_margin` as start-offset/config-only values (brief §9.5 clipping intent preserved horizontally; documented deviation).
+* Unknown/unsupported codepoints are skipped (notdef, `GlyphId(0)`) while their horizontal advance is still consumed (visible-gap limitation).
+* Visible capacity = floor((height − top_margin − bottom_margin) / line_height), minimum 1 (fractional remainder rounds down; no `max_messages` config field was added).
+* `#[allow(dead_code)]` on `mod chat;` / `mod renderer;` in `src/main.rs` is deliberate while the modules wait for Phase 03 `app::run` wiring; it retires then.
+* The OFL license copy shipped is the Google Fonts Exo 2 OFL text (the ab_glyph repo's canonical upstream URL 404'd — fallback documented in `fonts/README.md`).
+* `fonts/console.ttf` provenance is indeterminate; operators supply a documented font at runtime; tests use only `fonts/Exo2-Light.otf`.
+* Verification remains container-only (Alpine VM); rendering is validated by unit tests, not by any native Windows/Linux run — no native renderer behavior is claimed.
+
 ## Immediate Next Steps
 
-1. After Phase 01.2 is complete, re-review the live repository and proceed to Phase 02 — Renderer and Chat Store.
+1. Phase 02 Tasks 1–2 are complete; Tasks 3–4 (this metadata task, then tests/builds/final gate and the tracked completion report at `.agent/reports/20261010-phase-02-renderer-chat-store.md`) close the phase. Phase 03 will wire `chat`/`renderer` into `app::run` (retiring the `#[allow(dead_code)]` mods) and start the FFmpeg process pipeline.
 2. Add the separate runtime prerequisites/permissions document and link it from README in the appropriate later documentation phase; it must state FFmpeg is a preinstalled external prerequisite, the executable runs as a normal user from a writable/readable location, and the app is not installed or registered as a Windows service.
 3. Later phases replace the placeholder `auth`/`run` mode behaviors (exit 3) with real OAuth and streaming backends; `src/app/logging.rs` documents the logging seam (signature/call sites stay stable).
 4. Native Windows runtime validation of `dist/windows/rust-youtube-streamer-service.exe` remains NOT RUN; when a Windows-host validation session happens, record its evidence and retire the NOT-RUN limitation in the docs and completion report.
