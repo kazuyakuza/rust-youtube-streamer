@@ -12,7 +12,7 @@ fn permission_denied() -> io::Error {
 }
 
 #[test]
-fn each_variant_renders_its_display_contract() {
+fn format_errors_without_io_source() {
     assert_eq!(
         StreamingError::UnsupportedPixelFormat {
             value: "yuv420p".to_string()
@@ -43,6 +43,10 @@ fn each_variant_renders_its_display_contract() {
         .to_string(),
         "video file naming gave up in directory '/opt/app/videos' after 1000 collision suffixes; the recording was not started"
     );
+}
+
+#[test]
+fn format_errors_with_io_source() {
     assert_eq!(
         StreamingError::Spawn {
             executable: "ffmpeg".to_string(),
@@ -80,6 +84,10 @@ fn each_variant_renders_its_display_contract() {
         .to_string(),
         "waiting for the FFmpeg process failed: interrupted"
     );
+}
+
+#[test]
+fn format_exit_and_finalize_errors() {
     assert_eq!(
         StreamingError::ExitFailure {
             exit_code: Some(1),

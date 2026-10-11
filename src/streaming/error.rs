@@ -77,36 +77,10 @@ impl fmt::Display for StreamingError {
                 directory.display()
             ),
             StreamingError::Spawn { executable, source } => {
-                if is_file_not_found(source) {
-                    write!(
-                        formatter,
-                        "unable to start the FFmpeg executable '{}': {}; check that the configured path is correct and FFmpeg is installed and runnable",
-                        executable,
-                        source
-                    )
-                } else {
-                    write!(
-                        formatter,
-                        "unable to start the FFmpeg executable '{}': {}",
-                        executable,
-                        source
-                    )
-                }
+                format_spawn_error(formatter, executable, source)
             }
             StreamingError::FrameWrite { source } => {
-                if is_broken_pipe(source) {
-                    write!(
-                        formatter,
-                        "writing a frame to the FFmpeg process failed: {}; the FFmpeg process exited while receiving frames",
-                        source
-                    )
-                } else {
-                    write!(
-                        formatter,
-                        "writing a frame to the FFmpeg process failed: {}",
-                        source
-                    )
-                }
+                format_frame_write_error(formatter, source)
             }
             StreamingError::WaitFailed { source } => {
                 write!(formatter, "waiting for the FFmpeg process failed: {source}")
@@ -147,6 +121,47 @@ pub(super) fn is_broken_pipe(source: &io::Error) -> bool {
 
 pub(super) fn is_file_not_found(source: &io::Error) -> bool {
     source.kind() == io::ErrorKind::NotFound
+}
+
+fn format_spawn_error(
+    formatter: &mut fmt::Formatter<'_>,
+    executable: &str,
+    source: &io::Error,
+) -> fmt::Result {
+    if is_file_not_found(source) {
+        write!(
+            formatter,
+            "unable to start the FFmpeg executable '{}': {}; check that the configured path is correct and FFmpeg is installed and runnable",
+            executable,
+            source
+        )
+    } else {
+        write!(
+            formatter,
+            "unable to start the FFmpeg executable '{}': {}",
+            executable,
+            source
+        )
+    }
+}
+
+fn format_frame_write_error(
+    formatter: &mut fmt::Formatter<'_>,
+    source: &io::Error,
+) -> fmt::Result {
+    if is_broken_pipe(source) {
+        write!(
+            formatter,
+            "writing a frame to the FFmpeg process failed: {}; the FFmpeg process exited while receiving frames",
+            source
+        )
+    } else {
+        write!(
+            formatter,
+            "writing a frame to the FFmpeg process failed: {}",
+            source
+        )
+    }
 }
 
 /// Keeps only the trailing `limit` bytes of a captured diagnostic stream so
