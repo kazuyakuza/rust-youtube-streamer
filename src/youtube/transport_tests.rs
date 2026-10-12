@@ -1,6 +1,7 @@
 //! Fake-transport seam tests: the trait drives with in-memory fakes (no
 //! network) and typed server errors propagate unchanged.
 
+use super::super::authorization::REQUIRED_SCOPE;
 use super::super::token::parse_token_response;
 use super::*;
 
@@ -12,43 +13,43 @@ struct FakeTransport {
     body: String,
 }
 
-impl TokenEndpointTransport for FakeTransport {
-    fn authorization_code_exchange(
-        &self,
-        _request: &CodeExchangeRequest,
-    ) -> Result<TokenResponse, TokenEndpointError> {
+impl FakeTransport {
+    /// Both seam operations answer from the same stored body: the fake
+    /// proves the trait shape, not Google's protocol details.
+    fn respond(&self) -> TokenExchangeResult {
         parse_token_response(&self.body)
     }
+}
 
-    fn refresh_token_exchange(
-        &self,
-        _request: &RefreshRequest,
-    ) -> Result<TokenResponse, TokenEndpointError> {
-        parse_token_response(&self.body)
+impl TokenEndpointTransport for FakeTransport {
+    fn authorization_code_exchange(&self, _request: &CodeExchangeRequest) -> TokenExchangeResult {
+        self.respond()
+    }
+
+    fn refresh_token_exchange(&self, _request: &RefreshRequest) -> TokenExchangeResult {
+        self.respond()
     }
 }
 
 struct ServerErrorFake;
 
-impl TokenEndpointTransport for ServerErrorFake {
-    fn authorization_code_exchange(
-        &self,
-        _request: &CodeExchangeRequest,
-    ) -> Result<TokenResponse, TokenEndpointError> {
+impl ServerErrorFake {
+    /// The typed server error both seam operations propagate unchanged.
+    fn respond(&self) -> TokenExchangeResult {
         Err(TokenEndpointError::Server {
             code: "invalid_grant".to_string(),
             description: None,
         })
     }
+}
 
-    fn refresh_token_exchange(
-        &self,
-        _request: &RefreshRequest,
-    ) -> Result<TokenResponse, TokenEndpointError> {
-        Err(TokenEndpointError::Server {
-            code: "invalid_grant".to_string(),
-            description: None,
-        })
+impl TokenEndpointTransport for ServerErrorFake {
+    fn authorization_code_exchange(&self, _request: &CodeExchangeRequest) -> TokenExchangeResult {
+        self.respond()
+    }
+
+    fn refresh_token_exchange(&self, _request: &RefreshRequest) -> TokenExchangeResult {
+        self.respond()
     }
 }
 
@@ -74,9 +75,8 @@ fn refresh_request() -> RefreshRequest {
 
 #[test]
 fn fake_transport_returns_the_stored_token_response() {
-    let scope = "https://www.googleapis.com/auth/youtube.force-ssl";
     let body = format!(
-        r#"{{"access_token":"{ACCESS_FIXTURE}","expires_in":3592,"refresh_token":"{REFRESH_FIXTURE}","scope":"{scope}","token_type":"Bearer"}}"#
+        r#"{{"access_token":"{ACCESS_FIXTURE}","expires_in":3592,"refresh_token":"{REFRESH_FIXTURE}","scope":"{REQUIRED_SCOPE}","token_type":"Bearer"}}"#
     );
     let fake = FakeTransport { body };
 
@@ -85,7 +85,7 @@ fn fake_transport_returns_the_stored_token_response() {
         .expect("stored response drives the seam");
     assert_eq!(exchanged.access_token.secret(), ACCESS_FIXTURE);
     assert_eq!(exchanged.expires_in_seconds, 3592);
-    assert!(exchanged.granted_scopes.grants(scope));
+    assert!(exchanged.granted_scopes.grants(REQUIRED_SCOPE));
 
     let refreshed = fake
         .refresh_token_exchange(&refresh_request())
@@ -102,11 +102,9 @@ fn fake_transport_propagates_typed_server_error() {
     let error = fake
         .refresh_token_exchange(&refresh_request())
         .expect_err("typed error must propagate");
-    match error {
-        TokenEndpointError::Server { code, description } => {
-            assert_eq!(code, "invalid_grant");
-            assert!(description.is_none());
-        }
-        other => panic!("unexpected error: {other}"),
-    }
+    let TokenEndpointError::Server { code, description } = &error else {
+        panic!("expected Server, got {error}");
+    };
+    assert_eq!(code, "invalid_grant");
+    assert!(description.is_none());
 }
