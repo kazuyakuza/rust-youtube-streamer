@@ -46,6 +46,7 @@ dist/
 
 # Real application configuration (config.example.json stays versioned; the real file carries secrets)
 /config/config.json
+/config/config.windows.json
 
 # OAuth credentials and tokens (placeholder stays versioned)
 credentials/*
