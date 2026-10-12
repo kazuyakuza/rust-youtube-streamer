@@ -10,10 +10,12 @@ path = "src/main.rs"
 [dependencies]
 ab_glyph = "0.2"
 ctrlc = "3"
+oauth2 = { version = "5.0", default-features = false, features = ["ureq"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+ureq = "2"
 
 [dev-dependencies]
 tempfile = "3"
