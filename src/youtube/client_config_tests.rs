@@ -45,21 +45,17 @@ fn parse_preserves_unknown_fields() {
 #[test]
 fn parse_reports_missing_installed_client_id() {
     let error = parse_client_config("{}").expect_err("missing installed block must fail");
-    match error {
-        ClientConfigError::MissingField { field } => {
-            assert_eq!(field, "installed.client_id");
-        }
-        other => panic!("unexpected error: {other}"),
-    }
+    let ClientConfigError::MissingField { field } = &error else {
+        panic!("expected MissingField, got {error}");
+    };
+    assert_eq!(field, "installed.client_id");
 
     let json = r#"{"installed": {"client_secret": "client_secret_fixture"}}"#;
     let error = parse_client_config(json).expect_err("missing client_id must fail");
-    match error {
-        ClientConfigError::MissingField { field } => {
-            assert_eq!(field, "installed.client_id");
-        }
-        other => panic!("unexpected error: {other}"),
-    }
+    let ClientConfigError::MissingField { field } = &error else {
+        panic!("expected MissingField, got {error}");
+    };
+    assert_eq!(field, "installed.client_id");
 }
 
 #[test]
@@ -71,12 +67,10 @@ fn parse_reports_blank_client_secret() {
         }
     }"#;
     let error = parse_client_config(json).expect_err("blank secret must fail");
-    match error {
-        ClientConfigError::BlankField { field } => {
-            assert_eq!(field, "installed.client_secret");
-        }
-        other => panic!("unexpected error: {other}"),
-    }
+    let ClientConfigError::BlankField { field } = &error else {
+        panic!("expected BlankField, got {error}");
+    };
+    assert_eq!(field, "installed.client_secret");
 }
 
 #[test]
@@ -89,12 +83,10 @@ fn parse_rejects_foreign_token_uri() {
         }
     }"#;
     let error = parse_client_config(json).expect_err("foreign token_uri must fail");
-    match error {
-        ClientConfigError::EndpointMismatch { field } => {
-            assert_eq!(field, "installed.token_uri");
-        }
-        other => panic!("unexpected error: {other}"),
-    }
+    let ClientConfigError::EndpointMismatch { field } = &error else {
+        panic!("expected EndpointMismatch, got {error}");
+    };
+    assert_eq!(field, "installed.token_uri");
 }
 
 #[test]
