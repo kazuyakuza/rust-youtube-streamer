@@ -136,25 +136,15 @@ pub(crate) struct TokenEndpointBody {
 }
 
 /// Application-owned, redaction-safe token data built from a parsed
-/// token endpoint body. Hand-written `Debug` never reveals secrets.
+/// token endpoint body. `Debug` never reveals secrets: the token wrappers
+/// redact themselves (plan §5).
+#[derive(Debug)]
 pub(crate) struct TokenResponse {
     pub(crate) access_token: AccessToken,
     /// Remaining lifetime of `access_token` in seconds, as reported by Google.
     pub(crate) expires_in_seconds: u64,
     pub(crate) refresh_token: Option<RefreshToken>,
     pub(crate) granted_scopes: GrantedScopes,
-}
-
-impl fmt::Debug for TokenResponse {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("TokenResponse")
-            .field("access_token", &self.access_token)
-            .field("expires_in_seconds", &self.expires_in_seconds)
-            .field("refresh_token", &self.refresh_token)
-            .field("granted_scopes", &self.granted_scopes)
-            .finish()
-    }
 }
 
 /// Ordered collection of granted scope URL strings (case-sensitive).
@@ -183,14 +173,12 @@ impl GrantedScopes {
 pub(crate) fn parse_token_response(body: &str) -> Result<TokenResponse, TokenEndpointError> {
     let parsed: TokenEndpointBody =
         serde_json::from_str(body).map_err(|_| TokenEndpointError::ResponseParse)?;
+    let scope_text = parsed.scope.unwrap_or_default();
     Ok(TokenResponse {
         access_token: AccessToken::new(parsed.access_token),
         expires_in_seconds: parsed.expires_in,
         refresh_token: parsed.refresh_token.map(RefreshToken::new),
-        granted_scopes: parsed.scope.map_or_else(
-            || GrantedScopes::from_space_delimited(""),
-            |value| GrantedScopes::from_space_delimited(&value),
-        ),
+        granted_scopes: GrantedScopes::from_space_delimited(&scope_text),
     })
 }
 
