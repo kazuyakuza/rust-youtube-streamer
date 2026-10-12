@@ -5,11 +5,13 @@
 ## Stack
 
 * Primary language: Rust — idiomatic use of modules, structs, enums, traits, ownership, and explicit error types (brief §3.1).
-* Async runtime: Tokio for YouTube API requests, chat streaming, coordination between application tasks, process management and standard-input writes, and graceful shutdown/task supervision (brief §3.2). Synchronous components stay synchronous where simpler (e.g., rendering a single frame).
+* The frame pipeline and FFmpeg supervision are synchronous (std::process + std threads); Tokio remains reserved for later YouTube API/chat streaming phases (task-2 decision S2).
 
 ## External Processes
 
 FFmpeg runs as an external, centrally configurable process (brief §3.4). The application launches and supervises the executable, configures its arguments, and writes raw RGB24 frames to its standard input; FFmpeg owns video encoding and transmission. The executable path is configurable per environment — `C:\ffmpeg\bin\ffmpeg.exe` and `/usr/bin/ffmpeg` are examples, not hardcoded paths. Encoding defaults (brief §10.3): codec `libx264`, preset `veryfast`, bitrate `6000k`, 30 FPS, 1920×1080 — all configurable.
+
+Ctrl+C is a shutdown request handled by the `ctrlc = "3"` crate (cross-platform flag-flip handler, MIT OR Apache-2.0, pulls platform deps `nix` on Unix / `windows-sys` on Windows) through the shared `StopFlag` seam (`Arc<AtomicBool>` polled at the top of every frame iteration); documented shutdown limitations live in `src/app/pipeline/interrupt.rs` module docs. The locked FFmpeg argument vector and its rationale are recorded in `.kilo/plans/20261011-phase03-task1-ffmpeg-wrapper.md` §0.2; the exact arguments and the natural-EOF finalization are verified against the dev-image FFmpeg version by the container smoke tests (OBSERVED version and results recorded in the phase-03 completion report, `.agent/reports/20261011-phase-03-ffmpeg-local-pipeline.md`).
 
 ## Dependencies (policy)
 
@@ -19,6 +21,7 @@ FFmpeg runs as an external, centrally configurable process (brief §3.4). The ap
 * Config and logging (brief §3.5): JSON configuration loading and validation, structured logging, error context, OAuth token persistence, graceful shutdown — favor actively maintained, widely used crates with appropriate licenses; pin dependencies via the Cargo lockfile; avoid redundant dependencies.
 * Exact crate selection happens during implementation, not now.
 * Decided during Phase 02 (renderer): `ab_glyph = "0.2"` for font rasterization — pure Rust, no platform-installed graphics libraries, Rust 1.82/edition-2021 compatible, Windows+Linux, pinned via the tracked lockfile; replaces nothing and is independent of YouTube/streaming crates.
+* Decided during Phase 03 task 2 (pipeline): `ctrlc = "3"` for the Ctrl+C shutdown request — cross-platform, no async runtime (its platform dependencies are `nix` on Unix and `windows-sys` on Windows, pulled transitively), MIT OR Apache-2.0; justifies the minimal cross-platform interrupt approach required by the TODO.
 
 ## Configuration
 
