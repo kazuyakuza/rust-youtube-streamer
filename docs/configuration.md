@@ -68,12 +68,12 @@ All five top-level sections are required. Each field below lists its rule and th
 
 ### ffmpeg
 
-- `executable` (string) — FFmpeg executable name or path; must be non-blank. Example: `ffmpeg`.
+- `executable` (string) — FFmpeg executable name or path; must be non-blank. Example: `ffmpeg`. Used at `demo` start: the process is spawned directly at this path (no shell); launch failures surface as `unable to start the FFmpeg executable '<path>': …; check that the configured path is correct and FFmpeg is installed and runnable`.
 - `video_codec` (string) — must be non-blank. Example: `libx264`.
 - `preset` (string) — must be non-blank. Example: `veryfast`.
 - `bitrate` (string) — must be non-blank. Example: `6000k`.
 
-Existence of the font file or the FFmpeg executable is checked by the consuming component, not at configuration load: the renderer opens and parses the configured font at construction with typed errors (no file-existence or parseable-font check at configuration load — this follows the Phase 01 validation precedent, and the renderer is wired into the runtime in a later phase). FFmpeg itself is a separately provided external prerequisite — this phase neither installs nor launches it.
+Existence of the font file or the FFmpeg executable is checked by the consuming component, not at configuration load: the renderer opens and parses the configured font at construction with typed errors (no file-existence or parseable-font check at configuration load — this follows the Phase 01 validation precedent). The renderer and the FFmpeg process are wired into the runtime via the `demo` command. FFmpeg itself is a separately provided external prerequisite — the project never installs or bundles it, and `demo` launches the configured executable (a missing or unrunnable path surfaces as `unable to start the FFmpeg executable '<path>': …; check that the configured path is correct and FFmpeg is installed and runnable`).
 
 ## Validation Rules
 
@@ -91,16 +91,17 @@ Existence of the font file or the FFmpeg executable is checked by the consuming 
 
 ```
 rust-youtube-streamer-service [--config <path>] <command>
-rust-youtube-streamer-service auth|run [--config <path>]
+rust-youtube-streamer-service auth|demo|run [--config <path>]
 rust-youtube-streamer-service --help
 ```
 
-- Both `auth` and `run` load and validate the configuration before running.
+- All commands load and validate the configuration before running.
 - `auth` — runs the OAuth authorization flow; **not implemented yet**: after configuration loads and validates, it prints one `error: authentication is not implemented yet` line to stderr and exits 3. It never contacts YouTube and never requests or stores credentials.
-- `run` — starts the streaming runtime; **not implemented yet**: after configuration loads and validates, it prints one `error: runtime pipeline is not implemented yet` line to stderr and exits 3. It never creates YouTube resources and never starts FFmpeg.
+- `run` — starts the streaming runtime; **not implemented yet**: after configuration loads and validates, it prints one `error: runtime pipeline is not implemented yet: …` line to stderr and exits 3. The message names the four missing YouTube prerequisites (OAuth authorization, broadcast lifecycle, RTMPS ingestion URL acquisition, and YouTube live chat integration), states the run mode never reads input and never runs the local demo pipeline (no local fallback), and points to the `demo` command for a local demonstration recording. It never creates YouTube resources and never starts FFmpeg.
+- `demo` — runs the local-only FFmpeg demonstration recording. Config validated first through the same funnel; success exits 0 and prints `demo recording finalized: <path>` on stdout **after** the MP4 is finalized; any failure exits 1 with exactly one `error:` line on stderr (`DemoError` delegates the inner cause verbatim: interrupt-handler installation, chat message stage, rendering, frame-size guards, FFmpeg spawn/write/wait/exit/finalization). `demo` never exits 3 and never contacts YouTube, OAuth, broadcasts, or chat. Guide: [`docs/demo.md`](demo.md).
 - `--config <path>` — configuration file to load; accepted before or after the command, at most once. Absent means the default `config/config.json`.
 - `--help` — accepted only before the command; prints usage to stdout and exits 0.
-- Exit codes: 0 = successful `--help` (and successful pipeline, though no command currently completes successfully), 1 = configuration load/parse/validation or logging-init failure, 2 = usage error (missing or unknown command/option, repeated `--config`, missing `--config` value, `--help` after the command, non-UTF-8 argument), 3 = selected mode not implemented yet (`auth` and `run`).
+- Exit codes: 0 = `--help` or a successful demo recording; 1 = configuration load/parse/validation or logging-init startup failure, and demo-origin failures (the startup-failure class); 2 = usage error (missing or unknown command/option, repeated `--config`, missing `--config` value, `--help` after the command, non-UTF-8 argument); 3 = placeholder modes only (`auth` and `run`).
 
 ## Logging (RUST_LOG)
 

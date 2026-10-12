@@ -11,6 +11,7 @@ The repository is the architectural foundation for future YouTube chat-controlle
 - [Current Status](#current-status)
 - [Commands and Configuration](#commands-and-configuration)
 - [Logging (RUST_LOG)](#logging-rust_log)
+- [Local Demo Recording](#local-demo-recording)
 - [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm)
 - [Release Build (Linux Artifact)](#release-build-linux-artifact)
 - [Release Build (Windows .exe)](#release-build-windows-exe)
@@ -29,7 +30,7 @@ The result is not yet a game — it is the reusable streaming foundation for fut
 ## Key Technologies
 
 - **Rust** — primary language; idiomatic modules, structs, traits, and explicit error types.
-- **Tokio** — async runtime for API requests, chat streaming, task coordination, FFmpeg process management, and graceful shutdown.
+- **Tokio** — reserved for the future YouTube API/chat streaming phases; the current frame pipeline and FFmpeg supervision are synchronous (`std::process` + std threads, with the `ctrlc` crate for Ctrl+C).
 - **FFmpeg (external process)** — Rust launches and supervises the executable and writes raw frames to its stdin; FFmpeg performs encoding and transmission. The executable path is configurable per environment; Rust never embeds FFmpeg.
 - **YouTube Data API + OAuth 2.0** — broadcast lifecycle and chat integration behind the project's own module interfaces (`google-youtube3` crate rejected per brief §3.3; crate selection happens later during implementation).
 - **RTMPS ingestion** — TLS-protected delivery to YouTube Live.
@@ -45,11 +46,13 @@ Phase 01 application foundation is implemented on top of it:
 - two CLI commands `auth` and `run` plus the `--config <path>` option and the default path `config/config.json` (see [Commands and Configuration](#commands-and-configuration));
 - structured logging via `tracing`/`tracing-subscriber` to stderr, controlled by `RUST_LOG` (see [Logging (RUST_LOG)](#logging-rust_log)).
 
-Both `auth` and `run` are placeholders until later phases: after configuration is loaded and validated, each prints a "not implemented yet" error and exits with code 3; neither contacts YouTube, requests credentials, creates broadcast resources, or starts FFmpeg.
+Both `auth` and `run` are placeholders until later phases: after configuration is loaded and validated, each prints a single `error:` line and exits with code 3; neither contacts YouTube, requests credentials, creates broadcast resources, or starts FFmpeg. The `run` placeholder message names the four missing YouTube prerequisites (OAuth authorization, broadcast lifecycle, RTMPS ingestion URL acquisition, and YouTube live chat integration), states there is no local fallback, and points to `demo` for a local demonstration recording.
 
-Phase 02 adds two independent src-level components on this foundation: a bounded in-memory chat store (`src/chat/`) that appends accepted messages to an independent append-only chat log and keeps only the currently visible messages in a FIFO queue, and an RGB24 text renderer (`src/renderer/`, ab_glyph-based) that turns complete visible multiline text into raw video frames — both implemented with typed errors and unit tests but not yet wired into the `run` pipeline; neither changes any CLI behavior nor the placeholders above. The chat store's chat log (config `chat.log_file`) is created only when the (not yet wired) chat store component is used.
+Phase 02 adds two independent src-level components on this foundation: a bounded in-memory chat store (`src/chat/`) that appends accepted messages to an independent append-only chat log and keeps only the currently visible messages in a FIFO queue, and an RGB24 text renderer (`src/renderer/`, ab_glyph-based) that turns complete visible multiline text into raw video frames — both implemented with typed errors and unit tests. Phase 03 wires both into the runtime through the new `demo` command; the chat store's chat log (config `chat.log_file`) is created when the demo runs.
 
-FFmpeg remains a separately provided external prerequisite — it is not installed by this phase and this phase does not launch it.
+Phase 03 (current) delivers a working local recording pipeline: `demo` runs the shared chat → renderer → FFmpeg pipeline with a fixed set of predefined messages, feeding complete RGB24 frames through the FFmpeg process's standard input and finalizing an MP4 under `videos/` beside the executable (collision-safe `demo-YYYYMMDD-HHMMSS.mp4` names, nothing overwritten). The process wrapper lives in `src/streaming/` (launched without a shell; typed spawn/write/wait/exit errors), the frame loop in `src/app/pipeline/` (synchronous std thread with a `ctrlc`-based stop flag), and the fixed timeline in `src/app/demo/`. The containerized test suite is green with 147 tests (`ALL CHECKS PASSED`).
+
+FFmpeg remains a separately provided external prerequisite — it is never installed or bundled by this project; the `demo` command launches the executable at the configured `ffmpeg.executable` path and surfaces launch or process failures as typed errors.
 
 Build checks and both release builds (the Linux artifact and the cross-compiled Windows x86-64 `.exe`) run inside the Linux container only; there is still no native Windows/Linux runtime validation.
 
@@ -62,14 +65,15 @@ usage: rust-youtube-streamer-service [--config <path>] <command>
 ```
 
 - `auth` — runs the OAuth authorization flow (**not implemented yet**).
-- `run` — starts the streaming runtime (**not implemented yet**; never starts FFmpeg).
+- `run` — starts the streaming runtime (**not implemented yet**; never starts FFmpeg; for a local demonstration recording use the `demo` command).
+- `demo` — runs a local-only FFmpeg demo recording (no YouTube, OAuth, broadcast, or chat connection): predefined messages at deterministic intervals are rendered into an MP4 under `videos/` beside the executable. **Success exits 0 after the MP4 is finalized**, printing `demo recording finalized: <path>` on stdout; any demo failure prints one `error:` line on stderr and exits 1; `demo` never exits 3. Full guide: [`docs/demo.md`](docs/demo.md).
 - `--config <path>` — configuration file to load; accepted before or after the command; default `config/config.json` when absent.
 - `--help` — prints usage to stdout; exit 0.
-- Exit codes: 0 = help/success, 1 = configuration or logging startup failure, 2 = usage error, 3 = mode not implemented yet.
+- Exit codes: 0 = `--help` or a successful demo recording, 1 = configuration or logging startup failure or a demo runtime failure (startup-failure class), 2 = usage error, 3 = mode not implemented yet (`auth`/`run`).
 
 Create the default `config/config.json` by copying `config/config.example.json` (the committed example, safe non-secret values) and editing it — `config/config.json` is gitignored and must never be committed. Full field-by-field reference: [`docs/configuration.md`](docs/configuration.md).
 
-FFmpeg is a separately provided external prerequisite; this phase neither installs nor launches it.
+FFmpeg is an external prerequisite installed separately; the `demo` command launches the executable at the configured `ffmpeg.executable` path and surfaces launch/process failures as typed errors. FFmpeg is never bundled.
 
 ## Logging (RUST_LOG)
 
@@ -84,6 +88,18 @@ Example:
 ```
 RUST_LOG=debug rust-youtube-streamer-service run
 ```
+
+## Local Demo Recording
+
+The `demo` command produces a local demonstration MP4 without contacting YouTube:
+
+1. Copy `config/config.example.json` to `config/config.json`.
+2. Set `ffmpeg.executable` to the installed FFmpeg path (FFmpeg is an external prerequisite installed separately, never bundled) and `renderer.font` to a real, parseable font file (e.g. the OFL-licensed `fonts/Exo2-Light.otf`).
+3. Run `rust-youtube-streamer-service demo`.
+
+Results land in `videos/` beside the executable (never the launch working directory), created on demand, with collision-safe `demo-YYYYMMDD-HHMMSS.mp4` names — no existing recording is overwritten. Success prints `demo recording finalized: <path>` only after FFmpeg has exited 0 and the MP4 has been verified finalized; any failure prints one `error:` line on stderr and exits 1.
+
+Ctrl+C acts as a shutdown request with documented limitations. Full guide (timeline, output details, Ctrl+C semantics, out-of-scope list, and verification evidence): [`docs/demo.md`](docs/demo.md).
 
 ## Build Checks (Docker via Alpine VM)
 
