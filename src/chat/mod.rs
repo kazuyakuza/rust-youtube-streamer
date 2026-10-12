@@ -7,11 +7,17 @@
 //!
 //! Scope authority: `.agent/todos/20261010/20261010-todo-2.md` §1.
 //!
-//! Access path note for future agents: items are reached within this module
-//! only (tests via `super::*`); the cross-module `pub use` re-exports return
-//! when the first external consumer lands, and the `#[allow(dead_code)]` on
-//! `mod chat;` in `main.rs` retires at that Phase 03 app-wiring step.
+//! Access path note for future agents: tests reach items via `super::*`;
+//! cross-module consumers go through the `pub(crate) use` re-exports below.
+//! Staging allow: retires in TODO Task 3 when the demo mode (the pipeline's
+//! CLI consumer) makes this module reachable from `main`; clippy
+//! `-D warnings` guards everything else.
+#![allow(dead_code)]
 
 mod error;
 mod model;
 mod store;
+
+pub(crate) use error::ChatError;
+pub(crate) use model::ChatMessage;
+pub(crate) use store::{ChatStore, ChatStoreSettings};

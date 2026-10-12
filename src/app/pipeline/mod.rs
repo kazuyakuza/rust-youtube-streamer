@@ -13,6 +13,8 @@ mod clock;
 mod error;
 mod interrupt;
 mod pacing;
+mod runner;
+mod source;
 
 #[cfg(test)]
 mod clock_tests;
@@ -22,3 +24,7 @@ mod error_tests;
 mod interrupt_tests;
 #[cfg(test)]
 mod pacing_tests;
+#[cfg(test)]
+mod runner_tests;
+#[cfg(test)]
+mod test_helpers;

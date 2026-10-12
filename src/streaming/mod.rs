@@ -14,13 +14,14 @@
 //!   any YouTube type.
 //! - The seam receives opaque frame bytes (`&[u8]`) only — it cannot know
 //!   what a chat message is.
-//! - `streaming` is imported by `src/main.rs` with a deliberate
-//!   `#[allow(dead_code)]` that retires when Task 2 wires the frame
-//!   pipeline (same pattern as `mod chat;` / `mod renderer;` today).
+//! - `streaming` is imported by `src/main.rs`; cross-module consumers go
+//!   through the `pub(crate) use` re-exports below. Staging allow: retires
+//!   in TODO Task 3 when the demo mode (the pipeline's CLI consumer) makes
+//!   this module reachable from `main`; clippy `-D warnings` guards
+//!   everything else.
 //!
-//! Access path note for future agents: items are reached within this module
-//! only (tests via `super::*`); the cross-module `pub use` re-exports return
-//! when the first external consumer lands.
+//! Access path note for future agents: tests reach items via `super::*`.
+#![allow(dead_code)]
 
 mod args;
 mod error;
@@ -28,3 +29,12 @@ mod ffmpeg;
 mod sink;
 mod utc_timestamp;
 mod video_output;
+
+pub(crate) use error::StreamingError;
+pub(crate) use ffmpeg::FfmpegProcess;
+pub(crate) use sink::{CompletedVideo, FrameSink};
+pub(crate) use video_output::{resolve_output_path, OutputKind};
+
+// Widened for the app's test double (sink.rs): `CompletedVideo::new`
+// changed `pub(super)` → `pub(crate)`; the test fake must fabricate a
+// successful `finish` value without a real FFmpeg process.

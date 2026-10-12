@@ -12,6 +12,7 @@ mod cli;
 mod error;
 mod logging;
 mod modes;
+mod pipeline;
 
 use std::ffi::OsString;
 use std::path::Path;
