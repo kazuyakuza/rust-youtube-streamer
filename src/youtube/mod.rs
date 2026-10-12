@@ -19,6 +19,8 @@
 
 mod authorization;
 mod client_config;
+mod credentials;
 mod error;
 mod token;
 mod transport;
+mod verify;
