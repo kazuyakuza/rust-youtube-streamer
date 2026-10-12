@@ -53,12 +53,16 @@ pub(crate) fn parse_client_config(json: &str) -> Result<ClientConfig, ClientConf
     let installed = file
         .installed
         .ok_or_else(|| missing_field("installed.client_id"))?;
-    validate_endpoint(
-        &installed.auth_uri,
-        AUTHORIZATION_ENDPOINT,
-        "installed.auth_uri",
-    )?;
-    validate_endpoint(&installed.token_uri, TOKEN_ENDPOINT, "installed.token_uri")?;
+    if !endpoint_matches(&installed.auth_uri, AUTHORIZATION_ENDPOINT) {
+        return Err(ClientConfigError::EndpointMismatch {
+            field: "installed.auth_uri".to_string(),
+        });
+    }
+    if !endpoint_matches(&installed.token_uri, TOKEN_ENDPOINT) {
+        return Err(ClientConfigError::EndpointMismatch {
+            field: "installed.token_uri".to_string(),
+        });
+    }
     let client_id = required_non_blank(installed.client_id, "installed.client_id")?;
     let client_secret = required_non_blank(installed.client_secret, "installed.client_secret")?;
     Ok(ClientConfig {
@@ -67,17 +71,8 @@ pub(crate) fn parse_client_config(json: &str) -> Result<ClientConfig, ClientConf
     })
 }
 
-fn validate_endpoint(
-    declared: &Option<String>,
-    expected: &str,
-    field: &str,
-) -> Result<(), ClientConfigError> {
-    match declared {
-        Some(actual) if actual != expected => Err(ClientConfigError::EndpointMismatch {
-            field: field.to_string(),
-        }),
-        _ => Ok(()),
-    }
+fn endpoint_matches(declared: &Option<String>, expected: &str) -> bool {
+    declared.as_ref().map_or(true, |actual| actual == expected)
 }
 
 fn required_non_blank(value: Option<String>, field: &str) -> Result<String, ClientConfigError> {
