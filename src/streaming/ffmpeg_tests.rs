@@ -54,9 +54,15 @@ fn fake_ffmpeg_success_writes_exactly_the_piped_bytes() {
     let output_path = directory.path().join("out.mp4");
     let mut process = started_fake(directory.path(), SUCCESS_WRITER_BODY, output_path.clone());
 
-    process.write_frame(&[7u8; 100]).expect("slice one must be accepted");
-    process.write_frame(&[0u8; 250]).expect("slice two must be accepted");
-    process.write_frame(&[42u8; 77]).expect("slice three must be accepted");
+    process
+        .write_frame(&[7u8; 100])
+        .expect("slice one must be accepted");
+    process
+        .write_frame(&[0u8; 250])
+        .expect("slice two must be accepted");
+    process
+        .write_frame(&[42u8; 77])
+        .expect("slice three must be accepted");
 
     let completed = process
         .finish()
@@ -78,7 +84,10 @@ fn fake_ffmpeg_nonzero_exit_surfaces_code_and_diagnostics_tail() {
         panic!("a non-zero fake exit must surface as ExitFailure");
     };
     let diagnostics = match &error {
-        StreamingError::ExitFailure { exit_code, diagnostics } => {
+        StreamingError::ExitFailure {
+            exit_code,
+            diagnostics,
+        } => {
             assert_eq!(*exit_code, Some(2));
             diagnostics
         }
