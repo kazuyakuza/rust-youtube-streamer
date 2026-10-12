@@ -80,3 +80,14 @@ pub(crate) fn install_interrupt_handler() -> Result<StopFlag, InterruptHandlerEr
     })?;
     Ok(stop_flag)
 }
+
+#[cfg(test)]
+impl InterruptHandlerError {
+    /// Test-only construction for Display/exit-code mapping tests; real
+    /// failures always arrive through install_interrupt_handler.
+    pub(crate) fn test_failure(reason: &str) -> Self {
+        Self {
+            reason: reason.to_string(),
+        }
+    }
+}

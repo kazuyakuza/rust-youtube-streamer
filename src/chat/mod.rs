@@ -20,4 +20,6 @@ mod store;
 
 pub(crate) use error::ChatError;
 pub(crate) use model::ChatMessage;
+#[cfg(test)]
+pub(crate) use store::derive_visible_capacity;
 pub(crate) use store::{ChatStore, ChatStoreSettings};

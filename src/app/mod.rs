@@ -6,12 +6,14 @@
 //! [`run`] performs the single `ExitCode` conversion at the process
 //! boundary. The exit codes are a stable contract: 1 = configuration or
 //! logging-init startup failure, 2 = command-line usage error, 3 = selected
-//! mode not implemented yet (both modes stay placeholders until later
-//! phases). The `pipeline` submodule (the chat → renderer → streaming frame
-//! pipeline) is complete but exercised only by tests so far; the `demo`
-//! mode of TODO Task 3 makes it reachable from `main`.
+//! mode not implemented yet (`auth` stays a placeholder); demo-origin fatal
+//! failures — interrupt-install failure or any `FramePipelineError` —
+//! report through the demo handler and also exit 1. The `demo` mode makes
+//! the `pipeline` submodule (the chat → renderer → streaming frame
+//! pipeline) reachable from `main`.
 
 mod cli;
+mod demo;
 mod error;
 mod logging;
 mod modes;
@@ -102,6 +104,7 @@ fn command_name(mode: &cli::Mode) -> &'static str {
     match mode {
         cli::Mode::Auth => "auth",
         cli::Mode::Run => "run",
+        cli::Mode::Demo => "demo",
     }
 }
 
@@ -117,6 +120,7 @@ fn dispatch(mode: &cli::Mode, app_config: &AppConfig) -> u8 {
     match mode {
         cli::Mode::Auth => modes::auth(app_config),
         cli::Mode::Run => modes::run(app_config),
+        cli::Mode::Demo => demo::run_demo(app_config),
     }
 }
 

@@ -1,5 +1,5 @@
 //! Command-line parsing for the service executable. The accepted surface is
-//! exactly two commands (`auth`, `run`), one option (`--config <path>`) that
+//! exactly three commands (`auth`, `demo`, `run`), one option (`--config <path>`) that
 //! may appear before or after the command and at most once, and `--help`,
 //! which is accepted only before the command and prints the usage text to
 //! standard output before exiting successfully. When `--config` is absent,
@@ -22,6 +22,7 @@ usage: rust-youtube-streamer-service [--config <path>] <command>
 
 commands:
   auth                 run the OAuth authorization flow (not implemented yet)
+  demo                 run a local-only FFmpeg demo recording (no YouTube)
   run                  start the streaming runtime (not implemented yet)
 
 options:
@@ -32,12 +33,14 @@ const CONFIG_FLAG: &str = "--config";
 const HELP_FLAG: &str = "--help";
 const AUTH_COMMAND: &str = "auth";
 const RUN_COMMAND: &str = "run";
+const DEMO_COMMAND: &str = "demo";
 
 /// The execution mode selected on the command line.
 #[derive(Debug, PartialEq, Eq)]
 pub(super) enum Mode {
     Auth,
     Run,
+    Demo,
 }
 
 /// One successfully parsed command line.
@@ -119,8 +122,9 @@ fn resolved_mode(token: &str, already_given: bool) -> Result<Mode, StartupError>
     match token {
         AUTH_COMMAND => Ok(Mode::Auth),
         RUN_COMMAND => Ok(Mode::Run),
+        DEMO_COMMAND => Ok(Mode::Demo),
         _ => Err(StartupError::Usage(format!(
-            "unknown command '{token}' (expected 'auth' or 'run')"
+            "unknown command '{token}' (expected 'auth', 'demo' or 'run')"
         ))),
     }
 }
@@ -139,7 +143,7 @@ fn finished_invocation(
             config_path: config_path.unwrap_or_else(|| DEFAULT_CONFIG_PATH.to_string()),
         })),
         None => Err(StartupError::Usage(
-            "expected a command ('auth' or 'run')".to_string(),
+            "expected a command ('auth', 'demo' or 'run')".to_string(),
         )),
     }
 }

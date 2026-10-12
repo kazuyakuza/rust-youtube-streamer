@@ -64,7 +64,7 @@ fn accepts_help_flag_forms() {
 fn rejects_empty_arguments() {
     assert_eq!(
         usage_error_message(&[]),
-        "expected a command ('auth' or 'run')"
+        "expected a command ('auth', 'demo' or 'run')"
     );
 }
 
@@ -72,7 +72,7 @@ fn rejects_empty_arguments() {
 fn rejects_config_option_without_command() {
     assert_eq!(
         usage_error_message(&["--config", "x.json"]),
-        "expected a command ('auth' or 'run')"
+        "expected a command ('auth', 'demo' or 'run')"
     );
 }
 
@@ -80,7 +80,7 @@ fn rejects_config_option_without_command() {
 fn rejects_unknown_command() {
     assert_eq!(
         usage_error_message(&["status"]),
-        "unknown command 'status' (expected 'auth' or 'run')"
+        "unknown command 'status' (expected 'auth', 'demo' or 'run')"
     );
 }
 
@@ -126,4 +126,25 @@ fn rejects_extra_positional_after_command() {
         usage_error_message(&["run", "--help"]),
         "unexpected argument '--help'"
     );
+}
+
+#[test]
+fn parses_demo_alone_with_default_path() {
+    let demo = parsed_invocation(&["demo"]);
+    assert_eq!(demo.mode, Mode::Demo);
+    assert_eq!(demo.config_path, DEFAULT_CONFIG_PATH);
+}
+
+#[test]
+fn accepts_config_option_around_demo() {
+    let demo_first = parsed_invocation(&["--config", "a.json", "demo"]);
+    assert_eq!(demo_first.config_path, "a.json");
+    let demo_last = parsed_invocation(&["demo", "--config", "b.json"]);
+    assert_eq!(demo_last.config_path, "b.json");
+}
+
+#[test]
+fn usage_text_advertises_the_demo_command() {
+    assert!(USAGE
+        .contains("  demo                 run a local-only FFmpeg demo recording (no YouTube)"));
 }

@@ -16,6 +16,20 @@ mod pacing;
 mod runner;
 mod source;
 
+pub(crate) use error::FramePipelineError;
+pub(crate) use interrupt::{install_interrupt_handler, InterruptHandlerError, StopFlag};
+pub(crate) use runner::{prepared_pipeline, PipelineConstruction};
+pub(crate) use source::MessageSource;
+
+#[cfg(test)]
+pub(crate) use pacing::PipelinePacing;
+#[cfg(test)]
+pub(crate) use runner::{FramePipeline, PipelineParts};
+#[cfg(test)]
+pub(crate) use test_helpers::{
+    FakeClock, RecordingSink, StubRenderer, TEST_FRAME_BYTES, TEST_INTERVAL_NANOS,
+};
+
 #[cfg(test)]
 mod clock_tests;
 #[cfg(test)]

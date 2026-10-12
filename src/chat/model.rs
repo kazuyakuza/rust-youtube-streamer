@@ -8,7 +8,7 @@ use std::fmt;
 
 /// One ordinary chat message. The `Display` output is exactly the visible
 /// `{author}: {text}` format; metadata stays off-screen.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChatMessage {
     author: String,
     text: String,
