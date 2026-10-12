@@ -10,11 +10,14 @@
 #![allow(dead_code)] // Deliberate staging: retires in TODO Task 3 when the
                      // demo mode makes this module reachable from `main`.
 mod clock;
+mod error;
 mod interrupt;
 mod pacing;
 
 #[cfg(test)]
 mod clock_tests;
+#[cfg(test)]
+mod error_tests;
 #[cfg(test)]
 mod interrupt_tests;
 #[cfg(test)]

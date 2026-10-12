@@ -16,7 +16,10 @@ pub struct CompletedVideo {
 }
 
 impl CompletedVideo {
-    pub(super) fn new(output_path: PathBuf) -> Self {
+    /// Fabricates a finalized-video value. Test doubles in the app crate
+    /// fabricate a success value without a real process; construction stays
+    /// crate-internal.
+    pub(crate) fn new(output_path: PathBuf) -> Self {
         Self { output_path }
     }
 

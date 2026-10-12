@@ -7,6 +7,9 @@
 //! behind, so catch-up is bounded to one immediate frame and the loop can
 //! never burst or accumulate drift (TODO Task 2; plan decision S6).
 
+use crate::app::pipeline::error::FramePipelineError;
+use crate::config::model::VideoConfig;
+
 pub(crate) const NANOS_PER_SECOND: u64 = 1_000_000_000;
 
 /// Frame interval for a validated config FPS: fixed-point truncation to whole
@@ -59,6 +62,18 @@ pub(crate) struct PipelinePacing {
 }
 
 impl PipelinePacing {
+    /// Derives the frame interval from the validated FPS and the expected
+    /// RGB24 byte count `width * height * 3` from validated video geometry.
+    /// Overflow (checked u32 math) is a typed pipeline error; the config
+    /// validator makes it unreachable through `load_from_path`.
+    pub(crate) fn from_config(video: &VideoConfig) -> Result<Self, FramePipelineError> {
+        let width = video.width;
+        let height = video.height;
+        let byte_count = rgb24_byte_count(width, height)
+            .ok_or(FramePipelineError::FrameByteOverrun { width, height })?;
+        Ok(Self::raw(interval_nanos(video.fps), byte_count))
+    }
+
     /// Direct constructor for tests and thin pipelines: no validation.
     pub(crate) fn raw(interval_nanos: u64, frame_byte_count: usize) -> Self {
         Self {
@@ -74,4 +89,9 @@ impl PipelinePacing {
     pub(crate) fn frame_byte_count(&self) -> usize {
         self.frame_byte_count
     }
+}
+
+/// Checked `width * height * 3` for validated u32 geometry.
+fn rgb24_byte_count(width: u32, height: u32) -> Option<usize> {
+    usize::checked_mul(width as usize, height as usize).and_then(|pixels| pixels.checked_mul(3))
 }
