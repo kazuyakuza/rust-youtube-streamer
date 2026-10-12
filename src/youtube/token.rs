@@ -127,7 +127,10 @@ impl fmt::Debug for ClientSecret {
 
 /// Google token endpoint response fields we recognize; unknown fields
 /// (e.g. `id_token`) are ignored per Google's response guidance.
-#[derive(Debug, Deserialize)]
+/// The raw-string secret fields intentionally make `Debug` unavailable:
+/// accidental formatting in a future call site would print tokens; a
+/// compile error is the stronger guard (Task 2 hardening, simplify §4 flag).
+#[derive(Deserialize)]
 pub(crate) struct TokenEndpointBody {
     access_token: String,
     expires_in: u64,
