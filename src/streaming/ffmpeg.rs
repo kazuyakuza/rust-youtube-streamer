@@ -193,3 +193,8 @@ impl Drop for FfmpegProcess {
 #[cfg(unix)]
 #[path = "ffmpeg_tests.rs"]
 mod ffmpeg_tests;
+
+#[cfg(test)]
+#[cfg(unix)]
+#[path = "ffmpeg_real_tests.rs"]
+mod ffmpeg_real_tests;
