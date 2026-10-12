@@ -1,5 +1,5 @@
 //! FFmpeg process supervision and the raw-frame input pipeline (brief
-//! §10.1–10.5; scope authority `.agent/todos/20261011/20261011-todo-1.md`
+//! §10.1–10.5; scope authority `.agent/todos/20261011/20261011-todo-1-DONE.md`
 //! §1). The module launches FFmpeg as an external process with arguments
 //! built purely from validated configuration, feeds raw RGB24 frames to its
 //! standard input, waits for clean stdin-EOF finalization, and reports

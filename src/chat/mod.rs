@@ -5,7 +5,7 @@
 //! visible messages in a FIFO queue and appends every accepted message to an
 //! independent append-only log file that is never read back.
 //!
-//! Scope authority: `.agent/todos/20261010/20261010-todo-2.md` §1.
+//! Scope authority: `.agent/todos/20261010/20261010-todo-2-DONE.md` §1.
 //!
 //! Access path note for future agents: tests reach items via `super::*`;
 //! cross-module consumers go through the `pub(crate) use` re-exports below.

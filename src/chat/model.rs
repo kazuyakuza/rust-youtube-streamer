@@ -2,7 +2,7 @@
 //! internal metadata (API message identifier, epoch-second timestamp) that
 //! never appears in visible text. Deliberately free of YouTube API types,
 //! network, streaming, and FFmpeg (brief §8.2 message handling, §8.4 message
-//! storage); scope authority `.agent/todos/20261010/20261010-todo-2.md` §1.
+//! storage); scope authority `.agent/todos/20261010/20261010-todo-2-DONE.md` §1.
 
 use std::fmt;
 

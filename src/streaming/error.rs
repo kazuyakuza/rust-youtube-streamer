@@ -1,7 +1,7 @@
 //! Typed streaming errors: one variant per failure stage of the FFmpeg
 //! process wrapper and the local MP4 output pipeline, so callers can report
 //! actionable messages without matching on error strings. Contracts follow
-//! `.agent/todos/20261011/20261011-todo-1.md` §1 and the exact display
+//! `.agent/todos/20261011/20261011-todo-1-DONE.md` §1 and the exact display
 //! strings fixed by `.kilo/plans/20261011-phase03-task1-ffmpeg-wrapper.md`
 //! §1.3. No panics; the argument vector is deliberately never echoed.
 

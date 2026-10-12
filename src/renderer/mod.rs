@@ -1,7 +1,7 @@
 //! RGB24 text renderer: the `Renderer` trait contract, construction-
 //! validated settings, and the ab_glyph-based `TextRenderer` MVP (brief
 //! §9.1–9.4). Scope authority: TODO Task 2 in
-//! `.agent/todos/20261010/20261010-todo-2.md`. The module is a pure local
+//! `.agent/todos/20261010/20261010-todo-2-DONE.md`. The module is a pure local
 //! component: no YouTube API types, chat state, network, or FFmpeg
 //! dependency. Cross-module consumers go through the `pub(crate) use`
 //! re-exports below. Reachable from `main` through the `demo` mode (TODO

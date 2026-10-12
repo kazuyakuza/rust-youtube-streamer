@@ -2,7 +2,7 @@
 //! offending geometry or path, so callers can report actionable messages
 //! without matching on error strings. Contracts follow brief §8.4 message
 //! storage and §11.2 chat log; scope authority
-//! `.agent/todos/20261010/20261010-todo-2.md` §1.
+//! `.agent/todos/20261010/20261010-todo-2-DONE.md` §1.
 
 use std::error::Error;
 use std::fmt;

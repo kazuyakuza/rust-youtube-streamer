@@ -4,7 +4,7 @@
 //! arithmetic, and every accepted message is appended to the log before it
 //! may enter the queue, so a failed append rejects the message instead of
 //! letting queue and log diverge (brief §8.4 message storage, §11.2 chat
-//! log); scope authority `.agent/todos/20261010/20261010-todo-2.md` §1. The
+//! log); scope authority `.agent/todos/20261010/20261010-todo-2-DONE.md` §1. The
 //! store cannot depend on YouTube API types, network, streaming, or FFmpeg.
 
 use std::collections::VecDeque;

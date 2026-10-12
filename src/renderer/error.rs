@@ -3,7 +3,7 @@
 //! `src/chat/error.rs`: hand-written `Display`, `std::error::Error` with
 //! `source()`, no panics, no external derive crates. Contracts follow
 //! brief §9.2–§9.6; scope authority
-//! `.agent/todos/20261010/20261010-todo-2.md` Task 2.
+//! `.agent/todos/20261010/20261010-todo-2-DONE.md` Task 2.
 
 use std::error::Error;
 use std::fmt;
