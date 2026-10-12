@@ -3,7 +3,7 @@
 //! developer's real configuration file.
 
 use crate::config::model::{
-    AppConfig, BroadcastConfig, ChatConfig, FfmpegConfig, RendererConfig, VideoConfig,
+    AppConfig, BroadcastConfig, ChatConfig, FfmpegConfig, OauthConfig, RendererConfig, VideoConfig,
     YouTubeConfig,
 };
 
@@ -15,6 +15,10 @@ pub(crate) fn valid_config() -> AppConfig {
                 description: "YouTube Live streaming prototype".to_string(),
                 privacy_status: "unlisted".to_string(),
             },
+        },
+        oauth: OauthConfig {
+            client_config_path: "credentials/client_secret.json".to_string(),
+            credentials_path: "credentials/tokens.json".to_string(),
         },
         video: VideoConfig {
             width: 1920,

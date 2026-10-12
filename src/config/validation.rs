@@ -10,6 +10,8 @@ use crate::config::model::{AppConfig, RendererConfig, VideoConfig};
 const REQUIRED_PIXEL_FORMAT: &str = "rgb24";
 const SUPPORTED_PRIVACY_STATUSES: [&str; 3] = ["private", "public", "unlisted"];
 const BLANK_VALUE_PROBLEM: &str = "must not be empty or whitespace-only";
+const OAUTH_PATH_COLLISION_PROBLEM: &str =
+    "must be different from the OAuth client configuration path (the credential file would overwrite it)";
 
 /// Validates every loaded setting against the MVP rules. Returns `Ok(())`
 /// only when all rules pass; otherwise one error holding all field-level
@@ -19,6 +21,7 @@ pub(super) fn validate(config: &AppConfig) -> Result<(), ConfigError> {
     validate_video(config, &mut issues);
     validate_renderer(config, &mut issues);
     validate_required_strings(config, &mut issues);
+    validate_oauth(config, &mut issues);
     validate_privacy_status(config, &mut issues);
     if issues.is_empty() {
         Ok(())
@@ -88,6 +91,24 @@ fn validate_required_strings(config: &AppConfig, issues: &mut Vec<ConfigIssue>) 
     issues.extend(blank_issue("ffmpeg.video_codec", &ffmpeg.video_codec));
     issues.extend(blank_issue("ffmpeg.preset", &ffmpeg.preset));
     issues.extend(blank_issue("ffmpeg.bitrate", &ffmpeg.bitrate));
+}
+
+fn validate_oauth(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
+    let oauth = &config.oauth;
+    issues.extend(blank_issue(
+        "oauth.client_config_path",
+        &oauth.client_config_path,
+    ));
+    issues.extend(blank_issue(
+        "oauth.credentials_path",
+        &oauth.credentials_path,
+    ));
+    if oauth.client_config_path == oauth.credentials_path {
+        issues.push(ConfigIssue::new(
+            "oauth.credentials_path".to_string(),
+            OAUTH_PATH_COLLISION_PROBLEM.to_string(),
+        ));
+    }
 }
 
 fn validate_privacy_status(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {

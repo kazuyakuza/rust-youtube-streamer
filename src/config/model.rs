@@ -11,6 +11,8 @@ use serde::Deserialize;
 #[serde(deny_unknown_fields)]
 pub struct AppConfig {
     pub youtube: YouTubeConfig,
+    /// OAuth client and persisted-credential file locations.
+    pub oauth: OauthConfig,
     pub video: VideoConfig,
     pub renderer: RendererConfig,
     pub chat: ChatConfig,
@@ -35,6 +37,20 @@ pub struct BroadcastConfig {
     /// Broadcast visibility: exactly one of `private`, `public`, or
     /// `unlisted` (case-sensitive; validated at load time).
     pub privacy_status: String,
+}
+
+/// OAuth client and credential file locations.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OauthConfig {
+    /// Path of the Google downloadable client-secret JSON file
+    /// (`{"installed": {...}}`, Desktop-app client type). Only non-blank
+    /// values are checked here; parsing belongs to the youtube module.
+    pub client_config_path: String,
+    /// Path of the application-persisted credential file (issued
+    /// tokens). Only non-blank values are checked here; the file is
+    /// created by the credential store.
+    pub credentials_path: String,
 }
 
 /// Raw video frame geometry shared by the renderer and the FFmpeg input

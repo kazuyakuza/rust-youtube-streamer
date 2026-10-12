@@ -119,6 +119,30 @@ fn multiple_issues_reported_together() {
     assert!(message.contains("youtube.broadcast.privacy_status"));
 }
 
+#[test]
+fn oauth_paths_require_non_blank_values() {
+    assert_blank_value_rejected("oauth.client_config_path", |c| {
+        c.oauth.client_config_path = "".to_string()
+    });
+    assert_blank_value_rejected("oauth.credentials_path", |c| {
+        c.oauth.credentials_path = "   ".to_string()
+    });
+}
+
+#[test]
+fn oauth_paths_must_be_distinct() {
+    let mut config = valid_config();
+    config.oauth.credentials_path = config.oauth.client_config_path.clone();
+    let message = expect_validation_error(&config).to_string();
+    assert!(message.contains("1 issue(s)"));
+    assert!(message.contains("oauth.credentials_path"));
+    assert!(!message.contains("oauth.client_config_path"));
+
+    let mut distinct_config = valid_config();
+    distinct_config.oauth.credentials_path = "credentials/other_tokens.json".to_string();
+    assert!(validate(&distinct_config).is_ok());
+}
+
 fn expect_validation_error(config: &AppConfig) -> ConfigError {
     match validate(config) {
         Err(error @ ConfigError::Validation { .. }) => error,

@@ -6,6 +6,10 @@
       "privacy_status": "unlisted"
     }
   },
+  "oauth": {
+    "client_config_path": "credentials/client_secret.json",
+    "credentials_path": "credentials/tokens.json"
+  },
   "video": {
     "width": 1920,
     "height": 1080,

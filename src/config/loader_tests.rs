@@ -99,6 +99,44 @@ fn negative_number_rejected() {
     assert!(matches!(error, ConfigError::Deserialization { .. }));
 }
 
+#[test]
+fn example_mirrors_oauth_schema() {
+    let example_path = std::path::Path::new("config/config.example.json");
+    let loaded = load_from_path(example_path).expect("committed example config must load");
+    assert_eq!(
+        loaded.oauth.client_config_path,
+        "credentials/client_secret.json"
+    );
+    assert_eq!(loaded.oauth.credentials_path, "credentials/tokens.json");
+}
+
+#[test]
+fn unknown_oauth_field_rejected() {
+    let dir = tempfile::tempdir().expect("temp dir must be created");
+    let mut value = example_json_value();
+    value["oauth"]
+        .as_object_mut()
+        .expect("oauth JSON must be an object")
+        .insert("bogus".to_string(), serde_json::json!(true));
+    let path = write_temp_config(&dir, &value.to_string());
+    let error = expect_load_error(&path);
+    assert!(matches!(error, ConfigError::Deserialization { .. }));
+}
+
+#[test]
+fn oauth_section_missing_rejected() {
+    let dir = tempfile::tempdir().expect("temp dir must be created");
+    let mut value = example_json_value();
+    value
+        .as_object_mut()
+        .expect("example JSON must be an object")
+        .remove("oauth");
+    let path = write_temp_config(&dir, &value.to_string());
+    let error = expect_load_error(&path);
+    assert!(matches!(error, ConfigError::Deserialization { .. }));
+    assert!(error.to_string().contains("missing field"));
+}
+
 fn expect_load_error(path: &std::path::Path) -> ConfigError {
     match load_from_path(path) {
         Err(error) => error,
@@ -120,6 +158,10 @@ fn example_json() -> String {
       "description": "YouTube Live streaming prototype",
       "privacy_status": "unlisted"
     }
+  },
+  "oauth": {
+    "client_config_path": "credentials/client_secret.json",
+    "credentials_path": "credentials/tokens.json"
   },
   "video": {
     "width": 1920,
