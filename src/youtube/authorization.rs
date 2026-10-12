@@ -3,7 +3,6 @@
 //! builder and the callback query parser (plan §4.3). Pure functions —
 //! no I/O; the CSRF state is validated before any callback value is kept.
 
-use oauth2::url::Url;
 use std::collections::HashMap;
 
 use super::client_config::ClientConfig;
@@ -50,17 +49,16 @@ pub(crate) fn authorization_url(
     state: &oauth2::CsrfToken,
     pkce: &PkcePair,
 ) -> String {
-    let mut url = Url::parse(AUTHORIZATION_ENDPOINT)
-        .expect("the hardcoded Google authorization endpoint must be a valid URL");
-    url.query_pairs_mut()
+    let query = oauth2::url::form_urlencoded::Serializer::new(String::new())
         .append_pair("client_id", client_config.client_id())
         .append_pair("response_type", "code")
         .append_pair("scope", REQUIRED_SCOPE)
         .append_pair("redirect_uri", redirect_uri)
         .append_pair("state", state.secret())
         .append_pair("code_challenge", pkce.challenge.as_str())
-        .append_pair("code_challenge_method", "S256");
-    url.to_string()
+        .append_pair("code_challenge_method", "S256")
+        .finish();
+    format!("{}?{}", AUTHORIZATION_ENDPOINT, query)
 }
 
 /// One parsed authorization-endpoint redirect query.

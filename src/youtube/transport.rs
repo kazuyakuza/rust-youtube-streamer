@@ -49,12 +49,16 @@ pub(crate) struct GoogleTokenEndpoint {
 type TokenHttpResult = Result<oauth2::HttpResponse, TokenRequestFailure>;
 
 impl GoogleTokenEndpoint {
-    pub(crate) fn new() -> Self {
-        Self {
+    pub(crate) fn new() -> Result<Self, TokenEndpointError> {
+        let token_url = oauth2::TokenUrl::new(TOKEN_ENDPOINT.to_string()).map_err(|_| {
+            TokenEndpointError::Transport {
+                reason: "invalid Google token endpoint URL".to_string(),
+            }
+        })?;
+        Ok(Self {
             agent: ureq::AgentBuilder::new().redirects(0).build(),
-            token_url: oauth2::TokenUrl::new(TOKEN_ENDPOINT.to_string())
-                .expect("the hardcoded Google token endpoint must be a valid URL"),
-        }
+            token_url,
+        })
     }
 
     #[cfg(test)]
@@ -83,7 +87,7 @@ impl TokenEndpointTransport for GoogleTokenEndpoint {
     fn authorization_code_exchange(&self, request: &CodeExchangeRequest) -> TokenExchangeResult {
         let client = BasicClient::new(ClientId::new(request.client_id.clone()))
             .set_client_secret(oauth2_client_secret(&request.client_secret))
-            .set_auth_uri(production_auth_url())
+            .set_auth_uri(production_auth_url()?)
             .set_token_uri(self.token_url.clone());
         let code = Oauth2AuthorizationCode::new(request.code.secret().to_string());
         let verifier = oauth2::PkceCodeVerifier::new(request.pkce_verifier.secret().to_string());
@@ -105,7 +109,7 @@ impl TokenEndpointTransport for GoogleTokenEndpoint {
     fn refresh_token_exchange(&self, request: &RefreshRequest) -> TokenExchangeResult {
         let client = BasicClient::new(ClientId::new(request.client_id.clone()))
             .set_client_secret(oauth2_client_secret(&request.client_secret))
-            .set_auth_uri(production_auth_url())
+            .set_auth_uri(production_auth_url()?)
             .set_token_uri(self.token_url.clone());
         let http_client = |http_request: oauth2::HttpRequest| self.execute_http(http_request);
         let response = client
@@ -131,9 +135,10 @@ impl fmt::Display for TokenRequestFailure {
 
 impl Error for TokenRequestFailure {}
 
-fn production_auth_url() -> AuthUrl {
-    AuthUrl::new(AUTHORIZATION_ENDPOINT.to_string())
-        .expect("hardcoded Google auth URL must be valid")
+fn production_auth_url() -> Result<AuthUrl, TokenEndpointError> {
+    AuthUrl::new(AUTHORIZATION_ENDPOINT.to_string()).map_err(|_| TokenEndpointError::Transport {
+        reason: "invalid Google authorization endpoint URL".to_string(),
+    })
 }
 
 fn oauth2_client_secret(secret: &ClientSecret) -> Oauth2ClientSecret {
