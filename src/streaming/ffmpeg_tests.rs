@@ -27,6 +27,9 @@ const SILENT_SUCCESS_BODY: &str = "cat > /dev/null; exit 0";
 
 const IMMEDIATE_EXITER_BODY: &str = "exit 0";
 
+const ETXTBSY_SPAWN_ATTEMPTS: u8 = 8;
+const ETXTBSY_ERRNO: i32 = 26;
+
 fn write_fake_executable(directory: &Path, body: &str) -> PathBuf {
     let script_path = directory.join("fake-ffmpeg.sh");
     let script_content = format!("#!/bin/sh\n{body}\n");
@@ -42,10 +45,31 @@ fn pipeline_config(executable_path: &Path) -> AppConfig {
     config
 }
 
+/// Bounded immediate retry: a parallel libtest fork can inherit our script
+/// write-fd → transient ETXTBSY (errno 26; ErrorKind match unstable pre-1.83).
+fn start_fake(config: &AppConfig, output_path: PathBuf) -> Result<FfmpegProcess, StreamingError> {
+    let mut attempt = FfmpegProcess::start(config, output_path.clone());
+    for _ in 1..ETXTBSY_SPAWN_ATTEMPTS {
+        if !is_transient_etxtbsy(&attempt) {
+            break;
+        }
+        std::thread::yield_now();
+        attempt = FfmpegProcess::start(config, output_path.clone());
+    }
+    attempt
+}
+fn is_transient_etxtbsy(attempt: &Result<FfmpegProcess, StreamingError>) -> bool {
+    matches!(
+        attempt,
+        Err(StreamingError::Spawn { source, .. })
+            if source.raw_os_error() == Some(ETXTBSY_ERRNO)
+    )
+}
+
 fn started_fake(directory: &Path, body: &str, output_path: PathBuf) -> FfmpegProcess {
     let executable_path = write_fake_executable(directory, body);
     let config = pipeline_config(&executable_path);
-    FfmpegProcess::start(&config, output_path).expect("the fake FFmpeg script must spawn")
+    start_fake(&config, output_path).expect("the fake FFmpeg script must spawn")
 }
 
 #[test]
@@ -125,7 +149,7 @@ fn missing_executable_reports_typed_spawn_error() {
     let missing_path = directory.path().join("definitely-missing-ffmpeg");
     let config = pipeline_config(&missing_path);
 
-    let Err(error) = FfmpegProcess::start(&config, directory.path().join("missing.mp4")) else {
+    let Err(error) = start_fake(&config, directory.path().join("missing.mp4")) else {
         panic!("a missing executable must surface as a Spawn error");
     };
 
