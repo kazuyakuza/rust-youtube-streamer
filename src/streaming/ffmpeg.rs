@@ -188,3 +188,8 @@ impl Drop for FfmpegProcess {
         let _wait_result = self.child.wait();
     }
 }
+
+#[cfg(test)]
+#[cfg(unix)]
+#[path = "ffmpeg_tests.rs"]
+mod ffmpeg_tests;
