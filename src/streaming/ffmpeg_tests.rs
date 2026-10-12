@@ -74,9 +74,9 @@ fn fake_ffmpeg_nonzero_exit_surfaces_code_and_diagnostics_tail() {
     let output_path = directory.path().join("out.mp4");
     let process = started_fake(directory.path(), NONZERO_EXITER_BODY, output_path);
 
-    let error = process
-        .finish()
-        .expect_err("a non-zero fake exit must surface as ExitFailure");
+    let Err(error) = process.finish() else {
+        panic!("a non-zero fake exit must surface as ExitFailure");
+    };
     let diagnostics = match &error {
         StreamingError::ExitFailure { exit_code, diagnostics } => {
             assert_eq!(*exit_code, Some(2));
@@ -98,9 +98,9 @@ fn fake_ffmpeg_exit_zero_without_output_file_reports_output_finalize() {
     let output_path = directory.path().join("out.mp4");
     let process = started_fake(directory.path(), SILENT_SUCCESS_BODY, output_path.clone());
 
-    let error = process
-        .finish()
-        .expect_err("exit 0 without an output file must fail finalization");
+    let Err(error) = process.finish() else {
+        panic!("exit 0 without an output file must fail finalization");
+    };
     match &error {
         StreamingError::OutputFinalize { path } => assert_eq!(path, &output_path),
         other => panic!("expected OutputFinalize, got {other}"),
@@ -116,8 +116,9 @@ fn missing_executable_reports_typed_spawn_error() {
     let missing_path = directory.path().join("definitely-missing-ffmpeg");
     let config = pipeline_config(&missing_path);
 
-    let error = FfmpegProcess::start(&config, directory.path().join("missing.mp4"))
-        .expect_err("a missing executable must surface as a Spawn error");
+    let Err(error) = FfmpegProcess::start(&config, directory.path().join("missing.mp4")) else {
+        panic!("a missing executable must surface as a Spawn error");
+    };
 
     let spawn_source = match &error {
         StreamingError::Spawn { source, .. } => source,
@@ -153,9 +154,9 @@ fn output_locked_by_existing_directory_surfaces_nonzero_exit() {
     fs::create_dir(&output_path).expect("the lock-directory surrogate must exist");
     let process = started_fake(directory.path(), SUCCESS_WRITER_BODY, output_path);
 
-    let error = process
-        .finish()
-        .expect_err("a locked output target must surface as ExitFailure");
+    let Err(error) = process.finish() else {
+        panic!("a locked output target must surface as ExitFailure");
+    };
     match &error {
         StreamingError::ExitFailure { exit_code, .. } => assert!(exit_code.is_some()),
         other => panic!("expected ExitFailure, got {other}"),
