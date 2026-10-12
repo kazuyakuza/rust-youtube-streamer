@@ -5,3 +5,6 @@ FROM rust:1.82
 RUN rustup component add rustfmt clippy
 RUN apt-get update && apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64
 RUN rustup target add x86_64-pc-windows-gnu
+# FFmpeg is dev-tooling for the container-only checks (fake/real smoke tests and
+# manual demo smoke): it is NOT bundled with either release artifact.
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg
