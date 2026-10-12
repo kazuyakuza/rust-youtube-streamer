@@ -1,0 +1,112 @@
+//! Parsing, validation and redaction tests for Google's client-secret
+//! document: required fields, blank values, endpoint tampering, unknown
+//! field tolerance, malformed JSON and Debug redaction.
+
+use super::*;
+
+const SECRET_FIXTURE: &str = "client_secret_fixture";
+
+fn google_shaped_json() -> String {
+    format!(
+        r#"{{
+            "installed": {{
+                "client_id": "1234567890.apps.googleusercontent.com",
+                "client_secret": "{SECRET_FIXTURE}",
+                "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token"
+            }}
+        }}"#
+    )
+}
+
+#[test]
+fn parse_reads_installed_client_fields() {
+    let config = parse_client_config(&google_shaped_json()).expect("valid document parses");
+    assert_eq!(config.client_id(), "1234567890.apps.googleusercontent.com");
+    assert_eq!(config.client_secret().secret(), SECRET_FIXTURE);
+}
+
+#[test]
+fn parse_preserves_unknown_fields() {
+    let json = r#"{
+        "installed": {
+            "project_id": "example-project",
+            "client_id": "1234567890.apps.googleusercontent.com",
+            "client_secret": "client_secret_fixture",
+            "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["http://127.0.0.1"]
+        }
+    }"#;
+    let config = parse_client_config(json).expect("unknown fields must not break parsing");
+    assert_eq!(config.client_id(), "1234567890.apps.googleusercontent.com");
+}
+
+#[test]
+fn parse_reports_missing_installed_client_id() {
+    let error = parse_client_config("{}").expect_err("missing installed block must fail");
+    match error {
+        ClientConfigError::MissingField { field } => {
+            assert_eq!(field, "installed.client_id");
+        }
+        other => panic!("unexpected error: {other}"),
+    }
+
+    let json = r#"{"installed": {"client_secret": "client_secret_fixture"}}"#;
+    let error = parse_client_config(json).expect_err("missing client_id must fail");
+    match error {
+        ClientConfigError::MissingField { field } => {
+            assert_eq!(field, "installed.client_id");
+        }
+        other => panic!("unexpected error: {other}"),
+    }
+}
+
+#[test]
+fn parse_reports_blank_client_secret() {
+    let json = r#"{
+        "installed": {
+            "client_id": "1234567890.apps.googleusercontent.com",
+            "client_secret": "   "
+        }
+    }"#;
+    let error = parse_client_config(json).expect_err("blank secret must fail");
+    match error {
+        ClientConfigError::BlankField { field } => {
+            assert_eq!(field, "installed.client_secret");
+        }
+        other => panic!("unexpected error: {other}"),
+    }
+}
+
+#[test]
+fn parse_rejects_foreign_token_uri() {
+    let json = r#"{
+        "installed": {
+            "client_id": "1234567890.apps.googleusercontent.com",
+            "client_secret": "client_secret_fixture",
+            "token_uri": "https://evil.invalid/token"
+        }
+    }"#;
+    let error = parse_client_config(json).expect_err("foreign token_uri must fail");
+    match error {
+        ClientConfigError::EndpointMismatch { field } => {
+            assert_eq!(field, "installed.token_uri");
+        }
+        other => panic!("unexpected error: {other}"),
+    }
+}
+
+#[test]
+fn parse_rejects_invalid_json() {
+    let error = parse_client_config("not json at all").expect_err("garbage must fail");
+    assert!(matches!(error, ClientConfigError::Deserialization { .. }));
+}
+
+#[test]
+fn client_config_debug_never_reveals_secret() {
+    let config = parse_client_config(&google_shaped_json()).expect("valid document parses");
+    let debug_output = format!("{config:?}");
+    assert!(!debug_output.contains(SECRET_FIXTURE));
+    assert!(debug_output.contains("<redacted>"));
+}

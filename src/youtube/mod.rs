@@ -17,4 +17,5 @@
 //! Access path note for future agents: submodules are private; re-exports
 //! are added here only when the first external consumer appears.
 
+mod client_config;
 mod error;
