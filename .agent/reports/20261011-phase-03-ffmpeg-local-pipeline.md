@@ -42,8 +42,8 @@ Tasks 1–5 window: `git log --oneline main..HEAD` (full list in [Evidence Index
 | 9 doc-comment citation files: `src/chat/{mod,error,model,store}.rs`, `src/renderer/{mod,error}.rs`, `src/streaming/{mod,error}.rs`, `src/app/pipeline/mod.rs` | 5 | scope-authority citations → final `-DONE` TODO filenames | `75dc438` |
 | `README.md`, `docs/demo.md` (new), `docs/configuration.md` | 5 | demo command/exit codes/FFmpeg-external corrections, new Local Demo Recording section, 8-section demo guide | `ba428fe` |
 | `.agent/project-structure.md`, `.agent/project-info/tech.md`, `.agent/project-info/context.md` | 5 | full structure refresh (demo/pipeline/streaming maps, v0.6.0, `.gitkeep` ledger, `videos/` note); sync-std + ctrlc + smoke pointer; Phase-03 context sections | `18caeb2` |
-| `.agent/reports/20261011-phase-03-ffmpeg-local-pipeline.md` (this file) | 5 | tracked completion report | `pending` (this commit) |
-| `.kilo/plans/20261011-phase03-task5-verification-docs.md` | 5 | task-5 plan tracking | `pending` (plan-tracking commit) |
+| `.agent/reports/20261011-phase-03-ffmpeg-local-pipeline.md` (this file) | 5 | tracked completion report | `82ab621` |
+| `.kilo/plans/20261011-phase03-task5-verification-docs.md` | 5 | task-5 plan tracking | `c249138` |
 
 ## Dependency Rationale
 
@@ -215,7 +215,7 @@ Rows 1–12 are the TODO's 12 checkboxes; rows 13–14 mirror the task-5 plan's 
 | §6.1 README: Tokio bullet corrected (async reserved for later phases; sync `std::process` + threads + `ctrlc` 3) | holds (grep: no `async runtime for API requests` in live docs) |
 | §6.1 README: `demo` bullet + exit-code line (`1 = … demo runtime failure (startup-failure class)`) + run cross-pointer | holds |
 | §6.1 README: both stale FFmpeg sentences replaced (external prerequisite; demo launches configured path; never bundled) | holds (grep: no `neither installs nor launches` in live docs) |
-| §6.2 `docs/demo.md`: all 8 planned sections + TOC + observed version/counts | holds (131 lines) |
+| §6.2 `docs/demo.md`: all 8 planned sections + TOC + observed version/counts | holds (87 lines) |
 | §6.3 configuration.md: usage `auth\|demo\|run` + demo line; demo bullet with `DemoError` delegation; exit summary exact (0/1/2/3); renderer-wired + FFmpeg-launched closing paragraph; `ffmpeg.executable` Spawn text | holds (grep: no `auth\|run`-only or `wired into the runtime in a later phase` in live docs) |
 | §6.4 project-structure: demo/ + pipeline/ maps, real streaming map, `modes.rs` four-prerequisites line, v0.6.0, `logs/.gitkeep` ledger, deliberate `src/youtube/.gitkeep`, `videos/` note, `main.rs` no-allow line | holds (spot-verified against `ls src/...` + `git ls-files *.gitkeep`) |
 | §6.5 tech.md: sync-std S2 bullet, ctrlc External-Processes + Dependencies rationale, dev-image smoke pointer | holds |
