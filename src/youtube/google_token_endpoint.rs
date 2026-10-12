@@ -62,12 +62,22 @@ impl GoogleTokenEndpoint {
             Err(error) => Err(bridge_error(error)),
         }
     }
+
+    /// Shared client identity for both exchanges; each attaches its endpoints.
+    fn token_client(
+        &self,
+        client_id: &str,
+        client_secret: &ClientSecret,
+    ) -> Result<BasicClient, TokenEndpointError> {
+        Ok(BasicClient::new(ClientId::new(client_id.to_string()))
+            .set_client_secret(oauth2_client_secret(client_secret)))
+    }
 }
 
 impl TokenEndpointTransport for GoogleTokenEndpoint {
     fn authorization_code_exchange(&self, request: &CodeExchangeRequest) -> TokenExchangeResult {
-        let client = BasicClient::new(ClientId::new(request.client_id.clone()))
-            .set_client_secret(oauth2_client_secret(&request.client_secret))
+        let client = self.token_client(&request.client_id, &request.client_secret)?;
+        let client = client
             .set_auth_uri(production_auth_url()?)
             .set_token_uri(self.token_url.clone());
         let code = Oauth2AuthorizationCode::new(request.code.secret().to_string());
@@ -88,8 +98,8 @@ impl TokenEndpointTransport for GoogleTokenEndpoint {
     }
 
     fn refresh_token_exchange(&self, request: &RefreshRequest) -> TokenExchangeResult {
-        let client = BasicClient::new(ClientId::new(request.client_id.clone()))
-            .set_client_secret(oauth2_client_secret(&request.client_secret))
+        let client = self.token_client(&request.client_id, &request.client_secret)?;
+        let client = client
             .set_auth_uri(production_auth_url()?)
             .set_token_uri(self.token_url.clone());
         let http_client = |http_request: oauth2::HttpRequest| self.execute_http(http_request);
