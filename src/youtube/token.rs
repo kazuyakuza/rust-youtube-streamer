@@ -4,8 +4,8 @@
 //! [`TokenResponse`], and the granted-scope collection (plan §5).
 //!
 //! Raw secret strings exist only inside the wrappers; `secret()`
-//! accessors are consumed at the transport request build and the Bearer
-//! header sites only, never formatted or logged.
+//! accessors are consumed only at request-build sites (transport today,
+//! the Bearer header with Tasks 3–4), never formatted or logged.
 
 use std::fmt;
 
@@ -21,6 +21,7 @@ pub(crate) struct AccessToken {
 }
 
 impl AccessToken {
+    /// Wraps a raw access-token string; the wrapper owns the secret.
     pub(crate) fn new(secret: impl Into<String>) -> Self {
         Self {
             secret: secret.into(),
@@ -48,6 +49,7 @@ pub(crate) struct RefreshToken {
 }
 
 impl RefreshToken {
+    /// Wraps a raw refresh-token string; the wrapper owns the secret.
     pub(crate) fn new(secret: impl Into<String>) -> Self {
         Self {
             secret: secret.into(),
@@ -75,6 +77,7 @@ pub(crate) struct AuthorizationCode {
 }
 
 impl AuthorizationCode {
+    /// Wraps a raw authorization-code string; the wrapper owns the secret.
     pub(crate) fn new(secret: impl Into<String>) -> Self {
         Self {
             secret: secret.into(),
@@ -102,6 +105,7 @@ pub(crate) struct ClientSecret {
 }
 
 impl ClientSecret {
+    /// Wraps a raw client-secret string; the wrapper owns the secret.
     pub(crate) fn new(secret: impl Into<String>) -> Self {
         Self {
             secret: secret.into(),

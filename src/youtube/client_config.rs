@@ -22,10 +22,12 @@ pub(crate) struct ClientConfig {
 }
 
 impl ClientConfig {
+    /// OAuth client identifier as issued by Google.
     pub(crate) fn client_id(&self) -> &str {
         &self.client_id
     }
 
+    /// Client secret wrapper; its `Debug` redacts the value.
     pub(crate) fn client_secret(&self) -> &ClientSecret {
         &self.client_secret
     }

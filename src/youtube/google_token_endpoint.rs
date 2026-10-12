@@ -30,6 +30,8 @@ pub(crate) struct GoogleTokenEndpoint {
 type TokenHttpResult = Result<oauth2::HttpResponse, TokenRequestFailure>;
 
 impl GoogleTokenEndpoint {
+    /// Builds the client bound to the production Google token endpoint;
+    /// the constant URL is validated at construction.
     pub(crate) fn new() -> Result<Self, TokenEndpointError> {
         let token_url = oauth2::TokenUrl::new(TOKEN_ENDPOINT.to_string()).map_err(|_| {
             TokenEndpointError::Transport {
@@ -42,6 +44,8 @@ impl GoogleTokenEndpoint {
         })
     }
 
+    /// Test-only substitute endpoint so the real stack can run against
+    /// a fake server offline; production code never calls this.
     #[cfg(test)]
     pub(crate) fn with_token_url(token_url: oauth2::TokenUrl) -> Self {
         Self {

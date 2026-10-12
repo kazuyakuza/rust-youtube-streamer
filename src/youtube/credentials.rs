@@ -18,10 +18,14 @@ pub(crate) struct StoredCredentials {
     pub(crate) granted_scopes: GrantedScopes,
 }
 
-/// Credential persistence boundary; fakes implement it in tests.
+/// Credential persistence boundary; fakes implement it in tests and the
+/// concrete file store arrives with Task 2.
 pub(crate) trait CredentialStore {
+    /// Reads the previously persisted credentials.
     fn load(&self) -> Result<StoredCredentials, CredentialStoreError>;
 
+    /// Persists credentials atomically where the platform supports it
+    /// (a Task 2 implementation concern).
     fn save(&self, credentials: &StoredCredentials) -> Result<(), CredentialStoreError>;
 }
 

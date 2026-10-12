@@ -24,7 +24,10 @@ pub(crate) const REVOCATION_ENDPOINT: &str = "https://oauth2.googleapis.com/revo
 /// PKCE pair (S256): challenge for the authorization URL, verifier for
 /// the code exchange.
 pub(crate) struct PkcePair {
+    /// Public half, sent with the authorization request.
     pub(crate) challenge: oauth2::PkceCodeChallenge,
+    /// Secret half: held in memory for the code exchange only, never
+    /// persisted or logged.
     pub(crate) verifier: oauth2::PkceCodeVerifier,
 }
 
@@ -43,6 +46,9 @@ pub(crate) fn generate_state() -> oauth2::CsrfToken {
 }
 
 /// Builds the authorization URL the console displays. Pure: no I/O.
+/// `redirect_uri` must be a loopback `http://127.0.0.1:<port>` value
+/// obtained at callback-listener bind time — never `localhost` (plan
+/// decision S1).
 pub(crate) fn authorization_url(
     client_config: &ClientConfig,
     redirect_uri: &str,
@@ -64,6 +70,8 @@ pub(crate) fn authorization_url(
 /// One parsed authorization-endpoint redirect query.
 #[derive(Debug)]
 pub(crate) enum AuthorizationCallback {
+    /// User approved; the state was validated before this variant is
+    /// produced, and the code is single-use material.
     Authorized {
         code: AuthorizationCode,
         state: String,

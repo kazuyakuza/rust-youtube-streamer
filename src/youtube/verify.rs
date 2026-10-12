@@ -13,10 +13,13 @@ pub(crate) struct VerifiedAuthorization {
 }
 
 impl VerifiedAuthorization {
+    /// Wraps the scopes observed while verifying an effective authorization.
     pub(crate) fn new(granted_scopes: GrantedScopes) -> Self {
         Self { granted_scopes }
     }
 
+    /// The granted-scope evidence, for exact-membership checks against
+    /// [`super::authorization::REQUIRED_SCOPE`].
     pub(crate) fn granted_scopes(&self) -> &GrantedScopes {
         &self.granted_scopes
     }
