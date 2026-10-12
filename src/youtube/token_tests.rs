@@ -2,15 +2,16 @@
 //! tests: full/refresh-shaped/unknown-field bodies, missing access
 //! token, exact case-sensitive scope matching, and secret-free Debug.
 
+use super::super::authorization::REQUIRED_SCOPE as FORCE_SSL_SCOPE;
 use super::*;
 
 const ACCESS_FIXTURE: &str = "access_token_fixture";
 const REFRESH_FIXTURE: &str = "refresh_token_fixture";
-const FORCE_SSL_SCOPE: &str = "https://www.googleapis.com/auth/youtube.force-ssl";
 
-#[test]
-fn parse_full_token_response_with_refresh_token() {
-    let body = format!(
+/// Google's documented token response body for an installed application
+/// (plan §1.1): access token, lifetime, refresh token, scope, Bearer type.
+fn documented_token_body() -> String {
+    format!(
         r#"{{
             "access_token": "{ACCESS_FIXTURE}",
             "expires_in": 3592,
@@ -18,7 +19,12 @@ fn parse_full_token_response_with_refresh_token() {
             "scope": "{FORCE_SSL_SCOPE}",
             "token_type": "Bearer"
         }}"#
-    );
+    )
+}
+
+#[test]
+fn parse_full_token_response_with_refresh_token() {
+    let body = documented_token_body();
     let response = parse_token_response(&body).expect("documented sample body parses");
     assert_eq!(response.access_token.secret(), ACCESS_FIXTURE);
     assert_eq!(response.expires_in_seconds, 3592);
@@ -89,15 +95,7 @@ fn granted_scopes_membership_is_exact_and_case_sensitive() {
 
 #[test]
 fn token_response_debug_and_display_reveal_no_secrets() {
-    let body = format!(
-        r#"{{
-            "access_token": "{ACCESS_FIXTURE}",
-            "expires_in": 3592,
-            "refresh_token": "{REFRESH_FIXTURE}",
-            "scope": "{FORCE_SSL_SCOPE}",
-            "token_type": "Bearer"
-        }}"#
-    );
+    let body = documented_token_body();
     let response = parse_token_response(&body).expect("documented sample body parses");
     let debug_output = format!("{response:?}");
     assert!(!debug_output.contains(ACCESS_FIXTURE));
