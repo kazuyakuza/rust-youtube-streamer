@@ -4,14 +4,12 @@
 //! `.agent/todos/20261010/20261010-todo-2.md`. The module is a pure local
 //! component: no YouTube API types, chat state, network, or FFmpeg
 //! dependency. Cross-module consumers go through the `pub(crate) use`
-//! re-exports below. Staging allow: retires in TODO Task 3 when the demo
-//! mode (the pipeline's CLI consumer) makes this module reachable from
-//! `main`; clippy `-D warnings` guards everything else. File/module mapping
+//! re-exports below. Reachable from `main` through the `demo` mode (TODO
+//! Task 3). File/module mapping
 //! note: the trait and `RenderInput` live in `renderer.rs` but are declared
 //! as `contract` via `#[path]` (plan amendment A9 — avoids
 //! `clippy::module_inception`); in-tree consumers import
 //! `contract::Renderer` / `contract::RenderInput`.
-#![allow(dead_code)]
 
 #[path = "renderer.rs"]
 mod contract;

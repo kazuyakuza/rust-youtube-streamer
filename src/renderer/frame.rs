@@ -55,10 +55,14 @@ impl Frame {
         })
     }
 
+    // Test-only accessors: the pipeline consumes frame bytes via pixels().
+    #[cfg(test)]
     pub fn width(&self) -> u32 {
         self.width
     }
 
+    // Test-only accessors: the pipeline consumes frame bytes via pixels().
+    #[cfg(test)]
     pub fn height(&self) -> u32 {
         self.height
     }

@@ -32,11 +32,16 @@ impl Rgb {
     /// [`RendererSettings::from_config`] always carry the exact config
     /// field name; this standalone entry attributes failures to
     /// `text_color`.
+    // Test-only convenience entry: production parses through the
+    // field-aware internal parser below.
+    #[cfg(test)]
     pub fn parse_hex(value: &str) -> Result<Rgb, RenderError> {
         parse_hex_field(TEXT_COLOR_FIELD, value)
     }
 
     /// The all-black color (zero channels).
+    // Test-only color: production backgrounds come from validated config.
+    #[cfg(test)]
     pub fn black() -> Rgb {
         Rgb {
             red: 0,

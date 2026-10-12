@@ -22,6 +22,9 @@ const MAX_SUFFIX_ATTEMPTS: u32 = 1000;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OutputKind {
     Demo,
+    // `session-` is reserved for the future production pipeline (Task-1
+    // contract); the demo is the only runtime OutputKind in this phase.
+    #[allow(dead_code)]
     Session,
 }
 

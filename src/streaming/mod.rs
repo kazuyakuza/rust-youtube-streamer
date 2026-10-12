@@ -15,13 +15,10 @@
 //! - The seam receives opaque frame bytes (`&[u8]`) only — it cannot know
 //!   what a chat message is.
 //! - `streaming` is imported by `src/main.rs`; cross-module consumers go
-//!   through the `pub(crate) use` re-exports below. Staging allow: retires
-//!   in TODO Task 3 when the demo mode (the pipeline's CLI consumer) makes
-//!   this module reachable from `main`; clippy `-D warnings` guards
-//!   everything else.
+//!   through the `pub(crate) use` re-exports below. Reachable from `main`
+//!   through the `demo` mode (TODO Task 3).
 //!
 //! Access path note for future agents: tests reach items via `super::*`.
-#![allow(dead_code)]
 
 mod args;
 mod error;

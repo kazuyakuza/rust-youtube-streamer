@@ -9,10 +9,7 @@
 //!
 //! Access path note for future agents: tests reach items via `super::*`;
 //! cross-module consumers go through the `pub(crate) use` re-exports below.
-//! Staging allow: retires in TODO Task 3 when the demo mode (the pipeline's
-//! CLI consumer) makes this module reachable from `main`; clippy
-//! `-D warnings` guards everything else.
-#![allow(dead_code)]
+//! Reachable from `main` through the `demo` mode (TODO Task 3).
 
 mod error;
 mod model;

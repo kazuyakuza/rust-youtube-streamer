@@ -38,6 +38,10 @@ impl ChatMessage {
 
     /// Attaches the timestamp verbatim, builder style: seconds since the
     /// UNIX epoch, or `None` to leave the message without one.
+    // Reserved for the YouTube chat API layer (later phase); the demo attaches
+    // deterministic message IDs but no timestamps. Deleting it would delete the
+    // store's own-timestamp log-record coverage.
+    #[allow(dead_code)]
     pub fn with_timestamp(mut self, seconds: Option<u64>) -> Self {
         self.timestamp = seconds;
         self

@@ -6,9 +6,8 @@
 //! single synchronous std thread (no async runtime; brief §3.2), Ctrl+C is a
 //! shared stop flag documented in `interrupt`, and scope authority is TODO
 //! Task 2 in `.agent/todos/20261011/20261011-todo-1.md` plus plan
-//! `.kilo/plans/20261011-phase03-task2-frame-pipeline.md`.
-#![allow(dead_code)] // Deliberate staging: retires in TODO Task 3 when the
-                     // demo mode makes this module reachable from `main`.
+//! `.kilo/plans/20261011-phase03-task2-frame-pipeline.md`. Reachable from
+//! `main` through the `demo` mode (TODO Task 3).
 mod clock;
 mod error;
 mod interrupt;

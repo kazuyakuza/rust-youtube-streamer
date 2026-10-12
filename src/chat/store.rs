@@ -118,6 +118,9 @@ impl ChatStore {
     }
 
     /// Whether no message is currently visible.
+    // Retains the Phase-02 public contract surface; no consumer exists until a
+    // later phase (deliberate, single-item allowance).
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.messages.is_empty()
     }
