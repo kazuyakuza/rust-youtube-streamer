@@ -89,12 +89,17 @@ fn at_most_one_message_is_delivered_per_call() {
 #[test]
 fn timeline_delivers_all_messages_in_order_without_any_clock() {
     let (mut source, _stop_flag) = source_with_stop_flag();
-    let expected: Vec<String> = scheduled_messages_for_tests()
+    let deliveries = scheduled_messages_for_tests();
+    let expected: Vec<String> = deliveries
         .iter()
         .map(|entry| format!("{}", entry.message))
         .collect();
+    let last_due_frame = deliveries
+        .last()
+        .expect("non-empty schedule")
+        .due_frame_index;
     let mut delivered = Vec::new();
-    for _frame_index in 0..=435 {
+    for _frame_index in 0..=last_due_frame {
         if let Some(display) = next_display(&mut source) {
             delivered.push(display);
         }

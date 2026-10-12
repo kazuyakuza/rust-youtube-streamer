@@ -28,11 +28,6 @@ impl DemoMessageSource {
             stop_flag,
         }
     }
-
-    /// Consumer-side accounting for `due_at`.
-    fn served_count(&self) -> usize {
-        self.served
-    }
 }
 
 impl MessageSource for DemoMessageSource {
@@ -44,7 +39,7 @@ impl MessageSource for DemoMessageSource {
             self.stop_flag.request_stop();
             return Ok(None);
         }
-        let due = self.timeline.due_at(self.served_count(), frame_index);
+        let due = self.timeline.due_at(self.served, frame_index);
         if due.is_some() {
             self.served += 1;
         }
