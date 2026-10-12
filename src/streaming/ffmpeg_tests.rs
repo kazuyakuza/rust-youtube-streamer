@@ -58,6 +58,7 @@ fn start_fake(config: &AppConfig, output_path: PathBuf) -> Result<FfmpegProcess,
     }
     attempt
 }
+
 fn is_transient_etxtbsy(attempt: &Result<FfmpegProcess, StreamingError>) -> bool {
     matches!(
         attempt,
@@ -107,16 +108,14 @@ fn fake_ffmpeg_nonzero_exit_surfaces_code_and_diagnostics_tail() {
     let Err(error) = process.finish() else {
         panic!("a non-zero fake exit must surface as ExitFailure");
     };
-    let diagnostics = match &error {
-        StreamingError::ExitFailure {
-            exit_code,
-            diagnostics,
-        } => {
-            assert_eq!(*exit_code, Some(2));
-            diagnostics
-        }
-        other => panic!("expected ExitFailure, got {other}"),
+    let StreamingError::ExitFailure {
+        exit_code,
+        diagnostics,
+    } = &error
+    else {
+        panic!("expected ExitFailure, got {error}");
     };
+    assert_eq!(*exit_code, Some(2));
     assert!(error
         .to_string()
         .contains("FFmpeg exited with failure status 2"));
@@ -134,10 +133,10 @@ fn fake_ffmpeg_exit_zero_without_output_file_reports_output_finalize() {
     let Err(error) = process.finish() else {
         panic!("exit 0 without an output file must fail finalization");
     };
-    match &error {
-        StreamingError::OutputFinalize { path } => assert_eq!(path, &output_path),
-        other => panic!("expected OutputFinalize, got {other}"),
-    }
+    let StreamingError::OutputFinalize { path } = &error else {
+        panic!("expected OutputFinalize, got {error}");
+    };
+    assert_eq!(path, &output_path);
     assert!(error
         .to_string()
         .contains("is missing or empty; the video was not finalized"));
@@ -152,12 +151,10 @@ fn missing_executable_reports_typed_spawn_error() {
     let Err(error) = start_fake(&config, directory.path().join("missing.mp4")) else {
         panic!("a missing executable must surface as a Spawn error");
     };
-
-    let spawn_source = match &error {
-        StreamingError::Spawn { source, .. } => source,
-        other => panic!("expected Spawn, got {other}"),
+    let StreamingError::Spawn { source, .. } = &error else {
+        panic!("expected Spawn, got {error}");
     };
-    assert_eq!(spawn_source.kind(), io::ErrorKind::NotFound);
+    assert_eq!(source.kind(), io::ErrorKind::NotFound);
     assert!(error.to_string().contains(
         "check that the configured path is correct and FFmpeg is installed and runnable",
     ));
@@ -190,10 +187,10 @@ fn output_locked_by_existing_directory_surfaces_nonzero_exit() {
     let Err(error) = process.finish() else {
         panic!("a locked output target must surface as ExitFailure");
     };
-    match &error {
-        StreamingError::ExitFailure { exit_code, .. } => assert!(exit_code.is_some()),
-        other => panic!("expected ExitFailure, got {other}"),
-    }
+    let StreamingError::ExitFailure { exit_code, .. } = &error else {
+        panic!("expected ExitFailure, got {error}");
+    };
+    assert!(exit_code.is_some());
     assert!(error
         .to_string()
         .contains("FFmpeg exited with failure status"));

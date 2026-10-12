@@ -5,7 +5,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 use crate::config::valid_config;
 
@@ -34,6 +34,23 @@ fn probe_value<'a>(probe_stdout: &'a str, key: &str) -> Option<&'a str> {
         .lines()
         .find_map(|line| line.strip_prefix(prefix.as_str()))
         .map(str::trim)
+}
+
+fn probe_recording(ffprobe_path: &Path, output_path: &Path) -> Output {
+    Command::new(ffprobe_path)
+        .args([
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height,r_frame_rate:format=duration",
+            "-of",
+            "default=noprint_wrappers=1",
+        ])
+        .arg(output_path)
+        .output()
+        .expect("ffprobe must run inside the dev-checks image")
 }
 
 #[test]
@@ -65,20 +82,7 @@ fn real_ffmpeg_records_and_probes_plausible_video() {
         .len();
     assert!(recorded_bytes > 0);
 
-    let probe = Command::new(&ffprobe_path)
-        .args([
-            "-v",
-            "error",
-            "-select_streams",
-            "v:0",
-            "-show_entries",
-            "stream=width,height,r_frame_rate:format=duration",
-            "-of",
-            "default=noprint_wrappers=1",
-        ])
-        .arg(&output_path)
-        .output()
-        .expect("ffprobe must run inside the dev-checks image");
+    let probe = probe_recording(&ffprobe_path, &output_path);
     assert!(
         probe.status.success(),
         "ffprobe must probe the recording: {}",
