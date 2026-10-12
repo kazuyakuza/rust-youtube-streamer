@@ -236,10 +236,13 @@ Rows 1–12 are the TODO's 12 checkboxes; rows 13–14 mirror the task-5 plan's 
 
 - Plans: global `.kilo/plans/20261011-phase03-ffmpeg-local-pipeline.md`; Task 1 `20261011-phase03-task1-ffmpeg-wrapper.md` (+ `task1-review-fixes`, `task1-simplification`, `task1-adherence`); Task 2 `20261011-phase03-task2-frame-pipeline.md` (+ `task2-adherence`); Task 3 `20261011-phase03-task3-demo-command.md` (+ `task3-simplification`, `task3-adherence`); Task 4 `20261011-phase03-task4-run-boundary.md` (+ `task4-adherence`); Task 5 `20261011-phase03-task5-verification-docs.md`.
 - Prior reports: `.agent/reports/20261010-phase-02-renderer-chat-store.md`, `20261010-phase-01-2-windows-build-workflow.md`, `20261009-phase-01-1-build-artifact-workflow.md`.
-- Fresh gate logs: **`logs/checks/20261012T040733Z.log`** (code-complete tree) and **`logs/checks/20261012T041601Z.log`** (docs-final tree) — both `147 passed; 0 failed`, `ALL CHECKS PASSED`. Baseline (cited): `logs/checks/20261012T030755Z.log` (140 tests).
-- Commit list, Tasks 1–5 window (`git log --oneline main..HEAD`, 44 commits at report time; the final two Task-5 commits are `pending`):
+- Fresh gate logs: **`logs/checks/20261012T040733Z.log`** (code-complete tree) and **`logs/checks/20261012T041601Z.log`** (docs-final tree) — both `147 passed; 0 failed`, `ALL CHECKS PASSED`; plus the post-mitigation final gate **`logs/checks/20261012T143115Z.log`** (`147 passed; 0 failed`, `ALL CHECKS PASSED`). Baseline (cited): `logs/checks/20261012T030755Z.log` (140 tests).
+- Commit list, Tasks 1–5 window (`git log --oneline main..HEAD`; 47 commits after the ETXTBSY test-fix — the report-tracking and plan-tracking commits are now resolved to their actual hashes):
 
 ```text
+bcbfae9 test: retry transient ETXTBSY when spawning fake ffmpeg
+c249138 docs: track task 5 planning documents
+82ab621 docs: add phase 03 completion report
 18caeb2 docs: refresh project structure tech and context for phase 03
 ba428fe docs: document the demo command and local ffmpeg recording
 75dc438 docs: update scope authority citations to the completed todo filenames
@@ -284,8 +287,6 @@ df9b00a fix: correct UTC civil date algorithm across non-leap centuries
 bb7c5ac feat: build ffmpeg raw-video arguments purely from config
 3bde337 feat: add streaming module with typed process errors
 35ee4ff chore: bump version to 0.6.0
-pending   docs: add phase 03 completion report   (this file)
-pending   docs: track task 5 planning documents  (.kilo plan file)
 ```
 
 ## Known Limitations & Not-Run Checks
@@ -296,5 +297,6 @@ pending   docs: track task 5 planning documents  (.kilo plan file)
 - **No audio** (neither generated nor silent) — explicit scope exclusion.
 - **`DemoError` maps both variants to exit 1** — single startup-failure class, no demo-specific exit code (documented contract).
 - **Fake body-1 deviation** from the locked plan text: no trailing `exit 0` (planner ruling; container-observed statuses recorded in §Commands and in the test-module docs); the two implementation deviation commits are `ec107ec` (compile fix: `expect_err` needs `Debug` on `CompletedVideo`/`FfmpegProcess`, avoided without production-code edits per T5-D7) and `8d8e739` (rustfmt normalization).
+- **Fake-FFmpeg ETXTBSY flake — discovered, mitigated test-side (commit `bcbfae9`)**: an extra post-report gate run exposed an intermittent `Text file busy` (errno 26) spawn failure. Mechanism: a parallel libtest thread forks during another fake test's `fs::write` open window on the script, the child inherits the write fd (closed only at that child's own exec), and our own `execve` can hit ETXTBSY — reproduced pre-fix at ≈10% (5 failures in 50 sampled `cargo test --locked streaming` runs). Mitigation (test-only): the fake-suite spawn helper `start_fake` in `src/streaming/ffmpeg_tests.rs` bounds an 8-attempt immediate retry (`std::thread::yield_now()`, no sleeps) keyed on `raw_os_error() == Some(ETXTBSY_ERRNO /* 26 */)` — `ErrorKind::ExecutableFileBusy` is unstable before Rust 1.83 and the pinned image is 1.82. Post-fix stability: **30/30 green** streaming-suite runs + fresh full gate `logs/checks/20261012T143115Z.log` (exit 0, `147 passed; 0 failed`, `ALL CHECKS PASSED`). Production spawn behavior is unchanged — the fix commit touches only `src/streaming/ffmpeg_tests.rs` (26 insertions, 2 deletions).
 - **Citation `-DONE` window**: the 3 × `20261011-todo-1-DONE.md` doc-comment citations become live only after workflow step 5 renames the TODO; if the rename is ever revoked the citations must revert (verified at 4.5b/step 5).
 - Carried from earlier phases: renderer right/bottom-margin config-only deviation; chat-log epoch-format deviation; unclear-provenance `fonts/console.ttf`; `OutputKind::Session` reserved.
