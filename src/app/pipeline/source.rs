@@ -11,7 +11,10 @@ use crate::chat::{ChatError, ChatMessage};
 pub(crate) trait MessageSource {
     /// Returns the next message due now, or `None` when nothing is due.
     /// The only failure class available in this phase is the chat-domain
-    /// error; TODO Task 4 may widen this error type when a real network
-    /// listener exists (documented evolution point).
+    /// error; the seam now faces the production run mode, which stays a
+    /// not-implemented placeholder in TODO Task 4, so no widening
+    /// happens yet; the widening point is reserved for the later phase
+    /// that introduces a real YouTube chat listener (documented
+    /// evolution point).
     fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatError>;
 }

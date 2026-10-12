@@ -6,7 +6,7 @@
 //! [`run`] performs the single `ExitCode` conversion at the process
 //! boundary. The exit codes are a stable contract: 1 = configuration or
 //! logging-init startup failure, 2 = command-line usage error, 3 = selected
-//! mode not implemented yet (`auth` stays a placeholder); demo-origin fatal
+//! mode not implemented yet (`auth` and `run` stay placeholders); demo-origin fatal
 //! failures — interrupt-install failure or any `FramePipelineError` —
 //! report through the demo handler and also exit 1. The `demo` mode makes
 //! the `pipeline` submodule (the chat → renderer → streaming frame
