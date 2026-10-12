@@ -7,11 +7,10 @@
 //! fields to this document for years. Declared endpoints must equal the
 //! Google constants or the file is rejected (tampered redirect guard).
 
-use std::fmt;
-
 use serde::Deserialize;
 
 use super::error::ClientConfigError;
+use super::token::ClientSecret;
 
 /// Authorization endpoint Google uses for installed applications.
 pub(crate) const AUTHORIZATION_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth";
@@ -19,33 +18,6 @@ pub(crate) const AUTHORIZATION_ENDPOINT: &str = "https://accounts.google.com/o/o
 pub(crate) const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 /// Revocation endpoint Google uses for installed applications.
 pub(crate) const REVOCATION_ENDPOINT: &str = "https://oauth2.googleapis.com/revoke";
-
-/// OAuth client secret. `Debug` output never reveals the value and
-/// `Display` is intentionally not implemented.
-#[derive(Clone)]
-pub(crate) struct ClientSecret {
-    secret: String,
-}
-
-impl ClientSecret {
-    pub(crate) fn new(secret: impl Into<String>) -> Self {
-        Self {
-            secret: secret.into(),
-        }
-    }
-
-    /// Raw value; consumed only when building token endpoint requests and
-    /// never logged or formatted.
-    pub(crate) fn secret(&self) -> &str {
-        &self.secret
-    }
-}
-
-impl fmt::Debug for ClientSecret {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("ClientSecret(<redacted>)")
-    }
-}
 
 /// Client credentials parsed from Google's downloadable client-secret file.
 /// `Debug` never reveals the secret (the wrapper redacts itself).
