@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 /// Failures parsing Google's downloadable client-secret JSON file.
 #[derive(Debug)]
-pub enum ClientConfigError {
+pub(crate) enum ClientConfigError {
     MissingField { field: String },
     BlankField { field: String },
     EndpointMismatch { field: String },
@@ -21,7 +21,7 @@ pub enum ClientConfigError {
 
 /// Failures parsing the authorization-endpoint callback query.
 #[derive(Debug)]
-pub enum AuthorizationError {
+pub(crate) enum AuthorizationError {
     MissingParameter { parameter: String },
     StateMismatch,
     ProviderDeclined { reason: String },
@@ -29,7 +29,7 @@ pub enum AuthorizationError {
 
 /// Failures from the Google token endpoint exchange/refresh boundary.
 #[derive(Debug)]
-pub enum TokenEndpointError {
+pub(crate) enum TokenEndpointError {
     Transport {
         reason: String,
     },
@@ -42,7 +42,7 @@ pub enum TokenEndpointError {
 
 /// Failures from the credential persistence boundary.
 #[derive(Debug)]
-pub enum CredentialStoreError {
+pub(crate) enum CredentialStoreError {
     FileOpen { path: PathBuf, source: io::Error },
     FileWrite { path: PathBuf, source: io::Error },
     ReadParse { path: PathBuf, message: String },
@@ -51,7 +51,7 @@ pub enum CredentialStoreError {
 
 /// Failures from the authorization verification boundary.
 #[derive(Debug)]
-pub enum VerificationError {
+pub(crate) enum VerificationError {
     NotAuthorized { reason: String },
     InsufficientScope { reason: String },
     Transport { reason: String },
