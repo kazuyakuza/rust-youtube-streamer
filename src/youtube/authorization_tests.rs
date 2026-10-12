@@ -36,14 +36,19 @@ fn fixture_state() -> oauth2::CsrfToken {
     oauth2::CsrfToken::new("state_fixture".to_string())
 }
 
-#[test]
-fn authorization_url_encodes_all_parameters() {
-    let url = authorization_url(
+/// The authorization URL built from the fixtures, used by the two URL tests.
+fn built_authorization_url() -> String {
+    authorization_url(
         &fixture_client_config(),
         "http://127.0.0.1:42123",
         &fixture_state(),
         &rfc7636_pkce(),
-    );
+    )
+}
+
+#[test]
+fn authorization_url_encodes_all_parameters() {
+    let url = built_authorization_url();
     assert_eq!(
         url,
         format!(
@@ -56,23 +61,12 @@ fn authorization_url_encodes_all_parameters() {
              &code_challenge_method=S256"
         )
     );
-    assert_eq!(
-        oauth2::PkceCodeChallenge::from_code_verifier_sha256(&oauth2::PkceCodeVerifier::new(
-            RFC7636_VERIFIER.to_string()
-        ))
-        .as_str(),
-        RFC7636_CHALLENGE
-    );
+    assert_eq!(rfc7636_pkce().challenge.as_str(), RFC7636_CHALLENGE);
 }
 
 #[test]
 fn authorization_url_uses_the_force_ssl_scope() {
-    let url = authorization_url(
-        &fixture_client_config(),
-        "http://127.0.0.1:42123",
-        &fixture_state(),
-        &rfc7636_pkce(),
-    );
+    let url = built_authorization_url();
     let parsed = Url::parse(&url).expect("authorization URL parses");
     let scope = parsed
         .query_pairs()
@@ -108,13 +102,11 @@ fn callback_parses_authorized_query() {
     let callback =
         parse_authorization_callback("code=code_fixture&state=state_fixture", &fixture_state())
             .expect("authorized query parses");
-    match callback {
-        AuthorizationCallback::Authorized { code, state } => {
-            assert_eq!(code.secret(), "code_fixture");
-            assert_eq!(state, "state_fixture");
-        }
-        AuthorizationCallback::Declined { .. } => panic!("unexpected declined callback"),
-    }
+    let AuthorizationCallback::Authorized { code, state } = &callback else {
+        panic!("expected Authorized, got {callback:?}");
+    };
+    assert_eq!(code.secret(), "code_fixture");
+    assert_eq!(state, "state_fixture");
 }
 
 #[test]
@@ -132,25 +124,25 @@ fn callback_rejects_state_mismatch() {
 fn callback_parses_provider_declined() {
     let callback = parse_authorization_callback("error=access_denied", &fixture_state())
         .expect("declined query parses");
-    match callback {
-        AuthorizationCallback::Declined { reason } => assert_eq!(reason, "access_denied"),
-        AuthorizationCallback::Authorized { .. } => panic!("unexpected authorized callback"),
-    }
+    let AuthorizationCallback::Declined { reason } = &callback else {
+        panic!("expected Declined, got {callback:?}");
+    };
+    assert_eq!(reason, "access_denied");
 }
 
 #[test]
 fn callback_reports_missing_parameter() {
     let error = parse_authorization_callback("code=code_fixture", &fixture_state())
         .expect_err("missing state must fail");
-    match error {
-        AuthorizationError::MissingParameter { parameter } => assert_eq!(parameter, "state"),
-        other => panic!("unexpected error: {other}"),
-    }
+    let AuthorizationError::MissingParameter { parameter } = &error else {
+        panic!("expected MissingParameter, got {error}");
+    };
+    assert_eq!(parameter, "state");
 
     let error = parse_authorization_callback("state=state_fixture", &fixture_state())
         .expect_err("missing code must fail");
-    match error {
-        AuthorizationError::MissingParameter { parameter } => assert_eq!(parameter, "code"),
-        other => panic!("unexpected error: {other}"),
-    }
+    let AuthorizationError::MissingParameter { parameter } = &error else {
+        panic!("expected MissingParameter, got {error}");
+    };
+    assert_eq!(parameter, "code");
 }
