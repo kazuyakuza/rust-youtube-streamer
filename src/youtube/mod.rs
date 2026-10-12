@@ -21,6 +21,7 @@ mod authorization;
 mod client_config;
 mod credentials;
 mod error;
+mod google_token_endpoint;
 mod token;
 mod transport;
 mod verify;

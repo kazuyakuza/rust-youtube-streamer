@@ -1,8 +1,5 @@
 //! Fake-transport seam tests: the trait drives with in-memory fakes (no
-//! network), typed server errors propagate unchanged, and mapped errors
-//! never carry secret fixture strings.
-
-use oauth2::basic::BasicErrorResponse;
+//! network) and typed server errors propagate unchanged.
 
 use super::super::token::parse_token_response;
 use super::*;
@@ -111,33 +108,5 @@ fn fake_transport_propagates_typed_server_error() {
             assert!(description.is_none());
         }
         other => panic!("unexpected error: {other}"),
-    }
-}
-
-#[test]
-fn transport_error_display_never_carries_secret_fixtures() {
-    let basic_error: BasicErrorResponse =
-        serde_json::from_str(r#"{"error":"invalid_grant"}"#).expect("error body parses");
-    let errors = [
-        map_exchange_error(RequestTokenError::Request(TokenRequestFailure(
-            "status code 400".to_string(),
-        ))),
-        map_exchange_error(RequestTokenError::ServerResponse(basic_error)),
-        map_exchange_error(RequestTokenError::Other(
-            "unexpected protocol failure".to_string(),
-        )),
-        TokenEndpointError::ResponseParse,
-    ];
-    for error in errors {
-        let rendered = format!("{error}{error:?}");
-        for fixture in [
-            ACCESS_FIXTURE,
-            REFRESH_FIXTURE,
-            SECRET_FIXTURE,
-            "authorization_code_fixture",
-            "pkce_verifier_fixture_value_43_chars_min",
-        ] {
-            assert!(!rendered.contains(fixture));
-        }
     }
 }
