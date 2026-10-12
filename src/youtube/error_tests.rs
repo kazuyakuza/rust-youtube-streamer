@@ -11,8 +11,20 @@ fn permission_denied() -> io::Error {
     io::Error::new(io::ErrorKind::PermissionDenied, "permission denied")
 }
 
+fn credential_path() -> PathBuf {
+    PathBuf::from("credentials/tokens.json")
+}
+
 #[test]
 fn each_variant_has_a_stable_display_line() {
+    assert_client_config_display_lines();
+    assert_authorization_display_lines();
+    assert_token_endpoint_display_lines();
+    assert_credential_store_display_lines();
+    assert_verification_display_lines();
+}
+
+fn assert_client_config_display_lines() {
     assert_eq!(
         ClientConfigError::MissingField {
             field: "installed.client_id".to_string()
@@ -41,6 +53,9 @@ fn each_variant_has_a_stable_display_line() {
         .to_string(),
         "invalid OAuth client configuration: expected value at line 1 column 1"
     );
+}
+
+fn assert_authorization_display_lines() {
     assert_eq!(
         AuthorizationError::MissingParameter {
             parameter: "state".to_string()
@@ -59,6 +74,9 @@ fn each_variant_has_a_stable_display_line() {
         .to_string(),
         "the authorization request was declined (provider code 'access_denied')"
     );
+}
+
+fn assert_token_endpoint_display_lines() {
     assert_eq!(
         TokenEndpointError::Transport {
             reason: "connection timed out".to_string()
@@ -86,9 +104,12 @@ fn each_variant_has_a_stable_display_line() {
         TokenEndpointError::ResponseParse.to_string(),
         "the Google token endpoint returned an unreadable response"
     );
+}
+
+fn assert_credential_store_display_lines() {
     assert_eq!(
         CredentialStoreError::FileOpen {
-            path: PathBuf::from("credentials/tokens.json"),
+            path: credential_path(),
             source: permission_denied(),
         }
         .to_string(),
@@ -96,7 +117,7 @@ fn each_variant_has_a_stable_display_line() {
     );
     assert_eq!(
         CredentialStoreError::FileWrite {
-            path: PathBuf::from("credentials/tokens.json"),
+            path: credential_path(),
             source: permission_denied(),
         }
         .to_string(),
@@ -104,7 +125,7 @@ fn each_variant_has_a_stable_display_line() {
     );
     assert_eq!(
         CredentialStoreError::ReadParse {
-            path: PathBuf::from("credentials/tokens.json"),
+            path: credential_path(),
             message: "expected value at line 1 column 1".to_string(),
         }
         .to_string(),
@@ -114,6 +135,9 @@ fn each_variant_has_a_stable_display_line() {
         CredentialStoreError::ContentNotAvailable.to_string(),
         "no stored credentials are available; run authorization first"
     );
+}
+
+fn assert_verification_display_lines() {
     assert_eq!(
         VerificationError::NotAuthorized {
             reason: "endpoint rejected the token".to_string()
@@ -140,18 +164,18 @@ fn each_variant_has_a_stable_display_line() {
 #[test]
 fn source_chain_exposes_io_errors_only() {
     let file_open = CredentialStoreError::FileOpen {
-        path: PathBuf::from("credentials/tokens.json"),
+        path: credential_path(),
         source: permission_denied(),
     };
     let file_write = CredentialStoreError::FileWrite {
-        path: PathBuf::from("credentials/tokens.json"),
+        path: credential_path(),
         source: permission_denied(),
     };
     assert!(file_open.source().is_some());
     assert!(file_write.source().is_some());
 
     let read_parse = CredentialStoreError::ReadParse {
-        path: PathBuf::from("credentials/tokens.json"),
+        path: credential_path(),
         message: "expected value".to_string(),
     };
     assert!(read_parse.source().is_none());
