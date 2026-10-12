@@ -18,8 +18,8 @@
 
 ## Overview
 
-- Branch: `feat/phase03-ffmpeg-local-pipeline` (checked out; never pushed from this task). HEAD at report writing: `18caeb2`; report date 2026-10-12.
-- TODO scope authority: `.agent/todos/20261011/20261011-todo-1.md` — Tasks 1–4 are marked `[DONE]`; Task 5 (tests, documentation, project metadata) is implemented on this branch, with its review/adherence/completion sub-steps (4.3/4.5b/4.6) owned by the remaining workflow steps.
+- Branch: `feat/phase03-ffmpeg-local-pipeline` (checked out; never pushed from this task). Drafted at HEAD `18caeb2` and first committed at `82ab621`; revised (`4d12add`, `b2eb632`) and aligned with the post-simplification tree on HEAD `2d99ebf`; report date 2026-10-12.
+- TODO scope authority: `.agent/todos/20261011/20261011-todo-1.md` — Tasks 1–4 are marked `[DONE]`; Task 5 (tests, documentation, project metadata) is implemented on this branch, with the review/simplify sub-step (4.3) landed (`bcbfae9`, `2d99ebf`) and the adherence/completion sub-steps (4.5b/4.6) owned by the remaining workflow steps.
 - State: Phase 03 ships `src/streaming/` (FFmpeg process wrapper with the locked argument vector, no shell, drain threads, typed spawn/write/exit/finalize errors, collision-safe beside-executable `videos/` output), `src/app/pipeline/` (synchronous chat → renderer → FFmpeg frame loop with a `ctrlc` stop flag), `src/app/demo/` (the local-only `demo` command with a fixed 28-message timeline), and the clarified `run` boundary (still exit 3). Task 5 added 7 process-level tests (6 fake-FFmpeg + 1 real-FFmpeg probe smoke), ffmpeg dev tooling in the check image, housekeeping (restored `logs/.gitkeep`, 9 citation alignments), and the full documentation refresh. The suite is **147 tests green** in the container; both release artifacts were rebuilt fresh; a VM demo smoke recorded and probed a real MP4.
 - Caveat (repeated everywhere): all verification is **container-only** (Linux checks on the Alpine VM). Native Windows/Linux runtime execution is NOT RUN; the Windows `.exe` evidence is cross-compilation only. Real-FFmpeg evidence is dev-image evidence against the OBSERVED `ffmpeg version 5.1.9-0+deb12u1`.
 
@@ -36,14 +36,15 @@ Tasks 1–5 window: `git log --oneline main..HEAD` (full list in [Evidence Index
 | `src/app/{cli.rs,cli_tests.rs,modes.rs,mod.rs}`, `src/app/demo/*` (6 files) | 3 | `demo` command + fixed timeline + `DemoError → exit 1`; dead-code staging retired | `a0f27f4`, `eaa12dc`, `e82d5b1` |
 | `src/app/modes.rs` run boundary | 4 | four-prerequisites message + no-local-fallback + demo pointer; exit 3 unchanged | `5b8c150` |
 | `logs/.gitkeep` | 5 | restored versioned placeholder (negation `.gitignore:21` verified) | `801c08b` |
-| `src/streaming/ffmpeg_tests.rs` (new), `src/streaming/ffmpeg.rs` (test-module declarations) | 5 | 6 fake-FFmpeg POSIX-script process tests + declaration | `1ccfc4c` (deviation fixes `ec107ec`, `8d8e739`) |
+| `src/streaming/ffmpeg_tests.rs` (new), `src/streaming/ffmpeg.rs` (test-module declarations) | 5 | 6 fake-FFmpeg POSIX-script process tests + declaration | `1ccfc4c` (deviation fixes `ec107ec`, `8d8e739`; ETXTBSY retry `bcbfae9`) |
 | `Dockerfile` | 5 | install `ffmpeg` (+`ffprobe`) as dev tooling in the check image | `1b1c5b2` |
 | `src/streaming/ffmpeg_real_tests.rs` (new), `src/streaming/ffmpeg.rs` | 5 | 1 real-FFmpeg smoke test (record + ffprobe asserts) | `62349bb` |
 | 9 doc-comment citation files: `src/chat/{mod,error,model,store}.rs`, `src/renderer/{mod,error}.rs`, `src/streaming/{mod,error}.rs`, `src/app/pipeline/mod.rs` | 5 | scope-authority citations → final `-DONE` TODO filenames | `75dc438` |
 | `README.md`, `docs/demo.md` (new), `docs/configuration.md` | 5 | demo command/exit codes/FFmpeg-external corrections, new Local Demo Recording section, 8-section demo guide | `ba428fe` |
 | `.agent/project-structure.md`, `.agent/project-info/tech.md`, `.agent/project-info/context.md` | 5 | full structure refresh (demo/pipeline/streaming maps, v0.6.0, `.gitkeep` ledger, `videos/` note); sync-std + ctrlc + smoke pointer; Phase-03 context sections | `18caeb2` |
-| `.agent/reports/20261011-phase-03-ffmpeg-local-pipeline.md` (this file) | 5 | tracked completion report | `82ab621` |
+| `.agent/reports/20261011-phase-03-ffmpeg-local-pipeline.md` (this file) + `.agent/project-info/context.md` | 5 | tracked completion report (`82ab621`) + two follow-up doc corrections (`4d12add`, `b2eb632`) + sub-step 4.4 documentation alignment of this report and `context.md` to the post-simplification tree (`2d99ebf`) — commit list/Files table/gate logs extended, context Current Work Focus/Recent Changes/Next Steps resolved; `project-structure.md` + `tech.md` verified accurate and left unchanged | `82ab621`, `4d12add`, `b2eb632`; 4.4 alignment recorded on HEAD `2d99ebf` (see Evidence Index gate logs) |
 | `.kilo/plans/20261011-phase03-task5-verification-docs.md` | 5 | task-5 plan tracking | `c249138` |
+| `src/streaming/{ffmpeg,ffmpeg_tests,ffmpeg_real_tests}.rs` (post-report review/simplify) | 5 | 4.3 simplify: flatten fake-FFmpeg error assertions, collapse `cfg` gates, extract the `probe_value` ffprobe helper; final sizes `ffmpeg.rs` 198 / `ffmpeg_tests.rs` 197 / `ffmpeg_real_tests.rs` 104 lines | `2d99ebf` |
 
 ## Dependency Rationale
 
@@ -152,6 +153,11 @@ The recording lives inside the Compose named volume (never the repo tree); durat
 
 - `… run --rm rust sh scripts/dev-checks.sh` → **exit 0**; log **`logs/checks/20261012T041601Z.log`**; `running 147 tests` → `147 passed; 0 failed; 0 ignored`; four PASS lines; `ALL CHECKS PASSED`. (This report cites this final log; the report/plan-tracking commits are docs-only and land after it.)
 
+### FRESH — post-simplification and docs-alignment gates (sub-steps 4.3/4.4)
+
+- After the review/simplify source commit `2d99ebf`, `docker compose … run --rm rust sh scripts/dev-checks.sh` → **exit 0**; log **`logs/checks/20261012T154616Z.log`** (`running 147 tests` → `147 passed; 0 failed; 0 ignored`; four PASS lines; `ALL CHECKS PASSED`).
+- Docs-alignment re-run at this step (sub-step 4.4, tree at HEAD `2d99ebf`) → **exit 0**; log **`logs/checks/20261012T155353Z.log`** (`running 147 tests` → `147 passed; 0 failed; 0 ignored`; four PASS lines; `ALL CHECKS PASSED`). Markdown is not compiled, so these re-runs validate `src/` integrity only; the suite count is unchanged by the review/simplify and doc commits.
+
 ### RECORDED-CITED (not re-executed this task)
 
 - Task-4 run-boundary VM smoke — `.kilo/plans/20261011-phase03-task4-adherence.md` §4: stderr `error: runtime pipeline is not implemented yet: YouTube streaming needs OAuth authorization, broadcast lifecycle, RTMPS ingestion URL acquisition and YouTube live chat integration, none of which is built; the run mode never reads input, never runs the local demo pipeline, and will start the YouTube/FFmpeg pipeline only in a later phase. There is no local fallback: for a local demonstration recording use the demo command` (single line) and stdout `run_exit_code=3`; no demo/FFmpeg activity.
@@ -236,10 +242,13 @@ Rows 1–12 are the TODO's 12 checkboxes; rows 13–14 mirror the task-5 plan's 
 
 - Plans: global `.kilo/plans/20261011-phase03-ffmpeg-local-pipeline.md`; Task 1 `20261011-phase03-task1-ffmpeg-wrapper.md` (+ `task1-review-fixes`, `task1-simplification`, `task1-adherence`); Task 2 `20261011-phase03-task2-frame-pipeline.md` (+ `task2-adherence`); Task 3 `20261011-phase03-task3-demo-command.md` (+ `task3-simplification`, `task3-adherence`); Task 4 `20261011-phase03-task4-run-boundary.md` (+ `task4-adherence`); Task 5 `20261011-phase03-task5-verification-docs.md`.
 - Prior reports: `.agent/reports/20261010-phase-02-renderer-chat-store.md`, `20261010-phase-01-2-windows-build-workflow.md`, `20261009-phase-01-1-build-artifact-workflow.md`.
-- Fresh gate logs: **`logs/checks/20261012T040733Z.log`** (code-complete tree) and **`logs/checks/20261012T041601Z.log`** (docs-final tree) — both `147 passed; 0 failed`, `ALL CHECKS PASSED`; plus the post-mitigation final gate **`logs/checks/20261012T143115Z.log`** (`147 passed; 0 failed`, `ALL CHECKS PASSED`). Baseline (cited): `logs/checks/20261012T030755Z.log` (140 tests).
-- Commit list, Tasks 1–5 window (`git log --oneline main..HEAD`; 47 commits after the ETXTBSY test-fix — the report-tracking and plan-tracking commits are now resolved to their actual hashes):
+- Fresh gate logs: **`logs/checks/20261012T040733Z.log`** (code-complete tree) and **`logs/checks/20261012T041601Z.log`** (docs-final tree) — both `147 passed; 0 failed`, `ALL CHECKS PASSED`; plus the post-ETXTBSY-mitigation gate **`logs/checks/20261012T143115Z.log`**, the post-simplification gate **`logs/checks/20261012T154616Z.log`** (after `2d99ebf`) and the sub-step-4.4 docs-alignment re-run **`logs/checks/20261012T155353Z.log`** — each `147 passed; 0 failed`, `ALL CHECKS PASSED`. Baseline (cited): `logs/checks/20261012T030755Z.log` (140 tests).
+- Commit list, Tasks 1–5 window (`git log --oneline main..HEAD`; 50 commits through HEAD `2d99ebf` — the report-tracking, plan-tracking, review/simplify and doc-correction commits are now resolved to their actual hashes):
 
 ```text
+2d99ebf refactor: flatten fake ffmpeg error assertions, collapse cfg gates, extract ffprobe helper
+b2eb632 docs: resolve completion report pending items
+4d12add docs: record the fake ffmpeg retry mitigation in the completion report
 bcbfae9 test: retry transient ETXTBSY when spawning fake ffmpeg
 c249138 docs: track task 5 planning documents
 82ab621 docs: add phase 03 completion report
