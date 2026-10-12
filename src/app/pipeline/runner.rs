@@ -36,9 +36,10 @@ pub(crate) struct PipelineConstruction {
     pub(crate) output_kind: OutputKind,
 }
 
-/// The continuous frame pipeline: drains messages, renders the complete
-/// visible text, writes one exact RGB24 frame per paced iteration, and
-/// finalizes the sink on stop. Never names `FfmpegProcess` (S9).
+/// The continuous frame pipeline: accepts at most one due message per frame
+/// iteration, renders the complete visible text, writes one exact RGB24
+/// frame per paced iteration, and finalizes the sink on stop. Never names
+/// `FfmpegProcess` (S9).
 pub(crate) struct FramePipeline<S> {
     chat_store: ChatStore,
     renderer: Box<dyn Renderer>,

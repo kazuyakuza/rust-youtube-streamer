@@ -2,11 +2,14 @@
 //! logging, load and validate configuration, then dispatch the selected mode.
 //! Every fatal failure funnels through typed [`StartupError`] values so the
 //! process writes each error exactly once and exits with a stable code. The
-//! pipeline works in raw `u8` exit codes so tests can assert them; [`run`]
-//! performs the single `ExitCode` conversion at the process boundary. The
-//! exit codes are a stable contract: 1 = configuration or logging-init
-//! startup failure, 2 = command-line usage error, 3 = selected mode not
-//! implemented yet (both modes stay placeholders until later phases).
+//! startup funnel works in raw `u8` exit codes so tests can assert them;
+//! [`run`] performs the single `ExitCode` conversion at the process
+//! boundary. The exit codes are a stable contract: 1 = configuration or
+//! logging-init startup failure, 2 = command-line usage error, 3 = selected
+//! mode not implemented yet (both modes stay placeholders until later
+//! phases). The `pipeline` submodule (the chat → renderer → streaming frame
+//! pipeline) is complete but exercised only by tests so far; the `demo`
+//! mode of TODO Task 3 makes it reachable from `main`.
 
 mod cli;
 mod error;
