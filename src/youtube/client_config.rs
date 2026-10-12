@@ -9,15 +9,9 @@
 
 use serde::Deserialize;
 
+use super::authorization::{AUTHORIZATION_ENDPOINT, TOKEN_ENDPOINT};
 use super::error::ClientConfigError;
 use super::token::ClientSecret;
-
-/// Authorization endpoint Google uses for installed applications.
-pub(crate) const AUTHORIZATION_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth";
-/// Token endpoint Google uses for installed applications.
-pub(crate) const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
-/// Revocation endpoint Google uses for installed applications.
-pub(crate) const REVOCATION_ENDPOINT: &str = "https://oauth2.googleapis.com/revoke";
 
 /// Client credentials parsed from Google's downloadable client-secret file.
 /// `Debug` never reveals the secret (the wrapper redacts itself).

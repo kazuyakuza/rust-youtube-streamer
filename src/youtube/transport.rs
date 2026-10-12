@@ -11,7 +11,7 @@ use oauth2::{
     RequestTokenError, TokenResponse as _,
 };
 
-use super::client_config::{AUTHORIZATION_ENDPOINT, TOKEN_ENDPOINT};
+use super::authorization::{AUTHORIZATION_ENDPOINT, TOKEN_ENDPOINT};
 use super::error::TokenEndpointError;
 use super::token::{
     AccessToken, AuthorizationCode, ClientSecret, GrantedScopes, RefreshToken, TokenResponse,
