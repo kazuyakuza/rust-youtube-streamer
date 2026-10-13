@@ -4,12 +4,13 @@
 //! Deviation note (plan D2): this file is Google-authored, not
 //! operator-authored, so unknown fields are tolerated instead of rejected
 //! (`deny_unknown_fields` is intentionally absent) — Google has added
-//! fields to this document for years. Declared endpoints must equal the
-//! Google constants or the file is rejected (tampered redirect guard).
+//! fields to this document for years. A declared endpoint must be one of the
+//! accepted Google endpoint forms (legacy or v2; see the `authorization`
+//! constants) or the file is rejected (tampered redirect guard).
 
 use serde::Deserialize;
 
-use super::authorization::{AUTHORIZATION_ENDPOINT, TOKEN_ENDPOINT};
+use super::authorization::{ACCEPTED_AUTHORIZATION_ENDPOINTS, ACCEPTED_TOKEN_ENDPOINTS};
 use super::error::ClientConfigError;
 use super::token::ClientSecret;
 
@@ -55,12 +56,12 @@ pub(crate) fn parse_client_config(json: &str) -> Result<ClientConfig, ClientConf
     let installed = file
         .installed
         .ok_or_else(|| missing_field("installed.client_id"))?;
-    if !endpoint_matches(&installed.auth_uri, AUTHORIZATION_ENDPOINT) {
+    if !endpoint_is_recognized(&installed.auth_uri, &ACCEPTED_AUTHORIZATION_ENDPOINTS) {
         return Err(ClientConfigError::EndpointMismatch {
             field: "installed.auth_uri".to_string(),
         });
     }
-    if !endpoint_matches(&installed.token_uri, TOKEN_ENDPOINT) {
+    if !endpoint_is_recognized(&installed.token_uri, &ACCEPTED_TOKEN_ENDPOINTS) {
         return Err(ClientConfigError::EndpointMismatch {
             field: "installed.token_uri".to_string(),
         });
@@ -73,8 +74,10 @@ pub(crate) fn parse_client_config(json: &str) -> Result<ClientConfig, ClientConf
     })
 }
 
-fn endpoint_matches(declared: &Option<String>, expected: &str) -> bool {
-    declared.as_ref().map_or(true, |actual| actual == expected)
+fn endpoint_is_recognized(declared: &Option<String>, accepted: &[&str]) -> bool {
+    declared
+        .as_ref()
+        .map_or(true, |actual| accepted.contains(&actual.as_str()))
 }
 
 fn required_non_blank(value: Option<String>, field: &str) -> Result<String, ClientConfigError> {

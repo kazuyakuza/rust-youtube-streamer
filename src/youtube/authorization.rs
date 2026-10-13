@@ -18,6 +18,18 @@ pub(crate) const REQUIRED_SCOPE: &str = "https://www.googleapis.com/auth/youtube
 pub(crate) const AUTHORIZATION_ENDPOINT: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 /// Token endpoint Google uses for installed applications.
 pub(crate) const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
+/// Authorization endpoint variant Google ships in downloadable client files.
+pub(crate) const AUTHORIZATION_ENDPOINT_LEGACY: &str = "https://accounts.google.com/o/oauth2/auth";
+/// Token endpoint variant found in older Google client files.
+pub(crate) const TOKEN_ENDPOINT_LEGACY: &str = "https://www.googleapis.com/oauth2/v4/token";
+
+/// Endpoint forms accepted in a downloaded client file. The declared values
+/// are never used for requests (the app always uses its own constants); this
+/// list exists only to reject files pointing at foreign hosts.
+pub(crate) const ACCEPTED_AUTHORIZATION_ENDPOINTS: [&str; 2] =
+    [AUTHORIZATION_ENDPOINT, AUTHORIZATION_ENDPOINT_LEGACY];
+/// Accepted token endpoint forms (see [`ACCEPTED_AUTHORIZATION_ENDPOINTS`]).
+pub(crate) const ACCEPTED_TOKEN_ENDPOINTS: [&str; 2] = [TOKEN_ENDPOINT, TOKEN_ENDPOINT_LEGACY];
 /// Revocation endpoint Google uses for installed applications.
 // Reserved for a later phase (revocation is out of Task 3 scope; D13).
 #[allow(dead_code)]

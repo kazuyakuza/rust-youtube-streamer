@@ -1,18 +1,20 @@
 //! Parsing, validation and redaction tests for Google's client-secret
-//! document: required fields, blank values, endpoint tampering, unknown
-//! field tolerance, malformed JSON and Debug redaction.
+//! document: required fields, blank values, accepted/foreign endpoint forms,
+//! unknown field tolerance, malformed JSON and Debug redaction.
 
 use super::*;
 
 const SECRET_FIXTURE: &str = "client_secret_fixture";
 
+/// Google's downloadable Desktop-client file ships the legacy `auth_uri`
+/// (without `/v2`), so the fixture mirrors Google's real document.
 fn google_shaped_json() -> String {
     format!(
         r#"{{
             "installed": {{
                 "client_id": "1234567890.apps.googleusercontent.com",
                 "client_secret": "{SECRET_FIXTURE}",
-                "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth",
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token"
             }}
         }}"#
@@ -71,6 +73,61 @@ fn parse_reports_blank_client_secret() {
         panic!("expected BlankField, got {error}");
     };
     assert_eq!(field, "installed.client_secret");
+}
+
+#[test]
+fn parse_accepts_legacy_authorization_endpoint() {
+    let config = parse_client_config(&google_shaped_json()).expect("legacy auth_uri accepted");
+    assert_eq!(config.client_id(), "1234567890.apps.googleusercontent.com");
+}
+
+#[test]
+fn parse_accepts_v2_authorization_endpoint() {
+    let json = r#"{
+        "installed": {
+            "client_id": "1234567890.apps.googleusercontent.com",
+            "client_secret": "client_secret_fixture",
+            "auth_uri": "https://accounts.google.com/o/oauth2/v2/auth"
+        }
+    }"#;
+    parse_client_config(json).expect("v2 auth_uri accepted");
+}
+
+#[test]
+fn parse_accepts_legacy_token_endpoint() {
+    let json = r#"{
+        "installed": {
+            "client_id": "1234567890.apps.googleusercontent.com",
+            "client_secret": "client_secret_fixture",
+            "token_uri": "https://www.googleapis.com/oauth2/v4/token"
+        }
+    }"#;
+    parse_client_config(json).expect("legacy token_uri accepted");
+}
+
+#[test]
+fn parse_accepts_absent_endpoints() {
+    let json = r#"{"installed": {
+        "client_id": "1234567890.apps.googleusercontent.com",
+        "client_secret": "client_secret_fixture"
+    }}"#;
+    parse_client_config(json).expect("absent endpoints accepted");
+}
+
+#[test]
+fn parse_rejects_foreign_authorization_endpoint() {
+    let json = r#"{
+        "installed": {
+            "client_id": "1234567890.apps.googleusercontent.com",
+            "client_secret": "client_secret_fixture",
+            "auth_uri": "https://evil.invalid/auth"
+        }
+    }"#;
+    let error = parse_client_config(json).expect_err("foreign auth_uri must fail");
+    let ClientConfigError::EndpointMismatch { field } = &error else {
+        panic!("expected EndpointMismatch, got {error}");
+    };
+    assert_eq!(field, "installed.auth_uri");
 }
 
 #[test]
