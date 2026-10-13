@@ -134,10 +134,9 @@ pub(super) fn storeable_credentials(
     if !response.granted_scopes.grants(REQUIRED_SCOPE) {
         return Err(AuthError::InsufficientScope);
     }
-    let refresh_token = match response.refresh_token {
-        Some(refresh_token) => refresh_token,
-        None => return Err(AuthError::MissingRefreshToken),
-    };
+    let refresh_token = response
+        .refresh_token
+        .ok_or(AuthError::MissingRefreshToken)?;
     info!("required YouTube scope granted");
     Ok(StoredCredentials {
         access_token: response.access_token,
