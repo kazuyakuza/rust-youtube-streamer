@@ -22,6 +22,8 @@ Ctrl+C is a shutdown request handled by the `ctrlc = "3"` crate (cross-platform 
 * Exact crate selection happens during implementation, not now.
 * Decided during Phase 02 (renderer): `ab_glyph = "0.2"` for font rasterization — pure Rust, no platform-installed graphics libraries, Rust 1.82/edition-2021 compatible, Windows+Linux, pinned via the tracked lockfile; replaces nothing and is independent of YouTube/streaming crates.
 * Decided during Phase 03 task 2 (pipeline): `ctrlc = "3"` for the Ctrl+C shutdown request — cross-platform, no async runtime (its platform dependencies are `nix` on Unix and `windows-sys` on Windows, pulled transitively), MIT OR Apache-2.0; justifies the minimal cross-platform interrupt approach required by the TODO.
+* Decided during Phase 04 task 1 (OAuth): `oauth2 = { version = "5.0", default-features = false, features = ["ureq"] }` (locked 5.0.0) + `ureq = "2"` (locked 2.12.1) — the `oauth2` crate is an actively maintained OAuth 2.0 client covering the authorization-code flow, PKCE, and token refresh with a pluggable HTTP transport; its `ureq` feature keeps the whole OAuth path synchronous (no Tokio enters the dependency tree), compatible with Rust 1.82 / edition 2021, Windows+Linux, MIT OR Apache-2.0. `reqwest` was rejected because it pulls an async runtime; `google-youtube3` stays REJECTED per brief §3.3. Tasks 2–5 added NO further dependencies.
+* The effective-authorization verifier probes `GET https://www.googleapis.com/youtube/v3/channels?part=id&mine=true` with the Bearer header and maps 200/401/403 (plus error bodies, classified status-first) into typed outcomes; loopback-test evidence pointer: `.kilo/plans/20261012-phase04-task4-adherence.md`.
 
 ## Configuration
 
