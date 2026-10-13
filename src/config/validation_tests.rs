@@ -121,12 +121,13 @@ fn multiple_issues_reported_together() {
 
 #[test]
 fn oauth_paths_require_non_blank_values() {
-    assert_blank_value_rejected("oauth.client_config_path", |c| {
-        c.oauth.client_config_path = "".to_string()
-    });
-    assert_blank_value_rejected("oauth.credentials_path", |c| {
-        c.oauth.credentials_path = "   ".to_string()
-    });
+    let mut config = valid_config();
+    config.oauth.client_config_path = "".to_string();
+    config.oauth.credentials_path = "   ".to_string();
+    let message = expect_validation_error(&config).to_string();
+    assert!(message.contains("oauth.client_config_path"));
+    assert!(message.contains("oauth.credentials_path"));
+    assert!(message.contains("2 issue(s)"));
 }
 
 #[test]
