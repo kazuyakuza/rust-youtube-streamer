@@ -27,9 +27,8 @@ use super::token::{AccessToken, GrantedScopes, RefreshToken};
 #[derive(Deserialize, Serialize)]
 struct PersistedCredentials {
     access_token: String,
-    /// Remaining lifetime of `access_token` in seconds at save time
-    /// (TTL semantics preserved from Task 1: no absolute timestamps are
-    /// persisted; clock use belongs to the Task 4 credential service).
+    /// Recorded TTL metadata at save time; the credential service
+    /// verifies by asking the API (verify-first), never by clock math.
     expires_in_seconds: u64,
     /// Serialized as `null` when absent (Option semantics, no skip).
     refresh_token: Option<String>,
@@ -60,8 +59,6 @@ pub(crate) fn serialized_document(credentials: &StoredCredentials) -> Result<Str
 
 /// Parses persisted file text into stored credentials; malformed or
 /// wrong-schema JSON maps to ReadParse with the fixed redacted message.
-// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
-#[allow(dead_code)]
 pub(crate) fn parse_credentials(
     text: &str,
     path: &Path,
@@ -75,8 +72,6 @@ pub(crate) fn parse_credentials(
     Ok(stored_from_persisted(parsed))
 }
 
-// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
-#[allow(dead_code)]
 fn stored_from_persisted(parsed: PersistedCredentials) -> StoredCredentials {
     StoredCredentials {
         access_token: AccessToken::new(parsed.access_token),
@@ -86,8 +81,6 @@ fn stored_from_persisted(parsed: PersistedCredentials) -> StoredCredentials {
     }
 }
 
-// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
-#[allow(dead_code)]
 fn parse_failure_message(error: &serde_json::Error) -> String {
     if is_malformed_json(error) {
         "the credential file is not valid JSON".to_string()
@@ -96,8 +89,6 @@ fn parse_failure_message(error: &serde_json::Error) -> String {
     }
 }
 
-// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
-#[allow(dead_code)]
 fn is_malformed_json(error: &serde_json::Error) -> bool {
     error.is_syntax() || error.is_eof()
 }

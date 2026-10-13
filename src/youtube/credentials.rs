@@ -12,8 +12,8 @@ use super::token::{AccessToken, GrantedScopes, RefreshToken};
 #[derive(Debug)]
 pub(crate) struct StoredCredentials {
     pub(crate) access_token: AccessToken,
-    /// Remaining lifetime of `access_token` in seconds at save time;
-    /// clock use belongs to the credential service (Task 4).
+    /// Recorded TTL metadata at save time; the credential service
+    /// verifies by asking the API (verify-first), never by clock math.
     pub(crate) expires_in_seconds: u64,
     pub(crate) refresh_token: Option<RefreshToken>,
     pub(crate) granted_scopes: GrantedScopes,
@@ -23,8 +23,6 @@ pub(crate) struct StoredCredentials {
 /// concrete `FileCredentialStore` writes the on-disk JSON credential file.
 pub(crate) trait CredentialStore {
     /// Reads the previously persisted credentials.
-    // Load-side consumers arrive with the Task 4 credential service (D13).
-    #[allow(dead_code)]
     fn load(&self) -> Result<StoredCredentials, CredentialStoreError>;
 
     /// Persists credentials atomically; the store's temp-file + rename

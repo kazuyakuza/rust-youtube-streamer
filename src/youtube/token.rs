@@ -8,8 +8,7 @@
 
 use std::fmt;
 
-use serde::Deserialize;
-
+#[cfg(test)]
 use super::error::TokenEndpointError;
 
 /// Access token for Google API requests. Debug never reveals the value;
@@ -129,8 +128,8 @@ impl fmt::Debug for ClientSecret {
 /// The raw-string secret fields intentionally make `Debug` unavailable:
 /// accidental formatting in a future call site would print tokens; a
 /// compile error is the stronger guard (Task 2 hardening, simplify §4 flag).
-#[allow(dead_code)]
-#[derive(Deserialize)]
+#[cfg(test)]
+#[derive(serde::Deserialize)]
 pub(crate) struct TokenEndpointBody {
     access_token: String,
     expires_in: u64,
@@ -182,7 +181,7 @@ impl GrantedScopes {
 
 /// Parses a Google token endpoint response body; a missing `access_token`
 /// or unparsable JSON maps to [`TokenEndpointError::ResponseParse`].
-#[allow(dead_code)]
+#[cfg(test)]
 pub(crate) fn parse_token_response(body: &str) -> Result<TokenResponse, TokenEndpointError> {
     let parsed: TokenEndpointBody =
         serde_json::from_str(body).map_err(|_| TokenEndpointError::ResponseParse)?;

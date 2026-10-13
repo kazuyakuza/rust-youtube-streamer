@@ -121,7 +121,6 @@ impl FileCredentialStore {
         })
     }
 
-    #[allow(dead_code)]
     fn read_credential_text(&self) -> Result<String, CredentialStoreError> {
         fs::read_to_string(&self.path).map_err(|source| map_read_error(&self.path, source))
     }
@@ -143,7 +142,6 @@ impl CredentialStore for FileCredentialStore {
     }
 }
 
-#[allow(dead_code)]
 fn map_read_error(path: &Path, source: io::Error) -> CredentialStoreError {
     if source.kind() == io::ErrorKind::NotFound {
         CredentialStoreError::ContentNotAvailable

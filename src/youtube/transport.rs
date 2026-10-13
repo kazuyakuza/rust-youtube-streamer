@@ -19,8 +19,6 @@ pub(crate) struct CodeExchangeRequest {
 }
 
 /// Refresh-grant exchange input for [`TokenEndpointTransport`].
-// Reserved for the Task 4 refresh path (D13).
-#[allow(dead_code)]
 pub(crate) struct RefreshRequest {
     pub(crate) client_id: String,
     pub(crate) client_secret: ClientSecret,
@@ -42,8 +40,6 @@ pub(crate) trait TokenEndpointTransport {
     /// Trades a stored refresh token for a fresh access token. Google
     /// may omit the refresh token from a refresh response: callers must
     /// then keep the previously stored one (plan §1.1).
-    // Its production caller arrives with the Task 4 refresh path (D13).
-    #[allow(dead_code)]
     fn refresh_token_exchange(&self, request: &RefreshRequest) -> TokenExchangeResult;
 }
 

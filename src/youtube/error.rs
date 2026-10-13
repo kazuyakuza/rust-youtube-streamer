@@ -43,8 +43,6 @@ pub(crate) enum TokenEndpointError {
 }
 
 /// Failures from the credential persistence boundary.
-// ReadParse/ContentNotAvailable are load-side Task-4 surface (D13 deviation).
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum CredentialStoreError {
     FileOpen { path: PathBuf, source: io::Error },
@@ -54,8 +52,6 @@ pub(crate) enum CredentialStoreError {
 }
 
 /// Failures from the authorization verification boundary.
-// Reserved for the Task 4 network verifier (D13).
-#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum VerificationError {
     NotAuthorized { reason: String },
