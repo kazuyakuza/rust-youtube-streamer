@@ -172,6 +172,12 @@ impl GrantedScopes {
     pub(crate) fn grants(&self, scope: &str) -> bool {
         self.scopes.iter().any(|granted| granted == scope)
     }
+
+    /// Serializes back to Google's space-delimited scope format; the
+    /// credential store uses this to persist granted scopes (plan §4.6).
+    pub(crate) fn to_space_delimited(&self) -> String {
+        self.scopes.join(" ")
+    }
 }
 
 /// Parses a Google token endpoint response body; a missing

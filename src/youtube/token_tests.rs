@@ -94,6 +94,22 @@ fn granted_scopes_membership_is_exact_and_case_sensitive() {
 }
 
 #[test]
+fn granted_scopes_round_trip_preserves_exact_membership() {
+    let original_text = format!(
+        "{FORCE_SSL_SCOPE} https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload"
+    );
+    let original = GrantedScopes::from_space_delimited(&original_text);
+    assert_eq!(original.to_space_delimited(), original_text);
+
+    let round_trip = GrantedScopes::from_space_delimited(&original.to_space_delimited());
+    assert!(round_trip.grants(FORCE_SSL_SCOPE));
+    assert!(!round_trip.grants("https://www.googleapis.com/auth/youtube"));
+
+    let empty = GrantedScopes::from_space_delimited("");
+    assert_eq!(empty.to_space_delimited(), "");
+}
+
+#[test]
 fn token_response_debug_and_display_reveal_no_secrets() {
     let body = documented_token_body();
     let response = parse_token_response(&body).expect("documented sample body parses");
