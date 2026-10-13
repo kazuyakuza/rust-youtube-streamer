@@ -89,10 +89,10 @@ impl CredentialStore for FailingStore {
     }
 }
 
-fn write_fixture_client_file(directory: &tempfile::TempDir) -> std::path::PathBuf {
+fn parsed_client_fixture(directory: &tempfile::TempDir) -> ClientConfig {
     let client_path = directory.path().join("client_secret.json");
     std::fs::write(&client_path, google_shaped_client_json()).expect("the fixture file is written");
-    client_path
+    read_client_config(&client_path.to_string_lossy()).expect("the fixture client parses")
 }
 
 const DECLINED_REQUEST: &[u8] = b"GET /?error=access_denied HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n";
@@ -111,8 +111,7 @@ fn spawn_declined_browser(port: u16) -> std::thread::JoinHandle<Vec<u8>> {
 #[test]
 fn client_file_happy_parse_returns_client_config() {
     let temp_dir = tempfile::tempdir().expect("a temp directory");
-    let client_path = write_fixture_client_file(&temp_dir);
-    let client_config = read_client_config(&client_path.to_string_lossy()).expect("file parses");
+    let client_config = parsed_client_fixture(&temp_dir);
     assert_eq!(client_config.client_id(), CLIENT_ID_FIXTURE);
     assert!(client_config.client_secret().secret() == CLIENT_SECRET_FIXTURE);
 }
@@ -173,8 +172,7 @@ fn storeable_credentials_rejects_missing_refresh_token() {
 #[test]
 fn declined_provider_flow_ends_without_persisting_end_to_end() {
     let temp_dir = tempfile::tempdir().expect("a temp directory");
-    let client_path = write_fixture_client_file(&temp_dir);
-    let client_config = read_client_config(&client_path.to_string_lossy()).expect("file parses");
+    let client_config = parsed_client_fixture(&temp_dir);
     let bound = super::listener::bind().expect("the loopback listener binds");
     let port_text = bound
         .redirect_uri()
