@@ -1,6 +1,6 @@
 //! YouTube integration boundary: OAuth 2.0 design, typed interfaces and
 //! mockable seams for the Phase 04 credential layer (scope authority
-//! `.agent/todos/20261012/20261012-todo-1.md`, Tasks 1–4 landed).
+//! `.agent/todos/20261012/20261012-todo-1-DONE.md`, Tasks 1–4 landed).
 //!
 //! Boundary rules:
 //! - This module owns all OAuth client and token material; secret values
