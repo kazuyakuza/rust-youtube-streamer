@@ -1,6 +1,6 @@
 //! YouTube integration boundary: OAuth 2.0 design, typed interfaces and
-//! mockable seams for the Phase 04 credential layer (TODO Task 1 scope
-//! authority `.agent/todos/20261012/20261012-todo-1.md`).
+//! mockable seams for the Phase 04 credential layer (scope authority
+//! `.agent/todos/20261012/20261012-todo-1.md`, Tasks 1–4 landed).
 //!
 //! Boundary rules:
 //! - This module owns all OAuth client and token material; secret values
@@ -19,7 +19,19 @@
 //!   when the first external consumer appears.
 //! - Mockable seams: [`transport::TokenEndpointTransport`],
 //!   [`credentials::CredentialStore`] and [`verify::AuthorizationVerifier`];
-//!   offline fakes live in the matching `*_tests.rs` files.
+//!   the credential-service scenarios fake ALL three seams offline
+//!   (`credential_service_tests` plus the `_refresh`/`_verification`
+//!   scenario siblings); the concrete verifier is tested with the real
+//!   ureq stack against loopback fake servers
+//!   (`google_authorization_verifier_tests`) and its pure status+body
+//!   mapping in `google_authorization_verifier_classify_tests`. No test
+//!   ever reaches Google.
+//! - Staging contract: the module-level `#[allow(dead_code)]` declarations
+//!   for `credential_service` and `google_authorization_verifier` are
+//!   deliberate staging; the future run-phase wiring removes BOTH
+//!   attributes, adds the re-exports its consumers need, and constructs
+//!   the pipeline — until then the `run` placeholder behavior (exit 3)
+//!   is unchanged.
 //! - Landed vs deferred: the concrete credential store is implemented
 //!   (`file_credential_store` for the atomic file IO and 0600 permission
 //!   handling, `persisted_credentials` for the on-disk JSON schema); its
@@ -33,7 +45,10 @@
 //!   staged, unwired until the future run-phase wiring.
 //! - The researched Google OAuth facts (endpoints, loopback redirect,
 //!   PKCE S256, refresh semantics, the force-ssl scope decision) are
-//!   recorded in `.kilo/plans/20261012-phase04-task1-oauth-design.md` §1.
+//!   recorded in `.kilo/plans/20261012-phase04-task1-oauth-design.md` §1;
+//!   the verify-first refresh decision, the channels.list(mine=true)
+//!   probe evidence and the status→error mapping table are in
+//!   `.kilo/plans/20261012-phase04-task4-credential-service.md`.
 
 mod authorization;
 mod client_config;

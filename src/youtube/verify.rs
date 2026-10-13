@@ -1,8 +1,8 @@
 //! Authorization verification seam: the result type and the mockable
-//! [`AuthorizationVerifier`] boundary. The concrete minimal YouTube API
-//! check that fits the force-ssl scope is Task 4's decision (plan
-//! decision S9); Task 1 fixes only the seam so the credential service
-//! stays mockable.
+//! [`AuthorizationVerifier`] boundary. The production implementation is
+//! `google_authorization_verifier` (the read-only channels.list(mine=true)
+//! probe for the force-ssl scope); the credential service consumes this
+//! trait and its scenario tests drive it with scripted offline fakes.
 
 use super::error::VerificationError;
 use super::token::{AccessToken, GrantedScopes};

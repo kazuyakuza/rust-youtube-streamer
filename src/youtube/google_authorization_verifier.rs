@@ -1,8 +1,14 @@
-//! The concrete `AuthorizationVerifier`: the minimal YouTube API probe for
-//! the force-ssl scope — `GET /youtube/v3/channels?part=id&mine=true`
-//! (plan §1.1 evidence; no broadcast/chat operations). Responses are
-//! mapped status-first; bodies are consulted only for Google's
-//! non-secret error `reason` code strings and never embedded in errors.
+//! The concrete `AuthorizationVerifier`: the minimal, READ-ONLY YouTube API
+//! probe for the force-ssl scope — `GET /youtube/v3/channels?part=id&mine=true`
+//! (Google's own documented authorization probe; the research evidence and
+//! the status→error mapping table live in
+//! `.kilo/plans/20261012-phase04-task4-credential-service.md` §1–§2; the
+//! request performs no broadcast or chat operations). Responses map by
+//! status first; bodies are consulted only for Google's non-secret error
+//! `reason` code strings and NEVER embedded into errors; the bearer token
+//! is built per request and never stored, returned or logged. The pure
+//! status+body mapping is unit-tested in `..._classify_tests`; real ureq
+//! request assembly is loopback-tested in `..._verifier_tests`.
 
 use serde::Deserialize;
 
@@ -26,6 +32,9 @@ const DENIED_ACCESS_TEXT: &str = "the Google server denied access (HTTP 403)";
 /// Fixed text for the unreadable-body Transport row (D3).
 const UNREADABLE_BODY_TEXT: &str = "the verification response body could not be read";
 
+/// The production verifier: a redirects-disabled ureq agent (the
+/// `GoogleTokenEndpoint` SSRF-hardening precedent; 3xx replies surface as
+/// Transport failures) and the frozen verification request URL.
 pub(crate) struct GoogleAuthorizationVerifier {
     agent: ureq::Agent,
     request_url: String,
@@ -140,7 +149,10 @@ fn reason_with_observed_code(fixed_text: &str, body: Option<&str>) -> String {
 }
 
 /// The verified evidence for an accepted request (D3 row 200): the
-/// scope set the server just confirmed effective for this token.
+/// scope set the server just confirmed effective for this token (the
+/// payload itself is ignored). Any future verifier implementation must
+/// keep this semantic: `mine=true` only answers in a properly authorized
+/// request, so an HTTP 200 proves the required scope effective.
 fn verified_scope_evidence() -> VerifiedAuthorization {
     VerifiedAuthorization::new(GrantedScopes::from_space_delimited(REQUIRED_SCOPE))
 }

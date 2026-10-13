@@ -1,8 +1,9 @@
 //! Typed failures for the credential service boundary: one enum for the
 //! load/refresh/verify pipeline, with one operator-facing `Display` line
-//! per failure class (plan D5). Payloads carry only non-secret material
-//! (io causes, paths, Google error code strings, inner redacted enums) —
-//! never token values or response bodies (plan §5 redaction).
+//! per failure class. Payloads carry only non-secret material (io causes,
+//! paths, Google error code strings, inner redacted enums) — never token
+//! values or response bodies. Class mapping and Google semantics:
+//! `.kilo/plans/20261012-phase04-task4-credential-service.md` D3/D5.
 
 use std::error::Error;
 use std::fmt;
@@ -17,7 +18,8 @@ pub(crate) enum CredentialServiceError {
     /// No stored credentials exist; the operator must run the auth
     /// command first.
     Absent,
-    /// Stored credentials exist but could not be read or parsed.
+    /// Stored credentials exist but could not be read or parsed
+    /// (the `FileOpen`/`ReadParse` store classes).
     Unreadable(CredentialStoreError),
     /// The refresh succeeded but persisting the refreshed data failed.
     Persistence(CredentialStoreError),
@@ -25,9 +27,10 @@ pub(crate) enum CredentialServiceError {
     /// failure, unparsable response, or a server code other than
     /// invalid_grant) — the transient/recoverable failure class.
     Refresh(TokenEndpointError),
-    /// Google answered `invalid_grant`: the stored refresh token is
-    /// expired, invalidated or revoked. Only interactive re-authorization
-    /// fixes this.
+    /// The refresh endpoint answered with EXACTLY the `invalid_grant`
+    /// code (Google's documented expired/invalidated/revoked signature);
+    /// any other server code stays in the transient `Refresh` class.
+    /// Only interactive re-authorization fixes this.
     Revoked { code: String },
     /// Stored credentials carry no refresh token, so a rejected access
     /// token cannot be refreshed; re-authorization is required.

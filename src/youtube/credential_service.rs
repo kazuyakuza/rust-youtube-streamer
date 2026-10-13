@@ -1,14 +1,15 @@
-//! The reusable credential service for the future production startup:
-//! loads stored credentials, verifies the effective authorization with the
-//! minimal YouTube API probe (verify-first refresh decision, D1/D3),
-//! refreshes exactly once on a rejected access token (keeping an omitted
-//! refresh token), and persists refreshed data through the same atomic
-//! store; typed failure classes per D5.
-//!
-//! Interactive-vs-unattended contract: the initial authorization is
-//! interactive (the `auth` command); future unattended operation depends
-//! on the stored refresh credentials and Google's OAuth policies —
-//! `invalid_grant` means running the auth command again (recovery).
+//! The reusable credential service for the future production startup
+//! (deliberately NOT wired into the `run` placeholder; a later run phase
+//! owns the wiring). Pipeline: load stored credentials → offline gate on
+//! the persisted scope evidence → verify with the read-only
+//! channels.list(mine=true) probe → refresh EXACTLY once on a rejected
+//! token → merge (an omitted response refresh token keeps the stored one)
+//! → atomic save → one re-verify. Verify-first (T4-D1): TTL math cannot
+//! detect revocation, no clock is read, the schema is frozen —
+//! `expires_in_seconds` is advisory only. Tokens NEVER reach errors,
+//! logs, `Display` or `Debug`; probe bodies never surface (statuses +
+//! non-secret reason codes). Initial authorization is interactive
+//! (`auth`); unattended runs rely on stored refresh credentials + policy.
 
 use tracing::info;
 
@@ -29,7 +30,7 @@ pub(crate) struct VerifiedCredentials {
     pub(crate) authorization: VerifiedAuthorization,
 }
 
-/// The service seams (D6): the parameter object; struct literal only.
+/// The service seams (D6): store, endpoint, verifier, client_config; struct literal only.
 pub(crate) struct CredentialService<'a> {
     pub(crate) store: &'a dyn CredentialStore,
     pub(crate) endpoint: &'a dyn TokenEndpointTransport,
@@ -46,8 +47,7 @@ impl CredentialService<'_> {
         self.verify_loaded(&stored)
     }
 
-    /// Load + map errors (D5) + offline gate: stored credentials that
-    /// grant REQUIRED_SCOPE.
+    /// Load + map store errors (D5) + the offline gate: credentials granting REQUIRED_SCOPE.
     fn load_verified_scope_evidence(&self) -> Result<StoredCredentials, CredentialServiceError> {
         let stored = self.store.load().map_err(mapped_load_failure)?;
         if !grants_required_scope(&stored) {
@@ -73,8 +73,7 @@ impl CredentialService<'_> {
         }
     }
 
-    /// The refresh path: requires the stored refresh token (else
-    /// Unrefreshable), exchanges, merges, persists, re-verifies once.
+    /// The refresh path: require a stored refresh token, exchange, merge, save, re-verify.
     fn refresh_and_reverify(
         &self,
         stored: &StoredCredentials,
@@ -141,8 +140,7 @@ fn is_revoked_refresh(error: &TokenEndpointError) -> bool {
     matches!(error, TokenEndpointError::Server { code, .. } if code == "invalid_grant")
 }
 
-/// Shape-matches `Server { code }` to `Revoked`; other shapes fold into
-/// the transient Refresh class (defensive; panic-free).
+/// Shape-matches `Server { code }` to `Revoked`; folds other shapes into Refresh (panic-free).
 fn revoked_from(error: TokenEndpointError) -> CredentialServiceError {
     match error {
         TokenEndpointError::Server { code, .. } => CredentialServiceError::Revoked { code },
@@ -154,11 +152,12 @@ fn grants_required_scope(stored: &StoredCredentials) -> bool {
     stored.granted_scopes.grants(REQUIRED_SCOPE)
 }
 
-/// Single-section predicate: non-empty response scopes replace the stored set (D4-5).
 fn response_scopes_replace(response_scopes: &GrantedScopes) -> bool {
     !response_scopes.to_space_delimited().is_empty()
 }
 
+/// Merges a refresh response over the stored credentials (D4-5): the response
+/// token + TTL always move; omitted response fields keep the stored values.
 fn merge_refresh_response(
     stored: &StoredCredentials,
     response: TokenResponse,

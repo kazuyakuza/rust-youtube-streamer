@@ -3,6 +3,8 @@
 //! store lives in `file_credential_store` (atomic temp-file + rename
 //! writes, POSIX 0600) with its on-disk JSON schema in
 //! `persisted_credentials`; this module owns types and the trait only.
+//! The credential service (`credential_service`) drives both trait
+//! methods on a stored-credential file at the future unattended startup.
 
 use super::error::CredentialStoreError;
 use super::token::{AccessToken, GrantedScopes, RefreshToken};
