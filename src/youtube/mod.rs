@@ -26,8 +26,9 @@
 //!   atomicity, POSIX 0600, Windows ACL/rename and redaction limits are
 //!   documented in those two module docs, and the `oauth.*` path defaults
 //!   in `config/config.example.json`. The concrete YouTube verification
-//!   request remains deferred Task 4 work (plan decision S9); do not add
-//!   it while this layer stays unwired.
+//!   request is landed in `google_authorization_verifier` (the minimal
+//!   channels.list(mine=true) probe for the force-ssl scope); it stays
+//!   staged, unwired until the future run-phase wiring.
 //! - The researched Google OAuth facts (endpoints, loopback redirect,
 //!   PKCE S256, refresh semantics, the force-ssl scope decision) are
 //!   recorded in `.kilo/plans/20261012-phase04-task1-oauth-design.md` §1.
@@ -42,6 +43,12 @@ mod persisted_credentials;
 mod token;
 mod transport;
 mod verify;
+
+// Staged until the future run-phase wiring injects the concrete verifier
+// into the credential service (deliberate staging, the Phase-02
+// `#[allow(dead_code)] mod chat;` precedent; retire there).
+#[allow(dead_code)]
+mod google_authorization_verifier;
 
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,
