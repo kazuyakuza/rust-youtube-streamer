@@ -22,7 +22,7 @@ The reusable credential layer (load → verify → refresh → persist) lives un
 
 ## Prerequisites
 
-1. A Google Cloud project with the YouTube Data API enabled.
+1. A Google Cloud project with the YouTube Data API enabled — for why this is required, why API keys/service accounts do not substitute, and the step-by-step setup, see [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md).
 2. An OAuth 2.0 client of type **Desktop app** (Google's supported flow for installed applications).
 3. Download the client JSON and save it at the configured `oauth.client_config_path` (default `credentials/client_secret.json`).
 4. Configure `oauth.credentials_path` (default `credentials/tokens.json`) as a **different** path — the issued credentials must never overwrite the client configuration. Configuration validation rejects identical paths, and both paths must be non-blank.
@@ -119,5 +119,6 @@ Standing limitations (mandatory reading):
 ## See Also
 
 - [README](../README.md) — project overview and the Authentication section.
+- [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md) — Google Cloud requirements (project, API enablement, Desktop-app client), why other credential types do not work, step-by-step setup, and costs/quotas.
 - [`docs/configuration.md`](configuration.md) — the `oauth` configuration fields and validation rules.
 - [`docs/demo.md`](demo.md) — the local-only demo recording (no OAuth).
