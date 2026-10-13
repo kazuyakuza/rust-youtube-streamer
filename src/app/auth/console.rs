@@ -17,3 +17,7 @@ pub(super) fn print_authorization_url(url: &str, redirect_uri: &str) {
 pub(super) fn print_success(credentials_path: &str) {
     println!("authorization succeeded: YouTube credentials saved at {credentials_path}; the required YouTube scope was granted");
 }
+
+#[cfg(test)]
+#[path = "console_tests.rs"]
+mod console_tests;
