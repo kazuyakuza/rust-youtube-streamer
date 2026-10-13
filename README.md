@@ -12,6 +12,7 @@ The repository is the architectural foundation for future YouTube chat-controlle
 - [Commands and Configuration](#commands-and-configuration)
 - [Logging (RUST_LOG)](#logging-rust_log)
 - [Local Demo Recording](#local-demo-recording)
+- [Authentication (OAuth 2.0 — Key Features)](#authentication-oauth-20--key-features)
 - [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm)
 - [Release Build (Linux Artifact)](#release-build-linux-artifact)
 - [Release Build (Windows .exe)](#release-build-windows-exe)
@@ -31,26 +32,19 @@ The result is not yet a game — it is the reusable streaming foundation for fut
 
 - **Rust** — primary language; idiomatic modules, structs, traits, and explicit error types.
 - **Tokio** — reserved for the future YouTube API/chat streaming phases; the current frame pipeline and FFmpeg supervision are synchronous (`std::process` + std threads, with the `ctrlc` crate for Ctrl+C).
+- **OAuth 2.0 (`oauth2` 5.0 with the `ureq` feature + `ureq` 2.x)** — synchronous OAuth client for the installed-application authorization-code flow with PKCE and token refresh; no Tokio enters the dependency tree (`google-youtube3` remains rejected per brief §3.3).
 - **FFmpeg (external process)** — Rust launches and supervises the executable and writes raw frames to its stdin; FFmpeg performs encoding and transmission. The executable path is configurable per environment; Rust never embeds FFmpeg.
-- **YouTube Data API + OAuth 2.0** — broadcast lifecycle and chat integration behind the project's own module interfaces (`google-youtube3` crate rejected per brief §3.3; crate selection happens later during implementation).
+- **YouTube Data API** — broadcast lifecycle and chat integration behind the project's own module interfaces (`google-youtube3` crate rejected per brief §3.3; later phases reuse the OAuth grant established by `auth`).
 - **RTMPS ingestion** — TLS-protected delivery to YouTube Live.
 - **Platforms** — Windows and Linux development/execution; Ubuntu Server production target.
 
 ## Current Status
 
-Phase 00 (repository foundation and build baseline) is complete: a minimal Cargo package exists (`rust-youtube-streamer-service`, Rust edition 2021) with `src/main.rs` as the smallest buildable entry point; build checks run inside Docker on the Alpine VM — see [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm) below.
+Phase 00 (repository foundation and build baseline), Phase 01 (typed configuration, CLI, logging), Phase 02 (chat store + RGB24 renderer) and Phase 03 (FFmpeg local recording pipeline) are complete. The `demo` command runs a local-only demonstration recording through the shared chat → renderer → FFmpeg pipeline; it is unchanged by the current phase.
 
-Phase 01 application foundation is implemented on top of it:
+Phase 04 (current) ships the OAuth 2.0 credential layer: the `auth` command performs the real Google installed-application authorization flow — it prints the authorization URL for a browser, waits on a loopback-only (`127.0.0.1`, ephemeral port) callback, validates the CSRF state, exchanges the authorization code with PKCE (S256), verifies the granted scope against the minimal YouTube API permission via a `channels.list(mine=true)` probe, and persists the credentials atomically to the configured credentials path. The OAuth and credential code lives under `src/youtube/` (reusable credential service: load, verify-first refresh, persist, typed error classes) with the interactive flow under `src/app/auth/`. `run` remains a non-interactive placeholder (exit 3, stores nothing) and `demo` is unchanged.
 
-- a typed JSON configuration module (`src/config/`) with load-and-validate semantics and the committed template `config/config.example.json`;
-- two CLI commands `auth` and `run` plus the `--config <path>` option and the default path `config/config.json` (see [Commands and Configuration](#commands-and-configuration));
-- structured logging via `tracing`/`tracing-subscriber` to stderr, controlled by `RUST_LOG` (see [Logging (RUST_LOG)](#logging-rust_log)).
-
-Both `auth` and `run` are placeholders until later phases: after configuration is loaded and validated, each prints a single `error:` line and exits with code 3; neither contacts YouTube, requests credentials, creates broadcast resources, or starts FFmpeg. The `run` placeholder message names the four missing YouTube prerequisites (OAuth authorization, broadcast lifecycle, RTMPS ingestion URL acquisition, and YouTube live chat integration), states there is no local fallback, and points to `demo` for a local demonstration recording.
-
-Phase 02 adds two independent src-level components on this foundation: a bounded in-memory chat store (`src/chat/`) that appends accepted messages to an independent append-only chat log and keeps only the currently visible messages in a FIFO queue, and an RGB24 text renderer (`src/renderer/`, ab_glyph-based) that turns complete visible multiline text into raw video frames — both implemented with typed errors and unit tests. Phase 03 wires both into the runtime through the new `demo` command; the chat store's chat log (config `chat.log_file`) is created when the demo runs.
-
-Phase 03 (current) delivers a working local recording pipeline: `demo` runs the shared chat → renderer → FFmpeg pipeline with a fixed set of predefined messages, feeding complete RGB24 frames through the FFmpeg process's standard input and finalizing an MP4 under `videos/` beside the executable (collision-safe `demo-YYYYMMDD-HHMMSS.mp4` names, nothing overwritten). The process wrapper lives in `src/streaming/` (launched without a shell; typed spawn/write/wait/exit errors), the frame loop in `src/app/pipeline/` (synchronous std thread with a `ctrlc`-based stop flag), and the fixed timeline in `src/app/demo/`. The containerized test suite is green with 147 tests (`ALL CHECKS PASSED`).
+The containerized test suite is green with 249 tests (`ALL CHECKS PASSED`, container-only). NO live Google authorization was performed in this phase — the entire flow is validated offline with fakes and loopback HTTP servers, and native Windows/Linux runtime execution remains NOT RUN.
 
 FFmpeg remains a separately provided external prerequisite — it is never installed or bundled by this project; the `demo` command launches the executable at the configured `ffmpeg.executable` path and surfaces launch or process failures as typed errors.
 
@@ -64,12 +58,12 @@ Usage (full text available via `--help`):
 usage: rust-youtube-streamer-service [--config <path>] <command>
 ```
 
-- `auth` — runs the OAuth authorization flow (**not implemented yet**).
+- `auth` — performs the OAuth authorization flow using the Google OAuth client file (`oauth.client_config_path`) and saves tokens to the configured credentials path (`oauth.credentials_path`); exits 0 on verified success; exits 1 on any failure (configuration errors included; never leaks secrets). Full guide: [`docs/authentication.md`](docs/authentication.md).
 - `run` — starts the streaming runtime (**not implemented yet**; never starts FFmpeg; for a local demonstration recording use the `demo` command).
 - `demo` — runs a local-only FFmpeg demo recording (no YouTube, OAuth, broadcast, or chat connection): predefined messages at deterministic intervals are rendered into an MP4 under `videos/` beside the executable. **Success exits 0 after the MP4 is finalized**, printing `demo recording finalized: <path>` on stdout; any demo failure prints one `error:` line on stderr and exits 1; `demo` never exits 3. Full guide: [`docs/demo.md`](docs/demo.md).
 - `--config <path>` — configuration file to load; accepted before or after the command; default `config/config.json` when absent.
 - `--help` — prints usage to stdout; exit 0.
-- Exit codes: 0 = `--help` or a successful demo recording, 1 = configuration or logging startup failure or a demo runtime failure (startup-failure class), 2 = usage error, 3 = mode not implemented yet (`auth`/`run`).
+- Exit codes: 0 = `--help`, a successful demo recording, or a verified `auth` success, 1 = configuration or logging startup failure, a demo runtime failure, or any `auth` failure (startup-failure class), 2 = usage error, 3 = mode not implemented yet (run).
 
 Create the default `config/config.json` by copying `config/config.example.json` (the committed example, safe non-secret values) and editing it — `config/config.json` is gitignored and must never be committed. Full field-by-field reference: [`docs/configuration.md`](docs/configuration.md).
 
@@ -100,6 +94,27 @@ The `demo` command produces a local demonstration MP4 without contacting YouTube
 Results land in `videos/` beside the executable (never the launch working directory), created on demand, with collision-safe `demo-YYYYMMDD-HHMMSS.mp4` names — no existing recording is overwritten. Success prints `demo recording finalized: <path>` only after FFmpeg has exited 0 and the MP4 has been verified finalized; any failure prints one `error:` line on stderr and exits 1.
 
 Ctrl+C acts as a shutdown request with documented limitations. Full guide (timeline, output details, Ctrl+C semantics, out-of-scope list, and verification evidence): [`docs/demo.md`](docs/demo.md).
+
+## Authentication (OAuth 2.0 — Key Features)
+
+The `auth` command performs the Google OAuth 2.0 installed-application authorization flow (authorization code + PKCE, loopback callback):
+
+1. **Prerequisite**: a Google OAuth 2.0 "Desktop app" client, downloaded as JSON to `oauth.client_config_path` (default `credentials/client_secret.json`). This file is operator-supplied and gitignored; it is distinct from the issued-credentials file.
+2. Run `rust-youtube-streamer-service auth`. The console prints the authorization URL — open it in a browser, sign in, and approve the authorization prompt.
+3. The local callback listener is bound to `127.0.0.1` only, on an ephemeral port; it is closed deterministically on success and on every failure. No interactive input is ever read and no browser is auto-launched.
+4. After approval the app validates the OAuth state (CSRF protection), exchanges the authorization code (PKCE S256), verifies the granted scope `https://www.googleapis.com/auth/youtube.force-ssl` via a minimal `channels.list(mine=true)` probe, and saves the credentials atomically to `oauth.credentials_path` (default `credentials/tokens.json`).
+5. Success = one stdout line (`authorization succeeded: YouTube credentials saved at <path>; the required YouTube scope was granted`) and exit 0. Every failure is one redacted stderr `error:` line and exit 1 — secrets, tokens, and authorization codes never appear in logs or errors.
+6. **Unverified-app screen**: the first authorization with a development client may show Google's `Google hasn't verified this app` dialog. This is expected for a local desktop client — choose **Advanced** and continue to authorize.
+
+**Persistence and permissions**: credentials are written to a temporary file in the same directory and renamed into place (atomic on POSIX); the created file mode is `0600` (owner-only) on platforms that support POSIX permissions. Honest limitations: Windows uses inherited ACLs (the Rust standard library has no ACL management — there is no Windows-specific permission hardening), there is **no encryption** of the stored file, and the Linux container test suite cannot exercise the Windows rename/permission arms.
+
+**Unattended refresh**: future sessions load the stored credentials, verify the effective authorization first (no clock-based refresh decision), refresh an expired access token from the stored refresh token when possible, and persist the refreshed credentials atomically. Long-unattended operation depends on the issued refresh credentials and Google's current OAuth policies.
+
+**Failure and recovery**: missing, unreadable, malformed, revoked, expired/unrefreshable, and insufficient-scope credentials each produce a distinct redacted error. The recovery path for revoked or unrefreshable refresh credentials is to re-run `auth`.
+
+**Security**: neither `credentials/client_secret.json` nor `credentials/tokens.json` is ever committed (`credentials/*` is gitignored; only `.gitkeep` is tracked); nothing secret is logged. Never copy real client secrets or tokens into the repository tree.
+
+Full guide (schema, exit codes, failure classes, verification evidence and known limitations): [`docs/authentication.md`](docs/authentication.md). Standing limitation: no live Google authorization was performed during this phase — the flow is validated offline with fakes and loopback HTTP servers only, and native Windows/Linux runtimes were NOT RUN.
 
 ## Build Checks (Docker via Alpine VM)
 
