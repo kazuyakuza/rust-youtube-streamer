@@ -20,18 +20,13 @@ pub(crate) enum ClientConfigError {
 }
 
 /// Failures parsing the authorization-endpoint callback query.
+// ProviderDeclined is Task-4-reserved, never constructed today (D13 deviation).
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum AuthorizationError {
-    MissingParameter {
-        parameter: String,
-    },
+    MissingParameter { parameter: String },
     StateMismatch,
-    // Constructed only by tests today; a future parser/transport surface may
-    // produce it (D13 deviation: Task-4-reserved).
-    #[allow(dead_code)]
-    ProviderDeclined {
-        reason: String,
-    },
+    ProviderDeclined { reason: String },
 }
 
 /// Failures from the Google token endpoint exchange/refresh boundary.
@@ -48,26 +43,13 @@ pub(crate) enum TokenEndpointError {
 }
 
 /// Failures from the credential persistence boundary.
+// ReadParse/ContentNotAvailable are load-side Task-4 surface (D13 deviation).
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum CredentialStoreError {
-    FileOpen {
-        path: PathBuf,
-        source: io::Error,
-    },
-    FileWrite {
-        path: PathBuf,
-        source: io::Error,
-    },
-    // Constructed by the load-side parse path; its consumer arrives with
-    // Task 4 (D13 deviation).
-    #[allow(dead_code)]
-    ReadParse {
-        path: PathBuf,
-        message: String,
-    },
-    // Constructed on the load side when no credential file exists; its
-    // consumer arrives with Task 4 (D13 deviation).
-    #[allow(dead_code)]
+    FileOpen { path: PathBuf, source: io::Error },
+    FileWrite { path: PathBuf, source: io::Error },
+    ReadParse { path: PathBuf, message: String },
     ContentNotAvailable,
 }
 

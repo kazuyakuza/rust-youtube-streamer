@@ -1,11 +1,10 @@
 //! Redacted OAuth token material for the YouTube module: secret wrapper
 //! types whose `Debug` prints `<redacted>` (never `Display`), the
 //! serde-parsed Google token endpoint body, the application-owned
-//! [`TokenResponse`], and the granted-scope collection (plan §5).
-//!
-//! Raw secret strings exist only inside the wrappers; `secret()`
-//! accessors are consumed only at request-build sites (transport today,
-//! the Bearer header with Tasks 3–4), never formatted or logged.
+//! [`TokenResponse`], and the granted-scope collection (plan §5). Raw
+//! secret strings exist only inside the wrappers; `secret()` accessors
+//! are consumed only at request-build sites (transport today, the Bearer
+//! header with Tasks 3–4), never formatted or logged.
 
 use std::fmt;
 
@@ -130,8 +129,6 @@ impl fmt::Debug for ClientSecret {
 /// The raw-string secret fields intentionally make `Debug` unavailable:
 /// accidental formatting in a future call site would print tokens; a
 /// compile error is the stronger guard (Task 2 hardening, simplify §4 flag).
-// The serde parser is the offline/Task-4 seam; the ureq path parses via
-// oauth2's BasicTokenResponse (D13).
 #[allow(dead_code)]
 #[derive(Deserialize)]
 pub(crate) struct TokenEndpointBody {
@@ -183,10 +180,8 @@ impl GrantedScopes {
     }
 }
 
-/// Parses a Google token endpoint response body; a missing
-/// `access_token` or unparsable JSON maps to
-/// [`TokenEndpointError::ResponseParse`].
-// Offline/Task-4 seam; the ureq path parses via oauth2's token types (D13).
+/// Parses a Google token endpoint response body; a missing `access_token`
+/// or unparsable JSON maps to [`TokenEndpointError::ResponseParse`].
 #[allow(dead_code)]
 pub(crate) fn parse_token_response(body: &str) -> Result<TokenResponse, TokenEndpointError> {
     let parsed: TokenEndpointBody =

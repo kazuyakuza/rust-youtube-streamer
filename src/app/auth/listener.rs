@@ -1,16 +1,10 @@
 //! Loopback callback listener for the auth flow (plan D6/D7): binds
-//! `127.0.0.1` with an OS-ephemeral port — never `localhost`, never a
-//! wildcard address — and accepts browser callbacks on the main thread
-//! with no spawned threads and no async runtime. Each connection is
-//! classified as authorized, declined, state-mismatched or noise;
-//! declined and state-mismatch outcomes are terminal, noise is retried
-//! under a bounded budget. HTTP method names are not checked: any
-//! request whose request line carries a parseable query string is
-//! classified per that query. The [`BoundListener`] owns the socket;
-//! dropping it closes the listener deterministically on success AND on
-//! every failure. `oauth2::CsrfToken` appears only as opaque plumbing
-//! passed through signatures; all Google-protocol logic stays in
-//! `src/youtube/`.
+//! `127.0.0.1` with an ephemeral port (never `localhost`, never a
+//! wildcard) and accepts callbacks on the main thread. Connections
+//! classify as authorized, declined, state-mismatched or noise; the
+//! latter two fail terminally, noise retries under a bounded budget,
+//! and HTTP methods are not checked. [`BoundListener`] owns the socket
+//! and closes it on success AND failure; CsrfToken is opaque plumbing.
 
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
@@ -38,9 +32,7 @@ const CALLBACK_REJECTED_BODY: &str =
     "This callback port is only used by the running authorization flow.";
 const HEADER_TERMINATOR_BYTES: &[u8] = b"\r\n\r\n";
 
-/// A loopback-bound listener plus the redirect URI it serves. Dropping this
-/// value closes the socket; the auth flow holds it exactly for the duration
-/// of the authorization wait.
+/// A loopback-bound listener plus its redirect URI; drop closes the socket.
 pub(super) struct BoundListener {
     listener: TcpListener,
     redirect_uri: String,
@@ -62,10 +54,7 @@ impl BoundListener {
         &self.redirect_uri
     }
 
-    /// Blocking accept loop: returns the authorized code on success, a typed
-    /// AuthError for terminal outcomes, and keeps waiting through noise up to
-    /// the budget (D7). The budget counter is local state incrementing once
-    /// per noise-classified connection (or transient accept error).
+    /// Blocking accept loop (D7): the code on success, a typed error otherwise.
     pub(super) fn wait_for_authorized_code(
         &self,
         expected_state: &CsrfToken,
@@ -78,8 +67,7 @@ impl BoundListener {
         }
     }
 
-    /// Accepts one connection, classifies it, responds, and maps the result.
-    /// Ok(None) = the connection was noise and the budget still holds.
+    /// Accepts one connection, classifies it, responds, maps it; None = noise.
     fn handle_next_connection(
         &self,
         expected_state: &CsrfToken,
@@ -89,41 +77,10 @@ impl BoundListener {
             Ok((stream, _)) => stream,
             Err(_) => return discard_benign_connection(noise_count),
         };
-        match classify_connection(&mut stream, expected_state) {
-            CallbackOutcome::Authorized(code) => {
-                info!("authorization callback accepted");
-                write_callback_response(
-                    &mut stream,
-                    CALLBACK_ACCEPTED_STATUS,
-                    CALLBACK_ACCEPTED_BODY,
-                );
-                Ok(Some(code))
-            }
-            CallbackOutcome::Declined { reason } => {
-                write_callback_response(
-                    &mut stream,
-                    CALLBACK_REJECTED_STATUS,
-                    CALLBACK_REJECTED_BODY,
-                );
-                Err(AuthError::ProviderDeclined { reason })
-            }
-            CallbackOutcome::StateMismatch => {
-                write_callback_response(
-                    &mut stream,
-                    CALLBACK_REJECTED_STATUS,
-                    CALLBACK_REJECTED_BODY,
-                );
-                Err(AuthError::StateMismatch)
-            }
-            CallbackOutcome::Noise => {
-                write_callback_response(
-                    &mut stream,
-                    CALLBACK_REJECTED_STATUS,
-                    CALLBACK_REJECTED_BODY,
-                );
-                discard_benign_connection(noise_count)
-            }
-        }
+        let outcome = classify_connection(&mut stream, expected_state);
+        let (status_line, body) = outcome_response_parts(&outcome);
+        write_callback_response(&mut stream, status_line, body);
+        map_callback_outcome(outcome, noise_count)
     }
 }
 
@@ -140,7 +97,6 @@ fn discard_benign_connection(
     Ok(None)
 }
 
-/// Single-section boolean predicate (rule).
 fn is_noise_budget_exhausted(noise_count: usize) -> bool {
     noise_count >= NOISE_CONNECTION_LIMIT
 }
@@ -150,6 +106,30 @@ enum CallbackOutcome {
     Declined { reason: String },
     StateMismatch,
     Noise,
+}
+
+/// Maps a classified outcome to the accept-loop result (D7).
+fn map_callback_outcome(
+    outcome: CallbackOutcome,
+    noise_count: &mut usize,
+) -> Result<Option<AuthorizationCode>, AuthError> {
+    match outcome {
+        CallbackOutcome::Authorized(code) => {
+            info!("authorization callback accepted");
+            Ok(Some(code))
+        }
+        CallbackOutcome::Declined { reason } => Err(AuthError::ProviderDeclined { reason }),
+        CallbackOutcome::StateMismatch => Err(AuthError::StateMismatch),
+        CallbackOutcome::Noise => discard_benign_connection(noise_count),
+    }
+}
+
+/// Fixed (status, body) pair for an already-decided outcome.
+fn outcome_response_parts(outcome: &CallbackOutcome) -> (&'static str, &'static str) {
+    match outcome {
+        CallbackOutcome::Authorized(_) => (CALLBACK_ACCEPTED_STATUS, CALLBACK_ACCEPTED_BODY),
+        _ => (CALLBACK_REJECTED_STATUS, CALLBACK_REJECTED_BODY),
+    }
 }
 
 /// Classifies one already-accepted connection (D7).
@@ -173,8 +153,7 @@ fn classify_connection(stream: &mut TcpStream, expected_state: &CsrfToken) -> Ca
     }
 }
 
-/// Reads the request head bytes with the read timeout set; returns None for
-/// anything that never terminates its headers within the size limit.
+/// Reads the request head under the read timeout; None if it never ends.
 fn read_request_text(stream: &mut TcpStream) -> Option<String> {
     let _ = stream.set_read_timeout(Some(REQUEST_READ_TIMEOUT));
     let mut received: Vec<u8> = Vec::new();
@@ -207,8 +186,7 @@ fn callback_query(request_text: &str) -> Option<&str> {
     Some(&path[separation + 1..])
 }
 
-/// Writes one fixed-content HTTP response; failures are intentionally
-/// ignored (the parse outcome was already decided before this call).
+/// Writes one fixed-content HTTP response; write failures are ignored.
 fn write_callback_response(stream: &mut TcpStream, status_line: &str, body: &str) {
     let content_length = body.len();
     let response = format!(
