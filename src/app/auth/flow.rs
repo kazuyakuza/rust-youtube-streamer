@@ -156,8 +156,8 @@ fn code_exchange_request(client_config: &ClientConfig, opened: OpenedFlow) -> Co
     CodeExchangeRequest {
         client_id: client_config.client_id().to_string(),
         client_secret: client_config.client_secret().clone(),
-        code: opened.code.clone(),
-        redirect_uri: opened.redirect_uri.clone(),
+        code: opened.code,
+        redirect_uri: opened.redirect_uri,
         pkce_verifier: opened.pkce_verifier,
     }
 }
