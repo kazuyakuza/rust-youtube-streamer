@@ -1,9 +1,11 @@
-//! Loopback callback listener for the auth flow (plan D6/D7): binds `127.0.0.1` with
-//! an ephemeral port (never `localhost`, never a wildcard) and accepts callbacks on
-//! the main thread. Connections classify as authorized, declined, state-mismatched or
-//! noise; the latter two fail terminally, noise retries under a bounded budget, and
-//! HTTP methods are not checked. [`BoundListener`] owns the socket and closes it on
-//! success AND failure; CsrfToken is opaque plumbing.
+//! Loopback callback listener for the auth flow (plan D6/D7): binds `127.0.0.1` with an
+//! ephemeral port (never `localhost`, never a wildcard) and accepts callbacks on the main
+//! thread with no wall-clock deadline; each connection gets a 5-second read timeout and
+//! an 8 KiB request cap, and up to 8 noise connections are tolerated before the flow
+//! abandons. Declined and state-mismatched callbacks are terminal (a foreign state is
+//! treated as CSRF); noise is retried; HTTP methods are not checked; browser responses
+//! are fixed 200/400 lines that never echo the request. [`BoundListener`] owns the
+//! socket and closes it on success AND failure; `CsrfToken` is opaque plumbing.
 
 use oauth2::CsrfToken;
 use std::io::{Read, Write};
@@ -93,12 +95,14 @@ fn is_noise_budget_exhausted(noise_count: usize) -> bool {
     noise_count >= NOISE_CONNECTION_LIMIT
 }
 
+/// Per-connection classification (D7): the four outcomes the accept loop can see.
 enum CallbackOutcome {
     Authorized(AuthorizationCode),
     Declined { reason: String },
     StateMismatch,
     Noise,
 }
+/// The fixed (status line, body) pair for a decided outcome; both halves are static.
 struct CallbackResponse {
     status_line: &'static str,
     body: &'static str,
@@ -171,7 +175,6 @@ fn read_request_text(stream: &mut TcpStream) -> Option<String> {
         }
     }
 }
-/// Single-section predicate over the buffered bytes.
 fn head_is_complete(received: &[u8]) -> bool {
     received.ends_with(HEADER_TERMINATOR_BYTES)
 }
@@ -182,7 +185,7 @@ fn callback_query(request_text: &str) -> Option<&str> {
     let separation = path.find('?')?;
     Some(&path[separation + 1..])
 }
-/// Writes one fixed-content HTTP response; write failures are ignored.
+/// Writes the fixed response; a failed write never changes the decided outcome.
 fn write_callback_response(stream: &mut TcpStream, response: CallbackResponse) {
     let content_length = response.body.len();
     let response_text = format!(

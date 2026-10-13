@@ -2,7 +2,11 @@
 //! already loaded and validated when the handler runs; it never contacts
 //! YouTube, never requests credentials, and never starts FFmpeg. The handler
 //! returns the raw exit code so unit tests can assert it; `app::run` performs
-//! the single `ExitCode` conversion at the process boundary.
+//! the single `ExitCode` conversion at the process boundary. The implemented
+//! `auth` runner lives in the sibling `auth` submodule: its fatal failures are
+//! reported as one redacted stderr `error:` line and exit with the
+//! startup-failure code 1, while this `run` placeholder keeps exit 3
+//! (`NOT_IMPLEMENTED_EXIT`).
 
 use crate::config::AppConfig;
 

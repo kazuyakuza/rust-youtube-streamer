@@ -20,7 +20,15 @@
 //! Redaction (D16): no token, authorization code, client secret, PKCE
 //! verifier, URL, or callback query value ever reaches a log field, a
 //! tracing event, or an error message; the only logged field in this
-//! submodule is the bound `redirect_port`.
+//! submodule is the bound `redirect_port`. Credentials are persisted only
+//! after the granted-scope and refresh-token validation passes.
+//!
+//! Design authority: `.kilo/plans/20261012-phase04-task3-auth-command.md`
+//! (decisions D1-D16; §4.5 console spec; §9 limitations). Fake-tested seams
+//! for future agents: the listener runs against real loopback sockets in
+//! `listener_tests.rs` (L1-L8); `run_with_listener` is exercised end-to-end
+//! on the declined path in `flow_tests.rs` (F11); transport and store seams
+//! use pure fakes in `flow_exchange_tests.rs` (F7-F10).
 
 use std::fmt;
 use std::path::PathBuf;

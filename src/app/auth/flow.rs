@@ -97,6 +97,8 @@ impl AuthFlow<'_> {
         })
     }
 
+    /// Runs the code exchange against the injected transport. `opened` is consumed
+    /// by value: the non-Clone `PkceCodeVerifier` moves into the request exactly once.
     fn exchange_authorization_code(
         &self,
         client_config: &ClientConfig,
@@ -111,6 +113,7 @@ impl AuthFlow<'_> {
         Ok(response)
     }
 
+    /// Persists credentials that already passed the offline scope/refresh validation.
     fn save_validated_credentials(&self, stored: &StoredCredentials) -> Result<(), AuthError> {
         self.store.save(stored).map_err(AuthError::Persistence)
     }
