@@ -1,23 +1,20 @@
-//! Loopback callback listener for the auth flow (plan D6/D7): binds
-//! `127.0.0.1` with an ephemeral port (never `localhost`, never a
-//! wildcard) and accepts callbacks on the main thread. Connections
-//! classify as authorized, declined, state-mismatched or noise; the
-//! latter two fail terminally, noise retries under a bounded budget,
-//! and HTTP methods are not checked. [`BoundListener`] owns the socket
-//! and closes it on success AND failure; CsrfToken is opaque plumbing.
+//! Loopback callback listener for the auth flow (plan D6/D7): binds `127.0.0.1` with
+//! an ephemeral port (never `localhost`, never a wildcard) and accepts callbacks on
+//! the main thread. Connections classify as authorized, declined, state-mismatched or
+//! noise; the latter two fail terminally, noise retries under a bounded budget, and
+//! HTTP methods are not checked. [`BoundListener`] owns the socket and closes it on
+//! success AND failure; CsrfToken is opaque plumbing.
 
+use oauth2::CsrfToken;
 use std::io::{Read, Write};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::time::Duration;
-
-use oauth2::CsrfToken;
 use tracing::info;
 
+use super::AuthError;
 use crate::youtube::{
     parse_authorization_callback, AuthorizationCallback, AuthorizationCode, AuthorizationError,
 };
-
-use super::AuthError;
 
 const CALLBACK_HOST: &str = "127.0.0.1";
 const NOISE_CONNECTION_LIMIT: usize = 8;
@@ -37,7 +34,6 @@ pub(super) struct BoundListener {
     listener: TcpListener,
     redirect_uri: String,
 }
-
 /// Binds on 127.0.0.1 with an ephemeral port (D6); emits the bound event.
 pub(super) fn bind() -> Result<BoundListener, AuthError> {
     let listener = TcpListener::bind((CALLBACK_HOST, 0)).map_err(AuthError::ListenerBind)?;
@@ -48,7 +44,6 @@ pub(super) fn bind() -> Result<BoundListener, AuthError> {
         redirect_uri: format!("http://{CALLBACK_HOST}:{}", address.port()),
     })
 }
-
 impl BoundListener {
     pub(super) fn redirect_uri(&self) -> &str {
         &self.redirect_uri
@@ -66,7 +61,6 @@ impl BoundListener {
             }
         }
     }
-
     /// Accepts one connection, classifies it, responds, maps it; None = noise.
     fn handle_next_connection(
         &self,
@@ -78,12 +72,11 @@ impl BoundListener {
             Err(_) => return discard_benign_connection(noise_count),
         };
         let outcome = classify_connection(&mut stream, expected_state);
-        let (status_line, body) = outcome_response_parts(&outcome);
-        write_callback_response(&mut stream, status_line, body);
+        let response = outcome_response_parts(&outcome);
+        write_callback_response(&mut stream, response);
         map_callback_outcome(outcome, noise_count)
     }
 }
-
 /// Bumps the noise counter and fails the flow when the budget is exhausted.
 fn discard_benign_connection(
     noise_count: &mut usize,
@@ -96,7 +89,6 @@ fn discard_benign_connection(
     }
     Ok(None)
 }
-
 fn is_noise_budget_exhausted(noise_count: usize) -> bool {
     noise_count >= NOISE_CONNECTION_LIMIT
 }
@@ -106,6 +98,10 @@ enum CallbackOutcome {
     Declined { reason: String },
     StateMismatch,
     Noise,
+}
+struct CallbackResponse {
+    status_line: &'static str,
+    body: &'static str,
 }
 
 /// Maps a classified outcome to the accept-loop result (D7).
@@ -123,15 +119,19 @@ fn map_callback_outcome(
         CallbackOutcome::Noise => discard_benign_connection(noise_count),
     }
 }
-
 /// Fixed (status, body) pair for an already-decided outcome.
-fn outcome_response_parts(outcome: &CallbackOutcome) -> (&'static str, &'static str) {
+fn outcome_response_parts(outcome: &CallbackOutcome) -> CallbackResponse {
     match outcome {
-        CallbackOutcome::Authorized(_) => (CALLBACK_ACCEPTED_STATUS, CALLBACK_ACCEPTED_BODY),
-        _ => (CALLBACK_REJECTED_STATUS, CALLBACK_REJECTED_BODY),
+        CallbackOutcome::Authorized(_) => CallbackResponse {
+            status_line: CALLBACK_ACCEPTED_STATUS,
+            body: CALLBACK_ACCEPTED_BODY,
+        },
+        _ => CallbackResponse {
+            status_line: CALLBACK_REJECTED_STATUS,
+            body: CALLBACK_REJECTED_BODY,
+        },
     }
 }
-
 /// Classifies one already-accepted connection (D7).
 fn classify_connection(stream: &mut TcpStream, expected_state: &CsrfToken) -> CallbackOutcome {
     let request_text = match read_request_text(stream) {
@@ -152,7 +152,6 @@ fn classify_connection(stream: &mut TcpStream, expected_state: &CsrfToken) -> Ca
         }
     }
 }
-
 /// Reads the request head under the read timeout; None if it never ends.
 fn read_request_text(stream: &mut TcpStream) -> Option<String> {
     let _ = stream.set_read_timeout(Some(REQUEST_READ_TIMEOUT));
@@ -172,12 +171,10 @@ fn read_request_text(stream: &mut TcpStream) -> Option<String> {
         }
     }
 }
-
 /// Single-section predicate over the buffered bytes.
 fn head_is_complete(received: &[u8]) -> bool {
     received.ends_with(HEADER_TERMINATOR_BYTES)
 }
-
 /// Extracts the query part of the request line ("GET /?a=b HTTP/1.1").
 fn callback_query(request_text: &str) -> Option<&str> {
     let request_line = request_text.lines().next()?;
@@ -185,14 +182,14 @@ fn callback_query(request_text: &str) -> Option<&str> {
     let separation = path.find('?')?;
     Some(&path[separation + 1..])
 }
-
 /// Writes one fixed-content HTTP response; write failures are ignored.
-fn write_callback_response(stream: &mut TcpStream, status_line: &str, body: &str) {
-    let content_length = body.len();
-    let response = format!(
-        "{status_line}\r\nContent-Type: text/plain\r\nContent-Length: {content_length}\r\nConnection: close\r\n\r\n{body}"
+fn write_callback_response(stream: &mut TcpStream, response: CallbackResponse) {
+    let content_length = response.body.len();
+    let response_text = format!(
+        "{}\r\nContent-Type: text/plain\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+        response.status_line, content_length, response.body
     );
-    let _ = stream.write_all(response.as_bytes());
+    let _ = stream.write_all(response_text.as_bytes());
 }
 
 #[cfg(test)]
