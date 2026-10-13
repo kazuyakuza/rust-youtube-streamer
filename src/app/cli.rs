@@ -21,7 +21,7 @@ pub(super) const USAGE: &str = "\
 usage: rust-youtube-streamer-service [--config <path>] <command>
 
 commands:
-  auth                 run the OAuth authorization flow (not implemented yet)
+  auth                 authorize YouTube access and store OAuth credentials
   demo                 run a local-only FFmpeg demo recording (no YouTube)
   run                  start the streaming runtime (not implemented yet)
 

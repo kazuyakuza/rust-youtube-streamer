@@ -42,3 +42,24 @@ mod persisted_credentials;
 mod token;
 mod transport;
 mod verify;
+
+pub(crate) use authorization::{
+    authorization_url, generate_pkce, generate_state, parse_authorization_callback,
+    AuthorizationCallback, REQUIRED_SCOPE,
+};
+pub(crate) use client_config::{parse_client_config, ClientConfig};
+pub(crate) use credentials::{CredentialStore, StoredCredentials};
+pub(crate) use error::{
+    AuthorizationError, ClientConfigError, CredentialStoreError, TokenEndpointError,
+};
+pub(crate) use file_credential_store::FileCredentialStore;
+pub(crate) use google_token_endpoint::GoogleTokenEndpoint;
+pub(crate) use token::{AuthorizationCode, TokenResponse};
+pub(crate) use transport::{CodeExchangeRequest, TokenEndpointTransport};
+// Test-only re-exports: the auth flow's offline test fakes hand-build
+// `TokenResponse` values and implement `TokenEndpointTransport`, which
+// requires naming these types; production code never uses them.
+#[cfg(test)]
+pub(crate) use token::{AccessToken, GrantedScopes, RefreshToken};
+#[cfg(test)]
+pub(crate) use transport::RefreshRequest;

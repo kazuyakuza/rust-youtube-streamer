@@ -148,3 +148,9 @@ fn usage_text_advertises_the_demo_command() {
     assert!(USAGE
         .contains("  demo                 run a local-only FFmpeg demo recording (no YouTube)"));
 }
+
+#[test]
+fn usage_text_advertises_the_auth_command() {
+    assert!(USAGE
+        .contains("  auth                 authorize YouTube access and store OAuth credentials"));
+}
