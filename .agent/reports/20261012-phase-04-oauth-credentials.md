@@ -16,6 +16,7 @@
 - [Environment Notes](#environment-notes)
 - [Evidence Index](#evidence-index)
 - [Known Limitations & Not-Run Checks](#known-limitations--not-run-checks)
+- [Post-review correction (sub-step 4.4)](#post-review-correction-sub-step-44)
 
 ## Overview
 
@@ -298,3 +299,15 @@ f1aa085 chore: remove youtube folder placeholder marker
 7. **Frozen 4-key token schema** (`access_token`, `expires_in_seconds`, `refresh_token` nullable, `granted_scopes`) has no versioning field this phase.
 8. **Listener read-timeout path untested by design** (Task-3 limitation).
 9. **T4 carried items**: `expires_in_seconds` is advisory TTL metadata only (verify-first refresh, no clock-based decision); no size cap on the token-endpoint `into_string()` read; ureq Display-format drift is a tolerated future-maintenance risk; test-profile warn-only dead-code warnings (`with_token_url`, `token_type`) adjudicated ACCEPTABLE in the T4 review.
+
+## Post-review correction (sub-step 4.4)
+
+Fresh gate final citation for the current HEAD state; appended by the final documentation-alignment pass without rewriting any section above.
+
+- Gate context: the authoritative gate cited in [Exact Docker/MCP Commands & Exit Statuses](#exact-dockermcp-commands--exit-statuses) (`logs/checks/20261013T171123Z.log`) ran on the code-complete tree at `50b6858`. HEAD then advanced through docs-only commits to `972062f`, and the code-review fix-plan adjudication landed at `ccdeaac` (`docs: correct the app auth test count`: `.agent/project-structure.md` `app/auth/` 29 → 25, matching the observed `cargo test --locked app::auth` total of 25). The review verdict was ADHERENT with that one docs fix.
+- Final alignment pass (sub-step 4.4, docs-only; zero `src/`, `Cargo.*`, or `config/` changes) corrected the following factual drift found by re-checking the docs against the implementation:
+  1. `README.md` (Current Status + Authentication step 4) attributed the live `channels.list(mine=true)` probe to the interactive `auth` flow. Per Task-3 plan decision D9 and `src/app/auth/flow.rs` (`storeable_credentials`), `auth` validates the exchanged token response OFFLINE for the granted scope and the refresh token; the network probe belongs to the reusable credential service (unattended startup). The README now matches `docs/authentication.md` (step 6 "verifies the granted scope offline") and `docs/authentication.md`'s Overview sentence was tightened to the same offline wording.
+  2. `docs/authentication.md` §Unattended Operation stated the service "refreshes …, re-verifies, and persists"; `src/youtube/credential_service.rs` persists the merged credentials atomically and THEN re-verifies exactly once, triggered by a probe rejection (not-authorized), never by a clock or an "expired" label. Corrected to the code's order.
+  3. `docs/demo.md` exit-code note still listed `auth` among the "placeholders" owning exit 3 (Phase-03-era wording; `auth` was implemented in Task 3 and never returns 3). Corrected to the `run` placeholder only.
+  4. `.agent/project-structure.md` `credential_service.rs` line had the re-verify/persist steps in the reversed order. Corrected to load → offline scope gate → verify-first probe → refresh-on-rejection (exactly once) → persist atomically → re-verify once.
+- Fresh gate on the post-correction tree: `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh` → **exit 0**; log **`logs/checks/20261013T183054Z.log`**: `PASS fmt-check exit=0`, `PASS check exit=0`, `PASS test exit=0`, `PASS clippy exit=0`, `ALL CHECKS PASSED`, `test result: ok. 249 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out;`. The individual checks were also re-run standalone with exit 0: `cargo fmt --check`, `cargo test --locked` (249 passed), `cargo clippy --locked -- -D warnings`. The alignment commit follows `ccdeaac`; per plan §6-D2 the report embeds only already-existing hashes (this correction commit's own hash is intentionally absent).
