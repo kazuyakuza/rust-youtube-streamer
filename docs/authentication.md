@@ -53,7 +53,7 @@ Two distinct files, both operator-configurable:
 
 | File | Config field | Default path | Purpose |
 | --- | --- | --- | --- |
-| OAuth client configuration | `oauth.client_config_path` | `credentials/client_secret.json` | Google-issued desktop-client identifiers (`client_id`, `client_secret`, `auth_uri`, `token_uri`). Never modified by the app. |
+| OAuth client configuration | `oauth.client_config_path` | `credentials/client_secret.json` | Google-issued desktop-client identifiers (`client_id`, `client_secret`, `auth_uri`, `token_uri`). Declared endpoints are validated against the accepted Google forms (legacy and v2); requests always use the app's own constants. Never modified by the app. |
 | Issued credentials | `oauth.credentials_path` | `credentials/tokens.json` | The tokens this app persists after a successful authorization. |
 
 The persisted credential file uses a frozen four-key JSON schema:

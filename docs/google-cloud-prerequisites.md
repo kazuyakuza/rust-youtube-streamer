@@ -57,7 +57,7 @@ The **client type** determines which redirect mechanism is permitted:
 | Android / iOS / TV & Limited Input | Mobile/TV SDK flows | No |
 | Service account | Machine identity; only for YouTube **content owners** via `onBehalfOfContentOwner` | No — see the alternatives section |
 
-The service's `auth` command binds a listener on `127.0.0.1` (loopback only, ephemeral port), prints the authorization URL, and waits for Google to redirect the browser back to that loopback address. The downloaded JSON for a Desktop-app client carries `client_id`, `client_secret`, `auth_uri`, and `token_uri`; the app validates those endpoints against Google's fixed constants at startup.
+The service's `auth` command binds a listener on `127.0.0.1` (loopback only, ephemeral port), prints the authorization URL, and waits for Google to redirect the browser back to that loopback address. The downloaded JSON for a Desktop-app client carries `client_id`, `client_secret`, `auth_uri`, and `token_uri`; any declared `auth_uri`/`token_uri` is validated against the accepted Google endpoint forms (both Google's legacy `…/o/oauth2/auth` and the `/v2/auth` form are accepted, as are the token endpoint forms). The endpoints actually used for requests are the app's own constants — the file's declared values are only used for the tampering check.
 
 ## Why Not an API Key, a Service Account, or Just a Browser?
 
@@ -123,6 +123,7 @@ Consequences for this project:
 | Symptom | Cause | Fix |
 | --- | --- | --- |
 | `403 accessNotConfigured` — "YouTube Data API has not been used in project ... or it is disabled" | The API is not enabled in the project that owns the OAuth client | Enable *YouTube Data API v3* in that exact project (step 2) |
+| `error: invalid OAuth client configuration: field 'installed.auth_uri' does not match the expected Google endpoint` | The client file declares an endpoint outside the accepted Google forms — typically a file from a different source or one that was edited. Google's own downloadable files use the legacy `…/o/oauth2/auth`, which is accepted by the current build | Use a current build (legacy and `/v2/auth` are both accepted); or delete/edit the `auth_uri` (and `token_uri`) key, since the declared values are not used for requests |
 | `Google hasn't verified this app` | The consent screen is in Testing status and the requested scope is sensitive | Expected for private use: *Advanced* → continue. Publishing/verification is only needed for public multi-user distribution |
 | `redirect_uri_mismatch` | The client is not a Desktop-app client (e.g. a Web application client with no matching redirect URI) | Create a **Desktop app** client and use its JSON |
 | `unauthorized_client` | The client is not permitted to use this authorization flow (typically a client-type mismatch) | Recreate the client as **Desktop app** |
