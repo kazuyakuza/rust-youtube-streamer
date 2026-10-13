@@ -20,10 +20,14 @@
 //! - Mockable seams: [`transport::TokenEndpointTransport`],
 //!   [`credentials::CredentialStore`] and [`verify::AuthorizationVerifier`];
 //!   offline fakes live in the matching `*_tests.rs` files.
-//! - Deliberately deferred: the concrete `FileCredentialStore` is Task 2
-//!   work (plan decision S8) and the concrete YouTube verification
-//!   request is Task 4 work (plan decision S9); do not implement either
-//!   while this layer stays unwired.
+//! - Landed vs deferred: the concrete credential store is implemented
+//!   (`file_credential_store` for the atomic file IO and 0600 permission
+//!   handling, `persisted_credentials` for the on-disk JSON schema); its
+//!   atomicity, POSIX 0600, Windows ACL/rename and redaction limits are
+//!   documented in those two module docs, and the `oauth.*` path defaults
+//!   in `config/config.example.json`. The concrete YouTube verification
+//!   request remains deferred Task 4 work (plan decision S9); do not add
+//!   it while this layer stays unwired.
 //! - The researched Google OAuth facts (endpoints, loopback redirect,
 //!   PKCE S256, refresh semantics, the force-ssl scope decision) are
 //!   recorded in `.kilo/plans/20261012-phase04-task1-oauth-design.md` §1.

@@ -4,6 +4,11 @@
 //! amendment-1's `GrantedScopes::to_space_delimited`). Serialization and
 //! parse mapping live here; the store module owns only file IO
 //! (temp-file creation, permissions, rename) and io-error mapping.
+//!
+//! Redaction: parse failures map to fixed descriptive messages that never
+//! quote the file's own bytes, so a malformed credential file cannot echo
+//! a token value back through an error; serialization carries no error
+//! text either (its failure is a fixed io message).
 
 use std::io;
 use std::path::Path;

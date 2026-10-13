@@ -173,8 +173,8 @@ impl GrantedScopes {
         self.scopes.iter().any(|granted| granted == scope)
     }
 
-    /// Serializes back to Google's space-delimited scope format; the
-    /// credential store uses this to persist granted scopes (plan §4.6).
+    /// Serializes back to Google's space-delimited scope format; pairs with
+    /// `from_space_delimited` as the credential store's persistence round trip.
     pub(crate) fn to_space_delimited(&self) -> String {
         self.scopes.join(" ")
     }

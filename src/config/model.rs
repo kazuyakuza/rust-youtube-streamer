@@ -39,17 +39,26 @@ pub struct BroadcastConfig {
     pub privacy_status: String,
 }
 
-/// OAuth client and credential file locations.
+/// OAuth client and credential file locations. The two paths must be
+/// distinct (enforced by validation, so a credential save can never
+/// overwrite the client file); the example defaults live in
+/// `config/config.example.json` and fall under the gitignored
+/// `credentials/` directory.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OauthConfig {
     /// Path of the Google downloadable client-secret JSON file
     /// (`{"installed": {...}}`, Desktop-app client type). Only non-blank
     /// values are checked here; parsing belongs to the youtube module.
+    /// The example default points into the gitignored `credentials/`
+    /// directory so real client secrets stay out of source control.
     pub client_config_path: String,
-    /// Path of the application-persisted credential file (issued
-    /// tokens). Only non-blank values are checked here; the file is
-    /// created by the credential store.
+    /// Path of the application-persisted credential file (issued tokens).
+    /// Only non-blank values are checked here and validation additionally
+    /// requires it to differ from `client_config_path`; the file is created
+    /// by the credential store. The example default likewise lives under
+    /// the gitignored `credentials/` directory so issued tokens stay out of
+    /// source control.
     pub credentials_path: String,
 }
 

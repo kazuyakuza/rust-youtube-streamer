@@ -1,7 +1,8 @@
 //! Credential persistence seam: the application-owned stored credential
 //! type and the mockable [`CredentialStore`] boundary. The concrete file
-//! store (atomic writes, permission restrictions) is Task 2's work
-//! (plan decision S8); this module owns types and the trait only.
+//! store lives in `file_credential_store` (atomic temp-file + rename
+//! writes, POSIX 0600) with its on-disk JSON schema in
+//! `persisted_credentials`; this module owns types and the trait only.
 
 use super::error::CredentialStoreError;
 use super::token::{AccessToken, GrantedScopes, RefreshToken};
@@ -18,14 +19,14 @@ pub(crate) struct StoredCredentials {
     pub(crate) granted_scopes: GrantedScopes,
 }
 
-/// Credential persistence boundary; fakes implement it in tests and the
-/// concrete file store arrives with Task 2.
+/// Credential persistence boundary; test fakes implement it and the
+/// concrete `FileCredentialStore` writes the on-disk JSON credential file.
 pub(crate) trait CredentialStore {
     /// Reads the previously persisted credentials.
     fn load(&self) -> Result<StoredCredentials, CredentialStoreError>;
 
-    /// Persists credentials atomically where the platform supports it
-    /// (a Task 2 implementation concern).
+    /// Persists credentials atomically; the store's temp-file + rename
+    /// sequence and platform limits are documented in `file_credential_store`.
     fn save(&self, credentials: &StoredCredentials) -> Result<(), CredentialStoreError>;
 }
 

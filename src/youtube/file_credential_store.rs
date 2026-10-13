@@ -7,7 +7,10 @@
 //! falls back to remove + rename (the only std-only portable
 //! replacement). An interrupted save can therefore leave a stale temp
 //! file (removed by the next save) but never a truncated or
-//! half-written credential file.
+//! half-written credential file. The Windows remove + rename fallback
+//! arm cannot execute in the Linux verification container (POSIX rename
+//! replaces in place), so only the POSIX arm is covered by automated
+//! tests; the Windows arm is a reviewed-but-untested path.
 //!
 //! Permissions: temp files are created with Unix mode 0600, so every
 //! credential file lands with owner-only access on Linux/macOS.
@@ -19,8 +22,13 @@
 //! Redaction: parse failures report fixed descriptive messages (never
 //! `serde_json`'s value-quoting text) and errors always name the
 //! operator-facing target path, so no secret value can reach a log or
-//! an error line through this module. No tracing events are emitted
-//! here — failure reporting is the returned typed error only.
+//! an error line; the store derives `Debug` over only its `path` (no
+//! token material) and emits no tracing events, so failure reporting is
+//! the returned typed error only.
+//!
+//! Schema: the on-disk JSON field names and load/save conversions live
+//! in the sibling `persisted_credentials` module; this file owns file IO
+//! (temp creation, permissions, rename) and io-error mapping only.
 
 use std::fs;
 use std::io::{self, Write};
