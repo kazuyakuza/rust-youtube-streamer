@@ -167,3 +167,7 @@ struct ApiErrorItem {
 #[cfg(test)]
 #[path = "google_authorization_verifier_tests.rs"]
 mod google_authorization_verifier_tests;
+
+#[cfg(test)]
+#[path = "google_authorization_verifier_classify_tests.rs"]
+mod google_authorization_verifier_classify_tests;

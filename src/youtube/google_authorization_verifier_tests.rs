@@ -1,14 +1,14 @@
-//! Verifier tests (R1-R11): the documented endpoint constant, request
-//! assembly through the REAL ureq agent against fake `127.0.0.1` servers,
-//! the status→error mapping table and the body-redaction guarantees of
-//! the pure classifier. Loopback only; no live Google access.
+//! Verifier loopback tests (R2-R6, R10, R11): request assembly through
+//! the REAL ureq agent against fake `127.0.0.1` servers, and the
+//! live status→mapping outcomes. Loopback only; no live Google access.
+//! The pure-classifier tests live in the `..._classify_tests` sibling.
 
 use std::io::{Read, Write};
 use std::sync::mpsc;
 
 use super::*;
 
-const ACCESS_TOKEN_FIXTURE: &str = "access_token_fixture";
+pub(super) const ACCESS_TOKEN_FIXTURE: &str = "access_token_fixture";
 
 struct RecordedRequest {
     request_line: String,
@@ -86,33 +86,24 @@ fn request_headers_complete(bytes: &[u8]) -> bool {
     bytes.windows(4).any(|window| window == b"\r\n\r\n")
 }
 
-fn fixture_access_token() -> AccessToken {
+pub(super) fn fixture_access_token() -> AccessToken {
     AccessToken::new(ACCESS_TOKEN_FIXTURE)
 }
 
-fn error_body(reason: &str, message: &str) -> String {
+pub(super) fn error_body(reason: &str, message: &str) -> String {
     format!(
         r#"{{"error":{{"code":401,"message":"{message}","errors":[{{"reason":"{reason}"}}]}}}}"#
     )
 }
 
-/// `expect_err` would demand `Debug` on `VerifiedAuthorization` (a type
-/// the plan keeps Debug-free by design), so failure extraction uses this.
-fn verification_failure(
+/// Failure extraction without `expect_err` (VerifiedAuthorization is Debug-free).
+pub(super) fn verification_failure(
     outcome: Result<VerifiedAuthorization, VerificationError>,
 ) -> VerificationError {
     let Err(error) = outcome else {
         panic!("expected a verification failure");
     };
     error
-}
-
-#[test]
-fn verification_request_url_is_the_documented_channels_call() {
-    assert_eq!(
-        VERIFICATION_ENDPOINT,
-        "https://www.googleapis.com/youtube/v3/channels?part=id&mine=true"
-    );
 }
 
 #[test]
@@ -136,10 +127,7 @@ fn bearer_header_and_request_line_reach_the_fake_api() {
 
 #[test]
 fn server_200_verifies_with_required_scope_evidence() {
-    let server = FakeApiServer::start(
-        "HTTP/1.1 200 OK",
-        r#"{"kind":"youtube#channelListResponse"}"#,
-    );
+    let server = FakeApiServer::start("HTTP/1.1 200 OK", "{}");
     let verified = server
         .verifier()
         .verify(&fixture_access_token())
@@ -150,26 +138,20 @@ fn server_200_verifies_with_required_scope_evidence() {
 
 #[test]
 fn server_401_maps_to_not_authorized() {
-    let body = error_body(
-        "authorizationRequired",
-        "Request had invalid authentication credentials.",
-    );
+    let body = error_body("authorizationRequired", "Invalid credentials.");
     let server = FakeApiServer::start("HTTP/1.1 401 Unauthorized", &body);
     let error = verification_failure(server.verifier().verify(&fixture_access_token()));
     assert!(matches!(error, VerificationError::NotAuthorized { .. }));
     let rendered = format!("{error}");
     assert!(rendered.contains("HTTP 401"));
     assert!(rendered.contains("authorizationRequired"));
-    assert!(!rendered.contains("invalid authentication credentials"));
+    assert!(!rendered.contains("Invalid credentials"));
     server.finish();
 }
 
 #[test]
 fn server_403_insufficient_permissions_maps_to_the_scope_class() {
-    let body = error_body(
-        "insufficientPermissions",
-        "The OAuth 2.0 token scopes are insufficient.",
-    );
+    let body = error_body("insufficientPermissions", "Scopes insufficient.");
     let server = FakeApiServer::start("HTTP/1.1 403 Forbidden", &body);
     let error = verification_failure(server.verifier().verify(&fixture_access_token()));
     let VerificationError::InsufficientScope { reason } = &error else {
@@ -189,40 +171,6 @@ fn server_403_other_reason_still_maps_to_the_scope_class() {
     };
     assert!(reason.contains("accountSuspended"));
     server.finish();
-}
-
-#[test]
-fn other_statuses_map_to_transport() {
-    for status in [400_u16, 404, 500] {
-        let error = verification_failure(classify_verification_reply(status, None));
-        let VerificationError::Transport { reason } = &error else {
-            panic!("expected the Transport class, got {error}");
-        };
-        assert!(reason.contains(&status.to_string()));
-    }
-}
-
-#[test]
-fn error_bodies_are_never_embedded_into_reasons() {
-    let hostile = format!(
-        r#"{{"error":{{"code":401,"message":"token {ACCESS_TOKEN_FIXTURE} was rejected","errors":[{{"reason":"authError"}}]}}}}"#
-    );
-    let error = verification_failure(classify_verification_reply(401, Some(&hostile)));
-    let rendered = format!("{error}");
-    assert!(rendered.contains("authError"));
-    assert!(!rendered.contains(ACCESS_TOKEN_FIXTURE));
-}
-
-#[test]
-fn unparsable_error_bodies_use_the_fixed_reason_text() {
-    let error = verification_failure(classify_verification_reply(
-        401,
-        Some("Connection refused by the operator."),
-    ));
-    let VerificationError::NotAuthorized { reason } = &error else {
-        panic!("expected the NotAuthorized class, got {error}");
-    };
-    assert_eq!(reason, REJECTED_TOKEN_TEXT);
 }
 
 #[test]
