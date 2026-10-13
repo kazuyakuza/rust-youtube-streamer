@@ -123,6 +123,8 @@ impl FileCredentialStore {
         })
     }
 
+    // Used by the load path; its consumer arrives with Task 4 (D13 deviation).
+    #[allow(dead_code)]
     fn read_credential_text(&self) -> Result<String, CredentialStoreError> {
         fs::read_to_string(&self.path).map_err(|source| map_read_error(&self.path, source))
     }
@@ -144,6 +146,8 @@ impl CredentialStore for FileCredentialStore {
     }
 }
 
+// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
+#[allow(dead_code)]
 fn map_read_error(path: &Path, source: io::Error) -> CredentialStoreError {
     if source.kind() == io::ErrorKind::NotFound {
         CredentialStoreError::ContentNotAvailable

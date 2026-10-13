@@ -7,7 +7,6 @@ mod chat;
 mod config;
 mod renderer;
 mod streaming;
-#[allow(dead_code)]
 mod youtube;
 
 use std::process::ExitCode;

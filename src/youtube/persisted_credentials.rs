@@ -60,6 +60,8 @@ pub(crate) fn serialized_document(credentials: &StoredCredentials) -> Result<Str
 
 /// Parses persisted file text into stored credentials; malformed or
 /// wrong-schema JSON maps to ReadParse with the fixed redacted message.
+// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
+#[allow(dead_code)]
 pub(crate) fn parse_credentials(
     text: &str,
     path: &Path,
@@ -73,6 +75,8 @@ pub(crate) fn parse_credentials(
     Ok(stored_from_persisted(parsed))
 }
 
+// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
+#[allow(dead_code)]
 fn stored_from_persisted(parsed: PersistedCredentials) -> StoredCredentials {
     StoredCredentials {
         access_token: AccessToken::new(parsed.access_token),
@@ -82,6 +86,8 @@ fn stored_from_persisted(parsed: PersistedCredentials) -> StoredCredentials {
     }
 }
 
+// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
+#[allow(dead_code)]
 fn parse_failure_message(error: &serde_json::Error) -> String {
     if is_malformed_json(error) {
         "the credential file is not valid JSON".to_string()
@@ -90,6 +96,8 @@ fn parse_failure_message(error: &serde_json::Error) -> String {
     }
 }
 
+// Used by the load path; its consumer arrives with Task 4 (D13 deviation).
+#[allow(dead_code)]
 fn is_malformed_json(error: &serde_json::Error) -> bool {
     error.is_syntax() || error.is_eof()
 }

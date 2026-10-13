@@ -23,6 +23,8 @@ pub(crate) struct StoredCredentials {
 /// concrete `FileCredentialStore` writes the on-disk JSON credential file.
 pub(crate) trait CredentialStore {
     /// Reads the previously persisted credentials.
+    // Load-side consumers arrive with the Task 4 credential service (D13).
+    #[allow(dead_code)]
     fn load(&self) -> Result<StoredCredentials, CredentialStoreError>;
 
     /// Persists credentials atomically; the store's temp-file + rename

@@ -22,9 +22,16 @@ pub(crate) enum ClientConfigError {
 /// Failures parsing the authorization-endpoint callback query.
 #[derive(Debug)]
 pub(crate) enum AuthorizationError {
-    MissingParameter { parameter: String },
+    MissingParameter {
+        parameter: String,
+    },
     StateMismatch,
-    ProviderDeclined { reason: String },
+    // Constructed only by tests today; a future parser/transport surface may
+    // produce it (D13 deviation: Task-4-reserved).
+    #[allow(dead_code)]
+    ProviderDeclined {
+        reason: String,
+    },
 }
 
 /// Failures from the Google token endpoint exchange/refresh boundary.
@@ -43,13 +50,30 @@ pub(crate) enum TokenEndpointError {
 /// Failures from the credential persistence boundary.
 #[derive(Debug)]
 pub(crate) enum CredentialStoreError {
-    FileOpen { path: PathBuf, source: io::Error },
-    FileWrite { path: PathBuf, source: io::Error },
-    ReadParse { path: PathBuf, message: String },
+    FileOpen {
+        path: PathBuf,
+        source: io::Error,
+    },
+    FileWrite {
+        path: PathBuf,
+        source: io::Error,
+    },
+    // Constructed by the load-side parse path; its consumer arrives with
+    // Task 4 (D13 deviation).
+    #[allow(dead_code)]
+    ReadParse {
+        path: PathBuf,
+        message: String,
+    },
+    // Constructed on the load side when no credential file exists; its
+    // consumer arrives with Task 4 (D13 deviation).
+    #[allow(dead_code)]
     ContentNotAvailable,
 }
 
 /// Failures from the authorization verification boundary.
+// Reserved for the Task 4 network verifier (D13).
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) enum VerificationError {
     NotAuthorized { reason: String },

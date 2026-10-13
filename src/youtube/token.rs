@@ -130,6 +130,9 @@ impl fmt::Debug for ClientSecret {
 /// The raw-string secret fields intentionally make `Debug` unavailable:
 /// accidental formatting in a future call site would print tokens; a
 /// compile error is the stronger guard (Task 2 hardening, simplify §4 flag).
+// The serde parser is the offline/Task-4 seam; the ureq path parses via
+// oauth2's BasicTokenResponse (D13).
+#[allow(dead_code)]
 #[derive(Deserialize)]
 pub(crate) struct TokenEndpointBody {
     access_token: String,
@@ -183,6 +186,8 @@ impl GrantedScopes {
 /// Parses a Google token endpoint response body; a missing
 /// `access_token` or unparsable JSON maps to
 /// [`TokenEndpointError::ResponseParse`].
+// Offline/Task-4 seam; the ureq path parses via oauth2's token types (D13).
+#[allow(dead_code)]
 pub(crate) fn parse_token_response(body: &str) -> Result<TokenResponse, TokenEndpointError> {
     let parsed: TokenEndpointBody =
         serde_json::from_str(body).map_err(|_| TokenEndpointError::ResponseParse)?;

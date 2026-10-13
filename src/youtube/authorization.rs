@@ -19,6 +19,8 @@ pub(crate) const AUTHORIZATION_ENDPOINT: &str = "https://accounts.google.com/o/o
 /// Token endpoint Google uses for installed applications.
 pub(crate) const TOKEN_ENDPOINT: &str = "https://oauth2.googleapis.com/token";
 /// Revocation endpoint Google uses for installed applications.
+// Reserved for a later phase (revocation is out of Task 3 scope; D13).
+#[allow(dead_code)]
 pub(crate) const REVOCATION_ENDPOINT: &str = "https://oauth2.googleapis.com/revoke";
 
 /// PKCE pair (S256): challenge for the authorization URL, verifier for
@@ -74,6 +76,9 @@ pub(crate) enum AuthorizationCallback {
     /// produced, and the code is single-use material.
     Authorized {
         code: AuthorizationCode,
+        // The parser re-checks state equality internally; the auth flow
+        // never re-reads it (D13).
+        #[allow(dead_code)]
         state: String,
     },
     /// Provider error code, never a token.
