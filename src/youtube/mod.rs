@@ -27,7 +27,9 @@
 //!   documented in those two module docs, and the `oauth.*` path defaults
 //!   in `config/config.example.json`. The concrete YouTube verification
 //!   request is landed in `google_authorization_verifier` (the minimal
-//!   channels.list(mine=true) probe for the force-ssl scope); it stays
+//!   channels.list(mine=true) probe for the force-ssl scope) and the
+//!   reusable load/refresh/verify pipeline in `credential_service`
+//!   (verify-first refresh decision, typed failure classes); both stay
 //!   staged, unwired until the future run-phase wiring.
 //! - The researched Google OAuth facts (endpoints, loopback redirect,
 //!   PKCE S256, refresh semantics, the force-ssl scope decision) are
@@ -44,9 +46,14 @@ mod token;
 mod transport;
 mod verify;
 
+// Staged until the future run-phase wiring constructs the load/refresh/
+// verify service and its concrete verifier (deliberate staging, the
+// Phase-02 `#[allow(dead_code)] mod chat;` precedent; retire there).
+#[allow(dead_code)]
+mod credential_service;
+mod credential_service_error;
 // Staged until the future run-phase wiring injects the concrete verifier
-// into the credential service (deliberate staging, the Phase-02
-// `#[allow(dead_code)] mod chat;` precedent; retire there).
+// into the credential service (same staging contract as above).
 #[allow(dead_code)]
 mod google_authorization_verifier;
 
