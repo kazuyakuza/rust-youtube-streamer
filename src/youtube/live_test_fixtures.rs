@@ -62,7 +62,7 @@ impl ScriptedLiveApiTransport {
 impl LiveApiTransport for ScriptedLiveApiTransport {
     fn create_stream(&self, command: &CreateStreamCommand) -> Result<LiveStream, LiveApiError> {
         self.operations.borrow_mut().push("create_stream");
-        *self.captured_create_stream.borrow_mut() = Some(copied_stream_command(command));
+        *self.captured_create_stream.borrow_mut() = Some(command.clone());
         next_result(&self.create_stream_results)
     }
 
@@ -71,16 +71,13 @@ impl LiveApiTransport for ScriptedLiveApiTransport {
         command: &CreateBroadcastCommand,
     ) -> Result<LiveBroadcast, LiveApiError> {
         self.operations.borrow_mut().push("create_broadcast");
-        *self.captured_create_broadcast.borrow_mut() = Some(copied_broadcast_command(command));
+        *self.captured_create_broadcast.borrow_mut() = Some(command.clone());
         next_result(&self.create_broadcast_results)
     }
 
     fn bind(&self, command: &BindCommand) -> Result<LiveBroadcast, LiveApiError> {
         self.operations.borrow_mut().push("bind");
-        *self.captured_bind.borrow_mut() = Some(BindCommand {
-            broadcast_id: command.broadcast_id.clone(),
-            stream_id: command.stream_id.clone(),
-        });
+        *self.captured_bind.borrow_mut() = Some(command.clone());
         next_result(&self.bind_results)
     }
 
@@ -106,23 +103,6 @@ fn next_result<T>(queue: &RefCell<VecDeque<Result<T, LiveApiError>>>) -> Result<
         .borrow_mut()
         .pop_front()
         .expect("the test scripted a queued result")
-}
-
-fn copied_stream_command(command: &CreateStreamCommand) -> CreateStreamCommand {
-    CreateStreamCommand {
-        title: command.title.clone(),
-        resolution: command.resolution.clone(),
-        frame_rate: command.frame_rate.clone(),
-    }
-}
-
-fn copied_broadcast_command(command: &CreateBroadcastCommand) -> CreateBroadcastCommand {
-    CreateBroadcastCommand {
-        title: command.title.clone(),
-        description: command.description.clone(),
-        privacy_status: command.privacy_status.clone(),
-        scheduled_start_time: command.scheduled_start_time.clone(),
-    }
 }
 
 /// O1 insert reply: id + the full `cdn.ingestionInfo` destination source.
