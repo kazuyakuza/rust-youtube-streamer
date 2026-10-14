@@ -77,7 +77,7 @@
   - `error.rs` - typed `StreamingError` (pixel-format guard, executable location, output directory/name, Spawn, FrameWrite, WaitFailed, ExitFailure with diagnostics tail, OutputFinalize); hand-written `Display`/`source()`; 4096-byte trailing diagnostics capture
   - `ffmpeg.rs` - `FfmpegProcess`: spawn without a shell with piped stdin/stdout/stderr, dedicated drain threads joined before `wait`, `finish()` = stdin EOF → drains → exit-status check → non-empty-file check; `Drop` kills and reaps
   - `sink.rs` - `FrameSink` trait (`write_frame`/`finish`) and `CompletedVideo` — the only types the pipeline sees
-  - `video_output.rs` - `resolve_output_path`: beside-executable `videos/` directory created on demand; collision-safe `demo-`/`session-` names (`_2.._1000`); conservative existence probe
+  - `video_output.rs` - `resolve_output_path`: beside-executable `videos/` directory created on demand; collision-safe `demo-` names (`_2.._1000`); conservative existence probe
   - `utc_timestamp.rs` - `YYYYMMDD-HHMMSS` UTC timestamp (civil-from-days, leap handling)
   - `*_tests.rs` - unit tests incl. `ffmpeg_tests.rs` (6 fake-FFmpeg POSIX-script process tests, `#[cfg(all(test, unix))]`) and `ffmpeg_real_tests.rs` (1 real-FFmpeg smoke: 64×36@5fps record + ffprobe assertions, loud image-tool prerequisite)
 

@@ -30,6 +30,8 @@ impl fmt::Display for LiveApiError {
     }
 }
 
+impl std::error::Error for LiveApiError {}
+
 impl LiveApiError {
     fn display_metadata(formatter: &mut fmt::Formatter<'_>, field: &str) -> fmt::Result {
         write!(

@@ -7,9 +7,7 @@
 //! reason strings); only the non-secret server `reason` code is read from
 //! bodies, and bodies are never embedded.
 
-// Test-only re-export: the offline classifier/Display tests name the
-// function; production code never calls it until Task 2's transport.
-#[cfg(test)]
+// Re-exported for Task 2's concrete transport and for offline tests.
 pub(crate) use classify::classify_api_error;
 
 mod classify;
