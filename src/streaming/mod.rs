@@ -23,15 +23,20 @@
 mod args;
 mod error;
 mod ffmpeg;
+mod rtmps_destination;
 mod sink;
 mod utc_timestamp;
 mod video_output;
 
 pub(crate) use error::StreamingError;
 pub(crate) use ffmpeg::FfmpegProcess;
-pub(crate) use sink::{CompletedVideo, FrameSink};
+pub(crate) use sink::{CompletedOutput, FrameSink};
 pub(crate) use video_output::{resolve_output_path, OutputKind};
 
-// Widened for the app's test double (sink.rs): `CompletedVideo::new`
-// changed `pub(super)` → `pub(crate)`; the test fake must fabricate a
-// successful `finish` value without a real FFmpeg process.
+// Widened for the app's test doubles (sink.rs): `CompletedVideo::new`
+// changed `pub(super)` → `pub(crate)`; the fake sinks fabricate a
+// successful local-recording `finish` value without a real FFmpeg
+// process. Test-only, so the crate re-export stays consumer-locked
+// (nothing in the production build reaches for it).
+#[cfg(test)]
+pub(crate) use sink::CompletedVideo;

@@ -9,6 +9,7 @@ use crate::app::pipeline::test_helpers::*;
 use crate::chat::{ChatError, ChatMessage, ChatStore, ChatStoreSettings};
 use crate::config::valid_config;
 use crate::renderer::RenderError;
+use crate::streaming::CompletedOutput;
 
 /// Chat store for pipeline tests: rides the crate's `valid_config` fixture
 /// with `chat.log_file` pointed at `<tempdir>/chat.log`, so scripted
@@ -39,7 +40,11 @@ fn run_returns_completed_video_without_writing_when_stopped_before_start() {
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
     });
-    let completed = pipeline.run().expect("stopped run finalizes the sink");
+    let CompletedOutput::Recording(completed) =
+        pipeline.run().expect("stopped run finalizes the sink")
+    else {
+        panic!("the stopped run must complete as a local recording");
+    };
     assert_eq!(completed.path(), Path::new("videos/test-recording.mp4"));
     let log = events.borrow();
     assert!(log.writes.is_empty());

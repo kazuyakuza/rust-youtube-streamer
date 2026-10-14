@@ -25,7 +25,7 @@ use crate::app::pipeline::{
     PipelineConstruction, StopFlag,
 };
 use crate::config::AppConfig;
-use crate::streaming::{CompletedVideo, OutputKind};
+use crate::streaming::{CompletedOutput, OutputKind};
 
 /// Exit code returned by the demo mode on success.
 const DEMO_SUCCESS_EXIT: u8 = 0;
@@ -88,13 +88,16 @@ fn demo_outcome(app_config: &AppConfig) -> Result<(), DemoError> {
 }
 
 /// User-facing completion output, printed ONLY after
-/// `FramePipeline::run` returned a verified `CompletedVideo` (FFmpeg exited
-/// 0 and the MP4 was confirmed present and non-empty on disk). Standard
-/// println!, deliberately NOT a tracing event: the tracing whitelist
-/// (command, config_path, exit_code) stays untouched and no configuration
-/// or path value ever enters a log field.
-fn print_final_path(completed: &CompletedVideo) {
-    println!("demo recording finalized: {}", completed.path().display());
+/// `FramePipeline::run` returned a verified local recording (FFmpeg exited
+/// 0 and the MP4 was confirmed present and non-empty on disk); the demo
+/// never completes as a stream, so the `Recording` guard always holds.
+/// Standard println!, deliberately NOT a tracing event: the tracing
+/// whitelist (command, config_path, exit_code) stays untouched and no
+/// configuration or path value ever enters a log field.
+fn print_final_path(completed: &CompletedOutput) {
+    if let CompletedOutput::Recording(recording) = completed {
+        println!("demo recording finalized: {}", recording.path().display());
+    }
 }
 
 fn report_demo_failure(error: &DemoError) -> u8 {

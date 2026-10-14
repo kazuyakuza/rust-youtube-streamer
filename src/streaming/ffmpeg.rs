@@ -6,7 +6,11 @@
 //! (hang handling belongs to Task 2's pacing/shutdown design); the child is
 //! killed on Drop so an abandoned process cannot leak into the operator's
 //! machine. The argument vector is deliberately never echoed into logs or
-//! error text; diagnostics carry the captured stderr tail only.
+//! error text; diagnostics carry the captured stderr tail only, with the
+//! streaming destination URL redacted (`[redacted]`) before any error
+//! payload is built (plan D-T3-5 F-S3). Two spawn paths share one engine:
+//! `start` targets a local MP4 (demo), `start_stream` targets the RTMPS
+//! destination (production; no local file).
 
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
@@ -16,17 +20,22 @@ use std::thread::{self, JoinHandle};
 use crate::config::model::AppConfig;
 use crate::streaming::args;
 use crate::streaming::error::{trailing_bytes, StreamingError};
-use crate::streaming::sink::{CompletedVideo, FrameSink};
+use crate::streaming::rtmps_destination::RtmpsDestination;
+use crate::streaming::sink::{CompletedOutput, CompletedVideo, FrameSink};
 
 const DIAGNOSTIC_CAPTURE_LIMIT_BYTES: usize = 4096;
+const REDACTED_TEXT: &str = "[redacted]";
 
 /// Supervised FFmpeg child process: complete frames go to its stdin, both
 /// output pipes are continuously drained, and `finish` reports only a
-/// verified finalized recording.
+/// verified finalization (a local recording, or a clean streaming exit).
+/// No `Debug` derive is introduced: the RTMPS destination lives inside the
+/// struct and must never become formattable.
 pub struct FfmpegProcess {
     child: Child,
     stdin: Option<ChildStdin>,
-    output_path: PathBuf,
+    local_output: Option<PathBuf>,
+    redaction_target: Option<String>,
     stdout_drain: Option<JoinHandle<CapturedPipe>>,
     stderr_drain: Option<JoinHandle<CapturedPipe>>,
 }
@@ -38,35 +47,65 @@ struct CapturedPipe {
 }
 
 impl FfmpegProcess {
-    /// Builds arguments (validated config in, locked vector out), spawns
-    /// the child with piped stdin/stdout/stderr and no shell, then hands
-    /// both output pipes to dedicated drain threads.
+    /// Builds arguments (validated config in, locked local vector out),
+    /// spawns the child with piped stdin/stdout/stderr and no shell, then
+    /// hands both output pipes to dedicated drain threads.
     pub fn start(config: &AppConfig, output_path: PathBuf) -> Result<Self, StreamingError> {
         let arguments = args::build_arguments(config, &output_path)?;
-        let mut command = Command::new(&config.ffmpeg.executable);
-        prepare_piped_command(&mut command, &arguments);
-        let mut child = command.spawn().map_err(|source| StreamingError::Spawn {
-            executable: config.ffmpeg.executable.clone(),
-            source,
-        })?;
-        let stdin = match child.stdin.take() {
-            Some(stdin) => stdin,
-            None => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(missing_stdin_error());
-            }
-        };
-        let stdout_drain = spawn_drain(child.stdout.take());
-        let stderr_drain = spawn_drain(child.stderr.take());
-        Ok(Self {
-            child,
-            stdin: Some(stdin),
-            output_path,
-            stdout_drain: Some(stdout_drain),
-            stderr_drain: Some(stderr_drain),
-        })
+        spawn_with(config, arguments, Some(output_path), None)
     }
+
+    /// The production streaming spawn: locked stream vector, the RTMPS
+    /// destination as the final argument, no local output file, and the
+    /// destination recorded as the stderr-redaction target.
+    /// Consume at the Task-3 run wiring; retire there.
+    #[allow(dead_code)]
+    pub fn start_stream(
+        config: &AppConfig,
+        destination: RtmpsDestination,
+    ) -> Result<Self, StreamingError> {
+        let arguments = args::build_stream_arguments(config, &destination)?;
+        spawn_with(
+            config,
+            arguments,
+            None,
+            Some(destination.as_url().to_string()),
+        )
+    }
+}
+
+/// The single spawn path shared by the local and streaming starts: piped
+/// stdin/stdout/stderr, no shell, drain threads attached before returning.
+fn spawn_with(
+    config: &AppConfig,
+    arguments: Vec<String>,
+    local_output: Option<PathBuf>,
+    redaction_target: Option<String>,
+) -> Result<FfmpegProcess, StreamingError> {
+    let mut command = Command::new(&config.ffmpeg.executable);
+    prepare_piped_command(&mut command, &arguments);
+    let mut child = command.spawn().map_err(|source| StreamingError::Spawn {
+        executable: config.ffmpeg.executable.clone(),
+        source,
+    })?;
+    let stdin = match child.stdin.take() {
+        Some(stdin) => stdin,
+        None => {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(missing_stdin_error());
+        }
+    };
+    let stdout_drain = spawn_drain(child.stdout.take());
+    let stderr_drain = spawn_drain(child.stderr.take());
+    Ok(FfmpegProcess {
+        child,
+        stdin: Some(stdin),
+        local_output,
+        redaction_target,
+        stdout_drain: Some(stdout_drain),
+        stderr_drain: Some(stderr_drain),
+    })
 }
 
 /// The piped stdin handle is expected after a successful spawn, but panic
@@ -118,7 +157,7 @@ impl FrameSink for FfmpegProcess {
             .map_err(|source| StreamingError::FrameWrite { source })
     }
 
-    fn finish(mut self) -> Result<CompletedVideo, StreamingError> {
+    fn finish(mut self) -> Result<CompletedOutput, StreamingError> {
         self.stdin = None;
         let _captured_stdout = join_drain(self.stdout_drain.take())?;
         let captured_stderr = join_drain(self.stderr_drain.take())?;
@@ -126,13 +165,21 @@ impl FrameSink for FfmpegProcess {
             .child
             .wait()
             .map_err(|source| StreamingError::WaitFailed { source })?;
-        report_exit_failure(&status, &captured_stderr)?;
-        let output_path = self.output_path.clone();
-        if !is_output_finalized(&output_path) {
-            return Err(StreamingError::OutputFinalize { path: output_path });
-        }
-        Ok(CompletedVideo::new(output_path))
+        report_exit_failure(&status, &captured_stderr, self.redaction_target.as_deref())?;
+        let Some(output_path) = self.local_output.take() else {
+            return Ok(CompletedOutput::Stream);
+        };
+        verify_local_output(output_path).map(CompletedOutput::Recording)
     }
+}
+
+/// The local-output finalization check (OutputFinalize path), extracted so
+/// the streaming finish never runs it: RTMPS leaves no file behind.
+fn verify_local_output(output_path: PathBuf) -> Result<CompletedVideo, StreamingError> {
+    if !is_output_finalized(&output_path) {
+        return Err(StreamingError::OutputFinalize { path: output_path });
+    }
+    Ok(CompletedVideo::new(output_path))
 }
 
 /// Joins one drain thread. A missing handle or a panicked thread both map
@@ -148,16 +195,31 @@ fn join_drain(drain: Option<JoinHandle<CapturedPipe>>) -> Result<CapturedPipe, S
     })
 }
 
-fn report_exit_failure(status: &ExitStatus, stderr: &CapturedPipe) -> Result<(), StreamingError> {
+fn report_exit_failure(
+    status: &ExitStatus,
+    stderr: &CapturedPipe,
+    redaction_target: Option<&str>,
+) -> Result<(), StreamingError> {
     if status.success() {
         return Ok(());
     }
     let mut diagnostics = trailing_bytes(&stderr.collected_bytes, DIAGNOSTIC_CAPTURE_LIMIT_BYTES);
     append_read_failure_note(&mut diagnostics, stderr.final_error.as_ref());
+    redact_destination(&mut diagnostics, redaction_target);
     Err(StreamingError::ExitFailure {
         exit_code: status.code(),
         diagnostics,
     })
+}
+
+/// FFmpeg echoes the output URL in its stderr (`Output #0, flv, to
+/// 'rtmps://…/<key>'`); every occurrence is replaced BEFORE any
+/// `ExitFailure` payload is built. The read-failure note is app-generated
+/// text appended before this pass and can never carry the URL.
+fn redact_destination(diagnostics: &mut String, redaction_target: Option<&str>) {
+    if let Some(target) = redaction_target {
+        *diagnostics = diagnostics.replace(target, REDACTED_TEXT);
+    }
 }
 
 fn append_read_failure_note(diagnostics: &mut String, read_failure: Option<&io::Error>) {
@@ -192,6 +254,10 @@ impl Drop for FfmpegProcess {
 #[cfg(all(test, unix))]
 #[path = "ffmpeg_tests.rs"]
 mod ffmpeg_tests;
+
+#[cfg(all(test, unix))]
+#[path = "ffmpeg_stream_tests.rs"]
+mod ffmpeg_stream_tests;
 
 #[cfg(all(test, unix))]
 #[path = "ffmpeg_real_tests.rs"]

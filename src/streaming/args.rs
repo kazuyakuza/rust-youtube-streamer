@@ -11,6 +11,15 @@
 //! <fps> -i pipe:0 -c:v <video_codec> -preset <preset> -b:v <bitrate>
 //! -pix_fmt yuv420p -movflags +faststart <output_path>`
 //!
+//! Locked streaming vector (plan D-T3-5 F-S2):
+//! `-nostdin -n -f rawvideo -pix_fmt rgb24 -s <width>x<height> -framerate
+//! <fps> -i pipe:0 -c:v <video_codec> -preset <preset> -b:v <bitrate> -g
+//! <2 × fps> -pix_fmt yuv420p -f flv <destination_url>` — the input
+//! segment is byte-identical to the local vector; the output group
+//! replaces `+faststart` with the FLV muxer selection and the official
+//! 2-second-target keyframe interval. The vector order is asserted by
+//! tests and must not be reordered.
+//!
 //! Rationale record (plan §0.2, sources R1–R8):
 //! - R1+R2+R3: rawvideo input needs explicit `pixel_format` (`rgb24`, which
 //!   equals `config.video.pixel_format` — already validated by the config
@@ -42,11 +51,14 @@ use std::path::Path;
 
 use crate::config::model::AppConfig;
 use crate::streaming::error::StreamingError;
+use crate::streaming::rtmps_destination::RtmpsDestination;
 
 const REQUIRED_PIXEL_FORMAT: &str = "rgb24";
 const PIPE_SOURCE: &str = "pipe:0";
 const OUTPUT_PIXEL_FORMAT: &str = "yuv420p";
 const MOVFLAGS_FASTSTART: &str = "+faststart";
+const STREAM_MUXER: &str = "flv";
+const GOP_MULTIPLIER: u32 = 2;
 
 pub(crate) fn build_arguments(
     config: &AppConfig,
@@ -86,6 +98,56 @@ pub(crate) fn build_arguments(
 
 fn is_non_rgb24_pixel_format(pixel_format: &str) -> bool {
     pixel_format != REQUIRED_PIXEL_FORMAT
+}
+
+/// The locked streaming vector (plan D-T3-5 F-S2): the input segment is
+/// byte-identical to the local vector; the output group differs by exactly
+/// (i) the destination URL as the final argument, (ii) no `-movflags`
+/// (MP4-only container rewrite, meaningless for the FLV muxer), (iii) the
+/// explicit `-f flv` muxer (no output extension exists), and (iv) the
+/// `-g <2 × fps>` keyframe interval (official guidance: target 2 s, never
+/// above 4 s; derived from the configured FPS). The local
+/// `build_arguments` vector stays byte-unchanged (demo never regresses).
+pub(super) fn build_stream_arguments(
+    config: &AppConfig,
+    destination: &RtmpsDestination,
+) -> Result<Vec<String>, StreamingError> {
+    if is_non_rgb24_pixel_format(&config.video.pixel_format) {
+        return Err(StreamingError::UnsupportedPixelFormat {
+            value: config.video.pixel_format.clone(),
+        });
+    }
+    Ok(vec![
+        "-nostdin".to_string(),
+        "-n".to_string(),
+        "-f".to_string(),
+        "rawvideo".to_string(),
+        "-pix_fmt".to_string(),
+        config.video.pixel_format.clone(),
+        "-s".to_string(),
+        format!("{}x{}", config.video.width, config.video.height),
+        "-framerate".to_string(),
+        format!("{}", config.video.fps),
+        "-i".to_string(),
+        PIPE_SOURCE.to_string(),
+        "-c:v".to_string(),
+        config.ffmpeg.video_codec.clone(),
+        "-preset".to_string(),
+        config.ffmpeg.preset.clone(),
+        "-b:v".to_string(),
+        config.ffmpeg.bitrate.clone(),
+        "-g".to_string(),
+        format!("{}", stream_keyframe_interval(config.video.fps)),
+        "-pix_fmt".to_string(),
+        OUTPUT_PIXEL_FORMAT.to_string(),
+        "-f".to_string(),
+        STREAM_MUXER.to_string(),
+        destination.as_url().to_string(),
+    ])
+}
+
+fn stream_keyframe_interval(fps: u32) -> u32 {
+    fps * GOP_MULTIPLIER
 }
 
 #[cfg(test)]

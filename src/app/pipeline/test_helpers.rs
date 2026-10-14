@@ -9,7 +9,7 @@ use crate::app::pipeline::interrupt::StopFlag;
 use crate::app::pipeline::source::MessageSource;
 use crate::chat::{ChatError, ChatMessage};
 use crate::renderer::{Frame, RenderError, RenderInput, Renderer, Rgb};
-use crate::streaming::{CompletedVideo, FrameSink, StreamingError};
+use crate::streaming::{CompletedOutput, CompletedVideo, FrameSink, StreamingError};
 
 pub(crate) const TEST_INTERVAL_NANOS: u64 = 40;
 pub(crate) const TEST_FRAME_BYTES: usize = 12; // 2 * 2 * 3
@@ -128,12 +128,12 @@ impl FrameSink for RecordingSink {
         Ok(())
     }
 
-    fn finish(self) -> Result<CompletedVideo, StreamingError> {
+    fn finish(self) -> Result<CompletedOutput, StreamingError> {
         let output_path = self.output_path.clone();
         let mut log = self.events.borrow_mut();
         log.finish_called = true;
         log.finish_path = Some(output_path.clone());
-        Ok(CompletedVideo::new(output_path))
+        Ok(CompletedOutput::Recording(CompletedVideo::new(output_path)))
     }
 }
 
@@ -162,9 +162,11 @@ impl FrameSink for FailingWriteSink {
         })
     }
 
-    fn finish(self) -> Result<CompletedVideo, StreamingError> {
+    fn finish(self) -> Result<CompletedOutput, StreamingError> {
         self.events.borrow_mut().finish_called = true;
-        Ok(CompletedVideo::new(PathBuf::from("videos/not-reached.mp4")))
+        Ok(CompletedOutput::Recording(CompletedVideo::new(
+            PathBuf::from("videos/not-reached.mp4"),
+        )))
     }
 }
 

@@ -89,9 +89,12 @@ fn fake_ffmpeg_success_writes_exactly_the_piped_bytes() {
         .write_frame(&[42u8; 77])
         .expect("slice three must be accepted");
 
-    let completed = process
+    let CompletedOutput::Recording(completed) = process
         .finish()
-        .expect("a natural stdin EOF must finalize the fake recording");
+        .expect("a natural stdin EOF must finalize the fake recording")
+    else {
+        panic!("the local recording path must complete as Recording");
+    };
     assert_eq!(completed.path(), output_path.as_path());
     let recorded_bytes = fs::metadata(&output_path)
         .expect("the fake output must exist")

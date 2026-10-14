@@ -12,7 +12,9 @@ use crate::app::pipeline::source::MessageSource;
 use crate::chat::{ChatStore, ChatStoreSettings};
 use crate::config::model::AppConfig;
 use crate::renderer::{Frame, RenderInput, Renderer, RendererSettings, TextRenderer};
-use crate::streaming::{resolve_output_path, CompletedVideo, FfmpegProcess, FrameSink, OutputKind};
+use crate::streaming::{
+    resolve_output_path, CompletedOutput, FfmpegProcess, FrameSink, OutputKind,
+};
 
 /// Assembled parts for one frame pipeline. Callers (TODO Task 3 demo mode,
 /// tests) populate the struct literal directly; fields are `pub(crate)`
@@ -64,7 +66,7 @@ impl<S: FrameSink> FramePipeline<S> {
     }
 
     /// The paced loop. STOP LATENCY: at most one frame interval.
-    pub(crate) fn run(mut self) -> Result<CompletedVideo, FramePipelineError> {
+    pub(crate) fn run(mut self) -> Result<CompletedOutput, FramePipelineError> {
         let mut schedule =
             PacingSchedule::started(self.pacing.interval_nanos(), self.clock.now_nanos());
         loop {

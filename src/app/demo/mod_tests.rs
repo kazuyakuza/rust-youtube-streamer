@@ -14,7 +14,7 @@ use crate::app::pipeline::{
 };
 use crate::chat::{ChatStore, ChatStoreSettings};
 use crate::config::valid_config;
-use crate::streaming::StreamingError;
+use crate::streaming::{CompletedOutput, StreamingError};
 
 /// Chat store for the composition test: rides the crate's `valid_config`
 /// fixture with `chat.log_file` pointed at `<tempdir>/chat.log`.
@@ -63,7 +63,11 @@ fn demo_timeline_drives_the_frame_pipeline_to_full_completion() {
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
     });
-    let completed = pipeline.run().expect("demo timeline run finalizes");
+    let CompletedOutput::Recording(completed) =
+        pipeline.run().expect("demo timeline run finalizes")
+    else {
+        panic!("the demo pipeline must complete as a local recording");
+    };
     assert_eq!(completed.path(), Path::new("videos/test-recording.mp4"));
     let log = events.borrow();
     assert_eq!(log.writes.len() as u64, timeline.rendered_frame_count());

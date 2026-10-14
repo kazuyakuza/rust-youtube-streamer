@@ -73,9 +73,12 @@ fn real_ffmpeg_records_and_probes_plausible_video() {
             .write_frame(&[0u8; SMOKE_FRAME_BYTES])
             .expect("black frames must stream through stdin");
     }
-    let completed = process
+    let CompletedOutput::Recording(completed) = process
         .finish()
-        .expect("a natural stdin EOF must finalize the real recording");
+        .expect("a natural stdin EOF must finalize the real recording")
+    else {
+        panic!("the local recording path must complete as Recording");
+    };
     assert_eq!(completed.path(), output_path.as_path());
     let recorded_bytes = fs::metadata(&output_path)
         .expect("the recording must exist")

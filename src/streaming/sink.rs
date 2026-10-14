@@ -38,7 +38,20 @@ pub trait FrameSink {
     fn write_frame(&mut self, frame: &[u8]) -> Result<(), StreamingError>;
 
     /// Ends the frame stream, waits for FFmpeg to exit after stdin-EOF,
-    /// verifies the MP4 was finalized, and consumes the sink. Success means
-    /// exit status 0 AND an existing, non-empty output file — never less.
-    fn finish(self) -> Result<CompletedVideo, StreamingError>;
+    /// verifies the finalization target (the local MP4 on disk; nothing
+    /// beyond a clean exit for RTMPS), and consumes the sink. Success means
+    /// exit status 0 AND — for local recordings — an existing, non-empty
+    /// output file; never less.
+    fn finish(self) -> Result<CompletedOutput, StreamingError>;
+}
+
+/// Verified finalization proof of a finished frame sink (plan D-T3-5 F-S4,
+/// D-T1-10): local recordings verify the MP4 on disk; RTMPS transmission
+/// verifies only a clean FFmpeg exit (no local file exists to check).
+pub enum CompletedOutput {
+    /// A verified local MP4 recording (`demo`; the prior `CompletedVideo`
+    /// semantics, unchanged).
+    Recording(CompletedVideo),
+    /// FFmpeg exited cleanly streaming to the RTMPS destination.
+    Stream,
 }
