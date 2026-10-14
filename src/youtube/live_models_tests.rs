@@ -6,6 +6,7 @@
 use serde_json::json;
 
 use super::*;
+use crate::config::model::VideoConfig;
 
 fn video_config(width: u32, height: u32, fps: u32) -> VideoConfig {
     VideoConfig {

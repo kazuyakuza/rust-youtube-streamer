@@ -1,0 +1,81 @@
+//! Display-contract tests for the typed Live API failures: every variant
+//! pins exactly one stable, end-user-reportable line, and no rendered
+//! line may ever carry an RTMPS URL, a stream key, or any URL text
+//! (the D-T1-11 secret-surface regression pair; sibling of
+//! `live_error_tests.rs` under the line-cap rule).
+
+use super::*;
+
+#[test]
+fn every_variant_display_stable_and_secret_free() {
+    let rendered = [
+        LiveApiError::InvalidMetadata {
+            field: "snippet.title".to_string(),
+        }
+        .to_string(),
+        LiveApiError::LiveStreamingNotEnabled.to_string(),
+        LiveApiError::ChannelLiveBlocked.to_string(),
+        LiveApiError::InsufficientPermissions.to_string(),
+        LiveApiError::AuthorizationRejected.to_string(),
+        LiveApiError::QuotaLike {
+            reason: "userRequestsExceedRateLimit".to_string(),
+        }
+        .to_string(),
+        LiveApiError::BroadcastState {
+            detail: "invalidTransition".to_string(),
+        }
+        .to_string(),
+        LiveApiError::ApiNotFound {
+            resource: "liveBroadcast".to_string(),
+        }
+        .to_string(),
+        LiveApiError::ApiRejected {
+            status: 403,
+            reason: "brandNewReason".to_string(),
+        }
+        .to_string(),
+        LiveApiError::BackendUnavailable {
+            reason: "backendError".to_string(),
+        }
+        .to_string(),
+        LiveApiError::Network {
+            reason: "connection refused".to_string(),
+        }
+        .to_string(),
+        LiveApiError::MalformedResponse {
+            field: "status.lifeCycleStatus".to_string(),
+        }
+        .to_string(),
+        LiveApiError::ReadinessTimeout {
+            stage: "readiness".to_string(),
+        }
+        .to_string(),
+        LiveApiError::DestinationMissing {
+            field: "rtmpsIngestionAddress".to_string(),
+        }
+        .to_string(),
+    ];
+    let expected = [
+        "invalid metadata field 'snippet.title'; fix broadcast config and retry",
+        "live streaming is not enabled; see youtube.com/features",
+        "this channel cannot stream live now; see youtube.com/features",
+        "authorization lacks live permissions; run auth again",
+        "access token rejected mid-run; run auth again",
+        "YouTube quota or rate limit (reason 'userRequestsExceedRateLimit'); retry later",
+        "broadcast state forbids this operation (reason 'invalidTransition')",
+        "YouTube liveBroadcast not found; deleted or never created",
+        "YouTube rejected request (HTTP 403, reason 'brandNewReason')",
+        "YouTube backend temporarily unavailable (reason 'backendError')",
+        "unable to reach the YouTube API: connection refused",
+        "malformed YouTube API response (field 'status.lifeCycleStatus')",
+        "YouTube readiness wait timed out (stage 'readiness')",
+        "ingestion response missing required field 'rtmpsIngestionAddress'",
+    ];
+    assert_eq!(rendered.len(), 14, "every variant pins exactly one line");
+    for (index, (actual, wanted)) in rendered.iter().zip(&expected).enumerate() {
+        assert_eq!(actual, wanted, "variant #{index} Display line drifted");
+        assert!(!actual.contains("rtmps://"), "no RTMPS URL in: {actual}");
+        assert!(!actual.contains("://"), "no URL text in: {actual}");
+        assert!(!actual.contains("stream key"), "no stream key in: {actual}");
+    }
+}
