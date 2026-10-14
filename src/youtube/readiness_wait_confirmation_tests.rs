@@ -5,16 +5,9 @@
 //! scripted transport fake (`live_test_fixtures`, Amendment 1). Pure
 //! fakes; no network, no Google.
 
-use std::cell::RefCell;
-use std::collections::VecDeque;
-
 use crate::youtube::live_test_fixtures::*;
 
 use super::*;
-
-fn queued<T>(queue: &RefCell<VecDeque<T>>, outcome: T) {
-    queue.borrow_mut().push_back(outcome);
-}
 
 fn observation_pair(canceller: &WaitCanceller) -> StreamObservationRequest<'_> {
     StreamObservationRequest {

@@ -21,13 +21,11 @@ fn wait_failure(outcome: Result<LiveStream, LiveApiError>) -> LiveApiError {
 }
 
 fn queued_stream(transport: &ScriptedLiveApiTransport, outcome: StreamLookupOutcome) {
-    let queue = &transport.lookup_stream_results;
-    queue.borrow_mut().push_back(outcome);
+    queued(&transport.lookup_stream_results, outcome);
 }
 
 fn queued_broadcast(transport: &ScriptedLiveApiTransport, outcome: BroadcastLookupOutcome) {
-    let queue = &transport.lookup_broadcast_results;
-    queue.borrow_mut().push_back(outcome);
+    queued(&transport.lookup_broadcast_results, outcome);
 }
 
 fn scripted_wait<'a>(

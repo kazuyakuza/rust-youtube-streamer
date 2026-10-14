@@ -7,9 +7,6 @@
 //! scripted transport fake (`live_test_fixtures`, Amendment 1). No
 //! network, no Google.
 
-use std::cell::RefCell;
-use std::collections::VecDeque;
-
 use crate::config::model::AppConfig;
 use crate::config::valid_config;
 use crate::youtube::live_test_fixtures::*;
@@ -17,10 +14,6 @@ use crate::youtube::live_test_fixtures::*;
 use super::*;
 
 pub(super) const FIXED_NOW_EPOCH_SECS: u64 = 1_760_000_000;
-
-pub(super) fn queued<T>(queue: &RefCell<VecDeque<T>>, outcome: T) {
-    queue.borrow_mut().push_back(outcome);
-}
 
 pub(super) fn preparer() -> LiveBroadcastPreparer {
     LiveBroadcastPreparer::from_config(&valid_config(), FIXED_NOW_EPOCH_SECS)

@@ -96,6 +96,11 @@ impl LiveApiTransport for ScriptedLiveApiTransport {
     }
 }
 
+/// Push one scripted outcome onto a fake operation queue.
+pub(super) fn queued<T>(queue: &RefCell<VecDeque<T>>, outcome: T) {
+    queue.borrow_mut().push_back(outcome);
+}
+
 fn next_result<T>(queue: &RefCell<VecDeque<Result<T, LiveApiError>>>) -> Result<T, LiveApiError> {
     queue
         .borrow_mut()
