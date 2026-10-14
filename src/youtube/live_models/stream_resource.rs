@@ -24,7 +24,7 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LiveStreamList {
     #[serde(default)]
-    pub(super) items: Vec<LiveStream>,
+    pub(crate) items: Vec<LiveStream>,
 }
 
 /// One live-stream resource view (O1/O4); documented fields only.

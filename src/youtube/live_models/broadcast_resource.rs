@@ -21,7 +21,7 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LiveBroadcastList {
     #[serde(default)]
-    pub(super) items: Vec<LiveBroadcast>,
+    pub(crate) items: Vec<LiveBroadcast>,
 }
 
 /// One broadcast resource view (O2/O3/O5); documented fields only.

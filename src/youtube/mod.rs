@@ -71,6 +71,11 @@ mod client_config;
 mod credentials;
 mod error;
 mod file_credential_store;
+// Staged for the Task 3 run wiring; retire the allow there (the new
+// task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
+// constructs the transport until that wiring roots the chain).
+#[allow(dead_code)]
+mod google_live_api_transport;
 mod google_token_endpoint;
 mod persisted_credentials;
 // Staged for the Task 3 run wiring; retire the allow there (the new
@@ -109,6 +114,11 @@ mod google_authorization_verifier;
 // helper and the mockable LiveApiTransport seam. The staging allows retire
 // when Task 2 (concrete backend + polling) and Task 3 (run wiring) consume
 // them; until then they must not be wired anywhere.
+// Staged for the Task 3 run wiring; retire the allow there (the new
+// task-2 modules land staged per D-T2-14 step 1; the wire plumbing is
+// consumed by the staged transport until that wiring roots the chain).
+#[allow(dead_code)]
+mod api_request;
 #[allow(dead_code)]
 mod api_transport;
 #[allow(dead_code)]
