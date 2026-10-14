@@ -106,9 +106,16 @@ mod live_error;
 // chain).
 #[allow(dead_code)]
 mod live_ingestion;
-// Consumed by Task 2's backend/orchestrator/waits; truly live when
-// Task 3's run wiring roots the chain.
+// Consumed by Task 2's backend/orchestrator; truly live when Task 3's
+// run wiring roots the chain — the compiler still flags the documented
+// fields the runtime does not read yet; retire the allow there.
+#[allow(dead_code)]
 mod live_lifecycle;
+// Consumed by Task 2's backend/orchestrator/waits; truly live when
+// Task 3's run wiring roots the chain — the compiler still flags the
+// documented fields the runtime does not read yet; retire the allow
+// there.
+#[allow(dead_code)]
 mod live_models;
 mod persisted_credentials;
 // Staged for the Task 3 run wiring; retire the allow there (nothing
