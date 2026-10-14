@@ -50,7 +50,7 @@ Exit codes:
 
 - `0` — success: the MP4 exists, is non-empty, and FFmpeg exited 0 before the path was printed.
 - `1` — any demo failure, reported as exactly one `error:` line on stderr. `DemoError` delegates the inner cause verbatim: interrupt-handler installation, chat message stage, rendering, frame-size guards, or the FFmpeg spawn/write/wait/exit/finalization stages.
-- `3` — **never used by `demo`** (it belongs to the `run` placeholder only).
+- `3` — **never used by `demo`** (exit code 3 no longer exists in the CLI).
 
 ## Output
 

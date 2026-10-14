@@ -106,7 +106,7 @@ A non-zero exit means no new artifact was produced; fix the reported condition a
 - What it proves: the current source cross-compiles in release mode for `x86_64-pc-windows-gnu` against the tracked lockfile, inside the Linux container, and yields a non-empty Windows `.exe`.
 - What it does NOT prove:
   - Cross-compilation is NOT native Windows runtime validation: the built `.exe` must be tested separately on a real Windows host, and this documentation reports such validation as NOT RUN unless evidence from a Windows environment exists.
-  - It does NOT validate `run` streaming behavior — `run` remains a placeholder that reports not-implemented and exits with code 3 after configuration validation. The Phase 04 `auth` command (real OAuth flow) is equally unexercised here: this workflow neither runs it nor performs any live Google authorization.
+  - It does NOT validate `run` streaming behavior — the Phase 05 production `run` command is implemented, but building the artifacts still performs NO live Google/YouTube activity and validates NO native runtime behavior (the manual production verification is operator-run; see [`docs/production-run.md`](production-run.md)). The Phase 04 `auth` command (real OAuth flow) is equally unexercised here: this workflow neither runs it nor performs any live Google authorization.
   - FFmpeg remains an external prerequisite: the application does not install it and this workflow does not bundle it.
 - Platform model (unchanged): the executable is a normal user executable — no installer, no Windows service registration, no elevation.
 

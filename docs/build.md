@@ -73,7 +73,7 @@ A non-zero exit means no new artifact was produced; fix the reported condition a
 - What it does NOT prove:
   - It is NOT native Windows or native Linux runtime validation of the produced executable's actual behavior (streaming, config load on a real host, logging on a real host).
   - It does NOT create a Windows `.exe` and involves no cross-compilation; the artifact runs on Linux only.
-  - It does NOT mean the application's features are complete: the `run` streaming mode is still a placeholder that reports not-implemented and exits with code 3 after configuration validation (the `auth` command performs the real OAuth flow since Phase 04, but no live Google authorization is exercised by this build).
+  - It does NOT mean the application's features are complete or live-validated: the Phase 05 production `run` command is implemented, but building this artifact performs NO live Google/YouTube activity and validates NO native runtime behavior (the manual production verification is operator-run; see [`docs/production-run.md`](production-run.md)).
 
 ## Dev Checks vs. Release Build
 
