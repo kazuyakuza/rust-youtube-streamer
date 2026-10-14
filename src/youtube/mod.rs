@@ -78,6 +78,11 @@ mod persisted_credentials;
 // constructs the wait until that wiring roots the chain).
 #[allow(dead_code)]
 mod readiness_wait;
+// Staged for the Task 3 run wiring; retire the allow there (the new
+// task-2 modules land staged per D-T2-14 step 1; the app glue that
+// consumes the destination reveal point is Task 3).
+#[allow(dead_code)]
+mod rtmps_ingestion;
 mod token;
 mod transport;
 mod verify;
