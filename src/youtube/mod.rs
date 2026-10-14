@@ -76,6 +76,12 @@ mod persisted_credentials;
 mod token;
 mod transport;
 mod verify;
+// Staged for the Task 3 run wiring; retire the allow there (the new
+// task-2 modules land staged per D-T2-14 step 1; the poll loops
+// consuming this seam are themselves dead until that wiring roots the
+// chain).
+#[allow(dead_code)]
+mod wait_cancellation;
 
 // Staged until the future run-phase wiring constructs the load/refresh/
 // verify service and its concrete verifier (deliberate staging, the
