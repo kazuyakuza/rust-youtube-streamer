@@ -6,56 +6,50 @@
 
 use super::*;
 
-#[test]
-fn every_variant_display_stable_and_secret_free() {
-    let rendered = [
+/// One instance of every `LiveApiError` variant, in the pinned line order.
+fn all_error_variants() -> Vec<LiveApiError> {
+    vec![
         LiveApiError::InvalidMetadata {
             field: "snippet.title".to_string(),
-        }
-        .to_string(),
-        LiveApiError::LiveStreamingNotEnabled.to_string(),
-        LiveApiError::ChannelLiveBlocked.to_string(),
-        LiveApiError::InsufficientPermissions.to_string(),
-        LiveApiError::AuthorizationRejected.to_string(),
+        },
+        LiveApiError::LiveStreamingNotEnabled,
+        LiveApiError::ChannelLiveBlocked,
+        LiveApiError::InsufficientPermissions,
+        LiveApiError::AuthorizationRejected,
         LiveApiError::QuotaLike {
             reason: "userRequestsExceedRateLimit".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::BroadcastState {
             detail: "invalidTransition".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::ApiNotFound {
             resource: "liveBroadcast".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::ApiRejected {
             status: 403,
             reason: "brandNewReason".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::BackendUnavailable {
             reason: "backendError".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::Network {
             reason: "connection refused".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::MalformedResponse {
             field: "status.lifeCycleStatus".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::ReadinessTimeout {
             stage: "readiness".to_string(),
-        }
-        .to_string(),
+        },
         LiveApiError::DestinationMissing {
             field: "rtmpsIngestionAddress".to_string(),
-        }
-        .to_string(),
-    ];
-    let expected = [
+        },
+    ]
+}
+
+/// The pinned stable Display line for each variant of `all_error_variants`.
+fn expected_display_lines() -> [&'static str; 14] {
+    [
         "invalid metadata field 'snippet.title'; fix broadcast config and retry",
         "live streaming is not enabled; see youtube.com/features",
         "this channel cannot stream live now; see youtube.com/features",
@@ -70,7 +64,16 @@ fn every_variant_display_stable_and_secret_free() {
         "malformed YouTube API response (field 'status.lifeCycleStatus')",
         "YouTube readiness wait timed out (stage 'readiness')",
         "ingestion response missing required field 'rtmpsIngestionAddress'",
-    ];
+    ]
+}
+
+#[test]
+fn every_variant_display_stable_and_secret_free() {
+    let rendered: Vec<String> = all_error_variants()
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+    let expected = expected_display_lines();
     assert_eq!(rendered.len(), 14, "every variant pins exactly one line");
     for (index, (actual, wanted)) in rendered.iter().zip(&expected).enumerate() {
         assert_eq!(actual, wanted, "variant #{index} Display line drifted");
