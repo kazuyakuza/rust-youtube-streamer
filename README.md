@@ -13,6 +13,7 @@ The repository is the architectural foundation for future YouTube chat-controlle
 - [Logging (RUST_LOG)](#logging-rust_log)
 - [Local Demo Recording](#local-demo-recording)
 - [Authentication (OAuth 2.0 — Key Features)](#authentication-oauth-20--key-features)
+- [Production Run (YouTube Live)](#production-run-youtube-live)
 - [Build Checks (Docker via Alpine VM)](#build-checks-docker-via-alpine-vm)
 - [Release Build (Linux Artifact)](#release-build-linux-artifact)
 - [Release Build (Windows .exe)](#release-build-windows-exe)
@@ -40,11 +41,9 @@ The result is not yet a game — it is the reusable streaming foundation for fut
 
 ## Current Status
 
-Phase 00 (repository foundation and build baseline), Phase 01 (typed configuration, CLI, logging), Phase 02 (chat store + RGB24 renderer) and Phase 03 (FFmpeg local recording pipeline) are complete. The `demo` command runs a local-only demonstration recording through the shared chat → renderer → FFmpeg pipeline; it is unchanged by the current phase.
+Phase 00 (repository foundation and build baseline), Phase 01 (typed configuration, CLI, logging), Phase 02 (chat store + RGB24 renderer), Phase 03 (FFmpeg local recording pipeline) and Phase 04 (OAuth 2.0 credential layer) are complete. Phase 05 (production live runtime) is implemented — the `auth`, `demo`, and `run` commands are all real: `auth` performs the Google installed-application OAuth 2.0 flow, `demo` runs the local-only recording, and `run` creates and binds one new broadcast + live-stream resource pair from the validated `youtube.broadcast.*` metadata, readiness-checks with bounded, cancellable waits, acquires the RTMPS ingestion destination (never logged), and streams continuous rendered chat-free frames through the configured external FFmpeg executable over RTMPS. Shutdown is ordered (stop flag + wait cancellation + FFmpeg stdin EOF + wait), and the broadcast auto-completes on YouTube via `enableAutoStop` (this application never auto-deletes or auto-transitions broadcasts/streams). Live Chat integration is Phase 06.
 
-Phase 04 (current) ships the OAuth 2.0 credential layer: the `auth` command performs the real Google installed-application authorization flow — it prints the authorization URL for a browser, waits on a loopback-only (`127.0.0.1`, ephemeral port) callback, validates the CSRF state, exchanges the authorization code with PKCE (S256), validates the exchanged token response offline for the granted minimal YouTube API scope and a refresh token (the live `channels.list(mine=true)` probe belongs to the reusable credential service for unattended startup, not to `auth`), and persists the credentials atomically to the configured credentials path. The OAuth and credential code lives under `src/youtube/` (reusable credential service: load, verify-first refresh, persist, typed error classes) with the interactive flow under `src/app/auth/`. `run` remains a non-interactive placeholder (exit 3, stores nothing) and `demo` is unchanged.
-
-The containerized test suite is green with 249 tests (`ALL CHECKS PASSED`, container-only). NO live Google authorization was performed in this phase — the entire flow is validated offline with fakes and loopback HTTP servers, and native Windows/Linux runtime execution remains NOT RUN.
+The containerized test suite is green with 355 tests (`ALL CHECKS PASSED`, container-only). Automated verification is container-only: native Windows/Linux runtime execution and the live YouTube end-to-end run were NOT performed by the agent — the manual production verification is operator-run and recorded in [`docs/production-run.md`](docs/production-run.md).
 
 FFmpeg remains a separately provided external prerequisite — it is never installed or bundled by this project; the `demo` command launches the executable at the configured `ffmpeg.executable` path and surfaces launch or process failures as typed errors.
 
@@ -59,11 +58,11 @@ usage: rust-youtube-streamer-service [--config <path>] <command>
 ```
 
 - `auth` — performs the OAuth authorization flow using the Google OAuth client file (`oauth.client_config_path`) and saves tokens to the configured credentials path (`oauth.credentials_path`); exits 0 on verified success; exits 1 on any failure (configuration errors included; never leaks secrets). Full guide: [`docs/authentication.md`](docs/authentication.md).
-- `run` — starts the streaming runtime (**not implemented yet**; never starts FFmpeg; for a local demonstration recording use the `demo` command).
+- `run` — streams the configured broadcast to YouTube Live: creates one new broadcast and live-stream resource from `youtube.broadcast.*`, waits for readiness, acquires the RTMPS ingestion destination (never logged), and sends continuous rendered frames through the configured external FFmpeg executable; no chat text appears in Phase 05 (Live Chat is Phase 06). Success stops cleanly with exit 0 on Ctrl+C; any startup or runtime failure exits 1 with one redacted `error:` line; never interactive. Full guide: [`docs/production-run.md`](docs/production-run.md).
 - `demo` — runs a local-only FFmpeg demo recording (no YouTube, OAuth, broadcast, or chat connection): predefined messages at deterministic intervals are rendered into an MP4 under `videos/` beside the executable. **Success exits 0 after the MP4 is finalized**, printing `demo recording finalized: <path>` on stdout; any demo failure prints one `error:` line on stderr and exits 1; `demo` never exits 3. Full guide: [`docs/demo.md`](docs/demo.md).
 - `--config <path>` — configuration file to load; accepted before or after the command; default `config/config.json` when absent.
 - `--help` — prints usage to stdout; exit 0.
-- Exit codes: 0 = `--help`, a successful demo recording, or a verified `auth` success, 1 = configuration or logging startup failure, a demo runtime failure, or any `auth` failure (startup-failure class), 2 = usage error, 3 = mode not implemented yet (run).
+- Exit codes: 0 = `--help`, a successful demo recording, a verified `auth` success, or a clean run stop; 1 = configuration or logging startup failure, a demo runtime failure, any auth failure, or any run fatal failure; 2 = usage error.
 
 Create the default `config/config.json` by copying `config/config.example.json` (the committed example, safe non-secret values) and editing it — `config/config.json` is gitignored and must never be committed. Full field-by-field reference: [`docs/configuration.md`](docs/configuration.md).
 
@@ -115,6 +114,16 @@ The `auth` command performs the Google OAuth 2.0 installed-application authoriza
 **Security**: neither `credentials/client_secret.json` nor `credentials/tokens.json` is ever committed (`credentials/*` is gitignored; only `.gitkeep` is tracked); nothing secret is logged. Never copy real client secrets or tokens into the repository tree.
 
 Full guide (schema, exit codes, failure classes, verification evidence and known limitations): [`docs/authentication.md`](docs/authentication.md). Standing limitation: no live Google authorization was performed during this phase — the flow is validated offline with fakes and loopback HTTP servers only, and native Windows/Linux runtimes were NOT RUN.
+
+## Production Run (YouTube Live)
+
+The `run` command is the production streaming mode: it consumes the Phase-04 credential service (load → verify-first → refresh-once → persist → re-verify), creates ONE new broadcast and ONE new live-stream resource from the validated `youtube.broadcast.*` metadata, binds them, waits for readiness (bounded, cancellable), acquires the RTMPS ingestion destination (never logged), and streams continuous rendered chat-free frames through the configured external FFmpeg executable over RTMPS. No chat text appears in Phase 05 (Live Chat is Phase 06).
+
+Prerequisites in one line: authorized credentials at `oauth.credentials_path` (run `auth` first), a filled-in `config/config.json`, and a separately installed FFmpeg at `ffmpeg.executable` (external, never bundled).
+
+Logs stay useful without secrets: the human-visible lines (`broadcast prepared for streaming` with the non-secret broadcast id, `FFmpeg started toward the configured streaming destination`, `stream confirmed active on YouTube`) carry no tokens, stream keys, or RTMPS URLs — those are never printed. On Ctrl+C the shutdown is ordered (frame loop stop → FFmpeg stdin EOF → wait) and exits 0; the broadcast then auto-completes on YouTube via `enableAutoStop` — this application never deletes or transitions broadcasts/streams itself, and repeated failing runs can accumulate stale resources that operators delete in YouTube Studio.
+
+Full operator guide (startup stages, log lines, shutdown semantics, broadcast fate, failure recovery, and the manual verification procedure): [`docs/production-run.md`](docs/production-run.md). Standing limitation: the manual unlisted-broadcast end-to-end procedure is operator-run and was NOT executed by the agent; native Windows/Linux runtime execution remains NOT RUN, and building the artifacts validates no runtime behavior.
 
 ## Build Checks (Docker via Alpine VM)
 
