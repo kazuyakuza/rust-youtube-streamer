@@ -16,7 +16,10 @@
 //!   what a chat message is.
 //! - `streaming` is imported by `src/main.rs`; cross-module consumers go
 //!   through the `pub(crate) use` re-exports below. Reachable from `main`
-//!   through the `demo` mode (TODO Task 3).
+//!   through the `demo` mode (Phase-03 TODO Task 3) and, since the Phase-05
+//!   Task 3 run wiring (`.agent/todos/20261013/20261013-todo-1.md` Task 3;
+//!   plan `.kilo/plans/20261013-phase05-task3-run-orchestration.md`),
+//!   through the production `run` mode.
 //!
 //! Access path note for future agents: tests reach items via `super::*`.
 
