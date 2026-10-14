@@ -5,6 +5,7 @@ use crate::app::pipeline::error::FramePipelineError;
 use crate::app::pipeline::interrupt::StopFlag;
 use crate::app::pipeline::pacing::PipelinePacing;
 use crate::app::pipeline::runner::{FramePipeline, PipelineParts};
+use crate::app::pipeline::source_helpers::*;
 use crate::app::pipeline::test_helpers::*;
 use crate::chat::{ChatError, ChatMessage, ChatStore, ChatStoreSettings};
 use crate::config::valid_config;

@@ -1,13 +1,10 @@
 use std::cell::{Cell, RefCell};
-use std::collections::VecDeque;
 use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::app::pipeline::clock::FrameClock;
 use crate::app::pipeline::interrupt::StopFlag;
-use crate::app::pipeline::source::MessageSource;
-use crate::chat::{ChatError, ChatMessage};
 use crate::renderer::{Frame, RenderError, RenderInput, Renderer, Rgb};
 use crate::streaming::{CompletedOutput, CompletedVideo, FrameSink, StreamingError};
 
@@ -167,36 +164,5 @@ impl FrameSink for FailingWriteSink {
         Ok(CompletedOutput::Recording(CompletedVideo::new(
             PathBuf::from("videos/not-reached.mp4"),
         )))
-    }
-}
-
-/// Message-source fake: scheduled messages in order; `failing` errors first.
-pub(crate) struct ScriptedSource {
-    pending: VecDeque<ChatMessage>,
-    failure: Option<ChatError>,
-}
-
-impl ScriptedSource {
-    pub(crate) fn schedule(messages: Vec<ChatMessage>) -> Self {
-        Self {
-            pending: messages.into_iter().collect(),
-            failure: None,
-        }
-    }
-
-    pub(crate) fn failing(failure: ChatError) -> Self {
-        Self {
-            pending: VecDeque::new(),
-            failure: Some(failure),
-        }
-    }
-}
-
-impl MessageSource for ScriptedSource {
-    fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatError> {
-        if let Some(failure) = self.failure.take() {
-            return Err(failure);
-        }
-        Ok(self.pending.pop_front())
     }
 }

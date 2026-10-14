@@ -30,7 +30,7 @@
     - `schedule.rs` - fixed timeline: 28 messages (`DEMO_MESSAGE_TOTAL`), 30-frame black lead-in, at most one message per 15 frames, 60-frame tail (final frame index 495 → 496 rendered frames ≈ 16.5 s at 30 FPS); ids `demo-NN` hidden from screen; long-line message index 15; exceeds the example 26-line visible capacity so FIFO eviction is exercised
     - `source.rs` - `DemoMessageSource`: at most one scheduled message per call, stop requested at the final frame
     - `mod_tests.rs` / `schedule_tests.rs` / `source_tests.rs` - 14 unit tests (exit mapping, capacity/eviction schedule facts, clock-free source behaviour)
-  - `pipeline/` - application-level frame pipeline: chat → renderer → streaming (13 files: 7 sources + 5 test files + `test_helpers.rs`)
+  - `pipeline/` - application-level frame pipeline: chat → renderer → streaming (14 files: 7 sources + 5 test files + `test_helpers.rs` + `source_helpers.rs`)
     - `mod.rs` - `FramePipeline`, the `prepared_pipeline`/`prepared_stream_pipeline` construction seams (`PipelineConstruction`/`StreamParts`), re-exports (`StopFlag`, error types, both installer entry points)
     - `clock.rs` / `pacing.rs` - monotonic frame clock and FPS-paced schedule (backlog dropped to one immediate frame; `interval_nanos` exact division)
     - `runner.rs` - the frame loop: continuous frames at configured FPS, at most one new message per frame, complete-frame writes with short-write/broken-pipe propagation, ordered sink finalization; `run` returns the target-aware `CompletedOutput`

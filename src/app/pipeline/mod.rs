@@ -44,4 +44,6 @@ mod pacing_tests;
 #[cfg(test)]
 mod runner_tests;
 #[cfg(test)]
+mod source_helpers;
+#[cfg(test)]
 mod test_helpers;
