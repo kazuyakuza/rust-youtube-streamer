@@ -6,7 +6,11 @@
 //! `variable|30fps|60fps`, immutable after insert, per
 //! https://developers.google.com/youtube/v3/live/docs/liveStreams.
 //!
-//! Staging: dead until Task 2 serializes the O1 insert body through it.
+//! Staging: consumed now — Task 2's orchestrator reads the `resolution` /
+//! `frame_rate` accessors and the transport serializes the O1 insert-body
+//! `cdn` block through them. They live inside the `live_models` module,
+//! which keeps a whole-module staging allow that retires when Task 3's
+//! `run` wiring roots the chain.
 //!
 //! Design plan:
 //! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`

@@ -13,8 +13,10 @@
 //! fields are those of
 //! https://developers.google.com/youtube/v3/live/docs/liveStreams.
 //!
-//! Staging: dead until Task 2's concrete transport serializes them as the
-//! O1/O2 request bodies.
+//! Staging: consumed now — Task 2's concrete transport serializes these as
+//! the O1/O2 request bodies (via `api_request`). They live inside the
+//! `live_models` module, which keeps a whole-module staging allow that
+//! retires when Task 3's `run` wiring roots the chain.
 //!
 //! Design plan:
 //! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`

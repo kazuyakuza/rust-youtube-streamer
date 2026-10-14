@@ -16,9 +16,11 @@
 //! force-ssl scope already pinned in `authorization` is documented-
 //! sufficient for all five).
 //!
-//! Staging: the seam itself is live type-checked but dead until Task 2
-//! provides the concrete ureq backend implementing it (and Task 3 wires
-//! that backend into the `run` pipeline).
+//! Staging: the concrete ureq backend landed in Task 2
+//! (`google_live_api_transport` implements this trait); this module keeps
+//! no whole-module staging allow after the Task-2 retirement act. The
+//! seam is consumed by Task 2's transport/orchestrator/waits and is truly
+//! live when Task 3's `run` wiring roots the chain.
 //!
 //! Design plan:
 //! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
