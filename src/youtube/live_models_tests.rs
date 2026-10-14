@@ -50,7 +50,10 @@ fn broadcast_page_item_deserializes_documented_fields() {
     assert_eq!(status.life_cycle_status.as_deref(), Some("ready"));
     assert_eq!(status.privacy_status.as_deref(), Some("unlisted"));
     let details = item.content_details.as_ref().expect("contentDetails");
-    assert_eq!(details.bound_stream_id.as_deref(), Some("stream-id-fixture"));
+    assert_eq!(
+        details.bound_stream_id.as_deref(),
+        Some("stream-id-fixture")
+    );
 }
 
 #[test]
@@ -95,7 +98,10 @@ fn stream_page_item_deserializes_ingestion_info_all_five_fields() {
         .ingestion_info
         .as_ref()
         .expect("ingestionInfo present");
-    assert_eq!(ingestion.stream_name.as_deref(), Some("stream-name-fixture"));
+    assert_eq!(
+        ingestion.stream_name.as_deref(),
+        Some("stream-name-fixture")
+    );
     assert_eq!(
         ingestion.ingestion_address.as_deref(),
         Some("rtmp://a.example.test/fixture")
@@ -119,8 +125,7 @@ fn empty_items_fall_back_to_default() {
     let broadcasts: LiveBroadcastList =
         serde_json::from_value(json!({})).expect("empty body parses");
     assert!(broadcasts.items.is_empty());
-    let streams: LiveStreamList =
-        serde_json::from_value(json!({})).expect("empty body parses");
+    let streams: LiveStreamList = serde_json::from_value(json!({})).expect("empty body parses");
     assert!(streams.items.is_empty());
 }
 

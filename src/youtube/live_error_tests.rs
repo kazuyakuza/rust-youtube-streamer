@@ -53,7 +53,10 @@ fn broadcast_state_reasons_map() {
 #[test]
 fn invalid_metadata_reasons_map_by_field() {
     assert_invalid_metadata(classify(400, "invalidTitle"), "snippet.title");
-    assert_invalid_metadata(classify(400, "invalidPrivacyStatus"), "status.privacyStatus");
+    assert_invalid_metadata(
+        classify(400, "invalidPrivacyStatus"),
+        "status.privacyStatus",
+    );
     assert_invalid_metadata(
         classify(400, "invalidScheduledStartTime"),
         "snippet.scheduledStartTime",
@@ -221,12 +224,22 @@ fn every_variant_display_stable_and_secret_free() {
             "the ingestion response is missing the required field 'rtmpsIngestionAddress'",
         ),
     ];
-    assert_eq!(cases.len(), 14, "every variant pins exactly one Display line");
+    assert_eq!(
+        cases.len(),
+        14,
+        "every variant pins exactly one Display line"
+    );
     for (error, expected) in cases {
         let rendered = error.to_string();
         assert_eq!(rendered, expected);
-        assert!(!rendered.contains("rtmps://"), "no RTMPS URL in: {rendered}");
+        assert!(
+            !rendered.contains("rtmps://"),
+            "no RTMPS URL in: {rendered}"
+        );
         assert!(!rendered.contains("://"), "no URL text in: {rendered}");
-        assert!(!rendered.contains("stream key"), "no stream-key text in: {rendered}");
+        assert!(
+            !rendered.contains("stream key"),
+            "no stream-key text in: {rendered}"
+        );
     }
 }

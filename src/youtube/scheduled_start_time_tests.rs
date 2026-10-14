@@ -30,7 +30,10 @@ fn leap_day_included_correctly() {
 #[test]
 fn offset_is_exactly_one_minute() {
     let base = 1_704_067_200_u64;
-    assert_eq!(scheduled_start_time_from_epoch(base), format_rfc3339(base + 60));
+    assert_eq!(
+        scheduled_start_time_from_epoch(base),
+        format_rfc3339(base + 60)
+    );
     assert_eq!(scheduled_start_time_from_epoch(0), format_rfc3339(60));
     assert_eq!(scheduled_start_time_from_epoch(0), "1970-01-01T00:01:00Z");
 }

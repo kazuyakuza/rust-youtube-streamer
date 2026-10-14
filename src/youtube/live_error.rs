@@ -120,9 +120,7 @@ fn invalid_metadata_field(reason: &str) -> Option<&'static str> {
         "invalidTitle" | "titleRequired" => "snippet.title",
         "invalidDescription" => "snippet.description",
         "invalidPrivacyStatus" | "privacyStatusRequired" => "status.privacyStatus",
-        "invalidScheduledStartTime" | "scheduledStartTimeRequired" => {
-            "snippet.scheduledStartTime"
-        }
+        "invalidScheduledStartTime" | "scheduledStartTimeRequired" => "snippet.scheduledStartTime",
         "invalidScheduledEndTime" => "snippet.scheduledEndTime",
         "invalidAutoStart" => "contentDetails.enableAutoStart",
         "invalidAutoStop" => "contentDetails.enableAutoStop",
@@ -148,7 +146,9 @@ impl fmt::Display for LiveApiError {
             Self::QuotaLike { reason } => Self::display_quota(formatter, reason),
             Self::BroadcastState { detail } => Self::display_state(formatter, detail),
             Self::ApiNotFound { resource } => Self::display_not_found(formatter, resource),
-            Self::ApiRejected { status, reason } => Self::display_rejected(formatter, *status, reason),
+            Self::ApiRejected { status, reason } => {
+                Self::display_rejected(formatter, *status, reason)
+            }
             Self::BackendUnavailable { reason } => Self::display_backend(formatter, reason),
             Self::Network { reason } => Self::display_network(formatter, reason),
             Self::MalformedResponse { field } => Self::display_malformed(formatter, field),

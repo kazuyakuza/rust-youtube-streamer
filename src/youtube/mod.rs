@@ -94,15 +94,15 @@ mod google_authorization_verifier;
 // when Task 2 (concrete backend + polling) and Task 3 (run wiring) consume
 // them; until then they must not be wired anywhere.
 #[allow(dead_code)]
-mod live_models;
-#[allow(dead_code)]
-mod live_lifecycle;
+mod api_transport;
 #[allow(dead_code)]
 mod live_error;
 #[allow(dead_code)]
-mod scheduled_start_time;
+mod live_lifecycle;
 #[allow(dead_code)]
-mod api_transport;
+mod live_models;
+#[allow(dead_code)]
+mod scheduled_start_time;
 
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,

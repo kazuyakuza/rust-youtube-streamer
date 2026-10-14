@@ -178,8 +178,16 @@ impl StreamCreationCdn {
 
     fn from_labels(resolution: &str, frame_rate: &str) -> Self {
         let off_table = resolution == VARIABLE_LABEL || frame_rate == VARIABLE_LABEL;
-        let resolution = if off_table { VARIABLE_LABEL } else { resolution };
-        let frame_rate = if off_table { VARIABLE_LABEL } else { frame_rate };
+        let resolution = if off_table {
+            VARIABLE_LABEL
+        } else {
+            resolution
+        };
+        let frame_rate = if off_table {
+            VARIABLE_LABEL
+        } else {
+            frame_rate
+        };
         Self {
             ingestion_type: Self::RTMP_INGESTION_TYPE.to_string(),
             resolution: resolution.to_string(),
@@ -190,9 +198,7 @@ impl StreamCreationCdn {
     fn resolution_label(width: u32, height: u32) -> String {
         RESOLUTION_TABLE
             .iter()
-            .find(|(table_width, table_height, _)| {
-                *table_width == width && *table_height == height
-            })
+            .find(|(table_width, table_height, _)| *table_width == width && *table_height == height)
             .map(|(_, _, label)| (*label).to_string())
             .unwrap_or_else(|| VARIABLE_LABEL.to_string())
     }
@@ -288,10 +294,7 @@ impl StreamRequestBody {
             snippet: StreamCreationSnippet {
                 title: command.title.clone(),
             },
-            cdn: StreamCreationCdn::from_labels(
-                &command.resolution,
-                &command.frame_rate,
-            ),
+            cdn: StreamCreationCdn::from_labels(&command.resolution, &command.frame_rate),
         }
     }
 }
