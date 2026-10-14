@@ -73,23 +73,15 @@ impl StreamingRunner for PreparedStreaming {
         .map_err(RunError::Pipeline)?;
         info!("FFmpeg started toward the configured streaming destination");
         let stream_outcome = pipeline.run().map(|_completed| ());
-        let gate_finish = join_gate(&canceller, gate, &stream_outcome);
+        // D-T3-6 rule 2: on a frame-pipeline FATAL the confirmation wait is
+        // cancelled BEFORE the gate join, so a mid-interval wait ends on its
+        // next attempt check instead of running to its budget.
+        if stream_outcome.is_err() {
+            canceller.request_cancel();
+        }
+        let gate_finish = gate.finish();
         primary_shutdown_outcome(stream_outcome, gate_finish)
     }
-}
-
-/// D-T3-6 rule 2: on a frame-pipeline FATAL the confirmation wait is
-/// cancelled BEFORE the gate join, so a mid-interval wait ends on its next
-/// attempt check instead of running to its budget.
-fn join_gate(
-    canceller: &WaitCanceller,
-    gate: SpawnedGate,
-    stream_outcome: &Result<(), FramePipelineError>,
-) -> GateFinish {
-    if stream_outcome.is_err() {
-        canceller.request_cancel();
-    }
-    gate.finish()
 }
 
 /// The pure primary-error selector (D-T3-6 rule 6; unit-tested matrix):

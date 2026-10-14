@@ -137,17 +137,19 @@ pub(crate) use token::{AccessToken, AuthorizationCode, TokenResponse};
 pub(crate) use transport::{CodeExchangeRequest, TokenEndpointTransport};
 pub(crate) use verify::AuthorizationVerifier;
 pub(crate) use wait_cancellation::WaitCanceller;
-// Test-only re-exports: the auth flow's offline test fakes hand-build
-// `TokenResponse` values and implement `TokenEndpointTransport`, which
+// Test-only re-exports: the auth-flow and run-runtime offline fakes
+// hand-build token/scope values and token-endpoint requests, which
 // requires naming these types; production code never uses them.
-#[cfg(test)]
-pub(crate) use live_models::{
-    BindCommand, CreateBroadcastCommand, CreateStreamCommand, LiveBroadcast, LiveStream,
-};
 #[cfg(test)]
 pub(crate) use token::{GrantedScopes, RefreshToken};
 #[cfg(test)]
 pub(crate) use transport::RefreshRequest;
+// Test-only re-exports: the run runtime's offline transport fake scripts
+// live resources through these models; production code never uses them.
+#[cfg(test)]
+pub(crate) use live_models::{
+    BindCommand, CreateBroadcastCommand, CreateStreamCommand, LiveBroadcast, LiveStream,
+};
 // Test-only re-exports: the run runtime's offline fakes implement the
 // transport/verifier seams and script wait outcomes, which requires
 // naming these types; production code never uses them.
