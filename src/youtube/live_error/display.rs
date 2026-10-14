@@ -2,6 +2,20 @@
 //! reportable, secret-free lines split into per-variant helpers (the
 //! Phase-03 `StreamingError` precedent) so every body stays far below
 //! the 50-line cap and no arm can panic.
+//!
+//! Grounding: each actionable line names the operator remedy behind the
+//! reason codes of https://developers.google.com/youtube/v3/live/docs/errors
+//! — the youtube.com/features enablement pointer for the blocked-channel
+//! cases and the `auth` command re-run for the token/scope cases — and the
+//! API resource-path field names mirror the liveBroadcasts/liveStreams
+//! references cited in `live_models`.
+//!
+//! Staging: dead until Task 3's `run` error reporting renders these lines
+//! (Task 2 consumes the classifier that produces the enum).
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.5, F4); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
 use std::fmt;
 

@@ -1,4 +1,16 @@
 //! The pure config→CDN mapping for the O1 insert body (D-T1-6).
+//!
+//! Grounding: `cdn.ingestionType` valid values are `dash|hls|rtmp` with
+//! "rtmp (which includes RTMPS)"; the `cdn.resolution` label set is
+//! `240p|360p|480p|720p|1080p|1440p|2160p|variable` and `cdn.frameRate`
+//! `variable|30fps|60fps`, immutable after insert, per
+//! https://developers.google.com/youtube/v3/live/docs/liveStreams.
+//!
+//! Staging: dead until Task 2 serializes the O1 insert body through it.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.3, D-T1-6, F1); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
 use serde::Serialize;
 

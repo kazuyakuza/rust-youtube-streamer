@@ -1,5 +1,25 @@
 //! The exact typed insert-request bodies (D-T1-7): the JSON shapes the
 //! O1/O2 operations document, locked offline before any transport exists.
+//!
+//! Grounding: `snippet.{title,description,scheduledStartTime}` and
+//! `status.privacyStatus` are the insert fields of
+//! https://developers.google.com/youtube/v3/live/docs/liveBroadcasts;
+//! the `contentDetails.enableAutoStart`/`enableAutoStop` +
+//! `monitorStream.enableMonitorStream=false` shape follows the
+//! no-testing-stage guidance of
+//! https://developers.google.com/youtube/v3/live/life-of-a-broadcast
+//! ("consider setting enableAutoStart and enableAutoStop to true"), which
+//! removes both manual `liveBroadcasts.transition` calls; the O1 body
+//! fields are those of
+//! https://developers.google.com/youtube/v3/live/docs/liveStreams.
+//!
+//! Staging: dead until Task 2's concrete transport serializes them as the
+//! O1/O2 request bodies.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.1/§1.3, D-T1-7, F1); TODO `.agent/todos/20261013/20261013-todo-1.md`
+//! Task 1.
 
 use serde::Serialize;
 

@@ -5,6 +5,24 @@
 //! failure, never a wait-spin. No chat variants exist (Live Chat is
 //! Phase 06); the enums carry nothing sensitive, so a derived `Debug`
 //! suffices and readiness-poll code consumes booleans and labels only.
+//!
+//! Grounding: the eight `status.lifeCycleStatus` labels
+//! (`complete|created|live|liveStarting|ready|revoked|testStarting|testing`)
+//! are documented by
+//! https://developers.google.com/youtube/v3/live/docs/liveBroadcasts, the
+//! five `status.streamStatus` labels
+//! (`active|created|error|inactive|ready`) by
+//! https://developers.google.com/youtube/v3/live/docs/liveStreams, and the
+//! legal transition path (created → ready → liveStarting → live → complete,
+//! with autoStart/autoStop replacing the manual transitions) by
+//! https://developers.google.com/youtube/v3/live/life-of-a-broadcast.
+//!
+//! Staging: dead until Task 2's readiness polling decodes API labels into
+//! these enums and Task 3's `run` path gates on the predicates.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.3/§1.4, F2); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
 use super::live_error::LiveApiError;
 

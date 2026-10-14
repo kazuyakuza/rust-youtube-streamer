@@ -6,6 +6,22 @@
 //! Classification is status-FIRST (Phase-04 precedent: statuses outrank
 //! reason strings); only the non-secret server `reason` code is read from
 //! bodies, and bodies are never embedded.
+//!
+//! Grounding: the Google JSON error shape `{"error": {"code", "reason"}}`
+//! and the per-reason live-streaming error list are documented by
+//! https://developers.google.com/youtube/v3/live/docs/errors; the
+//! channel-eligibility failure mode (`insufficientPermissions` when Live
+//! Streaming is not enabled) is documented by
+//! https://developers.google.com/youtube/v3/live/authentication.
+//!
+//! Staging: dead until Task 2's concrete transport classifies API failures
+//! through `classify_api_error` and Task 3's `run` path reports the Display
+//! lines; the `#[allow(unused_imports)]` re-export below retires with them.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.5, D-T1-4, F4); TODO `.agent/todos/20261013/20261013-todo-1.md`
+//! Task 1.
 
 // Re-exported for Task 2's concrete transport and for offline tests.
 // Retire when Task 2's concrete transport consumes the classifier.

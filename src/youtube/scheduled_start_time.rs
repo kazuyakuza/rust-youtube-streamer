@@ -8,6 +8,22 @@
 //! `streaming::utc_timestamp` module (streaming is boundary-sealed
 //! against youtube; a small pure duplicate is cheaper than a
 //! cross-module contract).
+//!
+//! Grounding: `liveBroadcasts.insert` requires a future
+//! `snippet.scheduledStartTime` (RFC 3339, e.g. `2013-01-15T01:29:48Z`)
+//! per https://developers.google.com/youtube/v3/live/docs/liveBroadcasts;
+//! with `contentDetails.enableAutoStart=true` the broadcast goes live the
+//! moment video flows regardless of the scheduled time per
+//! https://developers.google.com/youtube/v3/live/life-of-a-broadcast, so
+//! the one-minute pin never delays the stream.
+//!
+//! Staging: dead until the runtime builds a `CreateBroadcastCommand` —
+//! Task 2's request assembly or Task 3's `run` wiring supplies the clock.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.3, D-T1-5, F3); TODO `.agent/todos/20261013/20261013-todo-1.md`
+//! Task 1.
 
 /// One minute, the fixed offset from "now" to the scheduled start.
 pub(crate) const SCHEDULED_TIME_OFFSET_SECONDS: u64 = 60;

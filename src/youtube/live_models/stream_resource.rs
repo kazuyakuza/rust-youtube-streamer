@@ -1,6 +1,21 @@
 //! `liveStreams` resource views (O1/O4). See the parent `live_models`
 //! module for the contract: documented fields only, unknown fields
 //! ignored, missing parts `None`.
+//!
+//! Grounding: `id`, `cdn.{ingestionType,ingestionInfo}`, the five
+//! `cdn.ingestionInfo` address/name fields and `status.{streamStatus,
+//! healthStatus}` are the documented fields of
+//! https://developers.google.com/youtube/v3/live/docs/liveStreams;
+//! `rtmpsIngestionAddress` is the FFmpeg destination source per
+//! https://developers.google.com/youtube/v3/live/guides/rtmps-ingestion
+//! (the destination is exactly `rtmpsIngestionAddress`/`streamName`).
+//!
+//! Staging: dead until Task 2's concrete transport deserializes a
+//! `liveStreams` response through these views.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.3, F1); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
 use serde::Deserialize;
 

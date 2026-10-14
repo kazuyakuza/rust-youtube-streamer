@@ -2,6 +2,22 @@
 //! validated inputs the runtime builds from config; they carry no serde
 //! derives because the wire shapes are the request bodies in
 //! `request_bodies`.
+//!
+//! Grounding: the operations, parts and parameters are the official
+//! liveStreams/liveBroadcasts references
+//! (https://developers.google.com/youtube/v3/live/docs/liveStreams and
+//! https://developers.google.com/youtube/v3/live/docs/liveBroadcasts):
+//! O1 `liveStreams.insert?part=snippet,cdn`, O2
+//! `liveBroadcasts.insert?part=snippet,contentDetails,status`, O3
+//! `liveBroadcasts.bind?id=&streamId=` (bind takes query parameters only —
+//! "Do not provide a request body when calling this method").
+//!
+//! Staging: dead until Task 2's concrete transport consumes them as the
+//! typed inputs of the O1–O3 calls.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.1, F1); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
 /// O1 (`liveStreams.insert`) command: validated title + CDN labels.
 pub(crate) struct CreateStreamCommand {

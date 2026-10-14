@@ -1,6 +1,21 @@
 //! The pure status-first §1.5 mapping from HTTP status + server reason
 //! code to the typed enum. Bodies are consulted only for the non-secret
 //! `reason` string and never embedded.
+//!
+//! Grounding: the reason codes and their HTTP statuses are the live
+//! Data API error list at
+//! https://developers.google.com/youtube/v3/live/docs/errors (with the
+//! channel-eligibility `insufficientPermissions` case per
+//! https://developers.google.com/youtube/v3/live/authentication); the
+//! `field` spellings mirror the resource paths of the liveBroadcasts and
+//! liveStreams references cited in `live_models`.
+//!
+//! Staging: dead until Task 2's concrete transport routes every non-2xx
+//! response through it.
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.5, F4); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
 use super::LiveApiError;
 

@@ -7,6 +7,23 @@
 //! `lookup_*` returns `Ok(None)` only when the list answer is verifiably
 //! empty for the requested id (an empty `items` array). A body that fails
 //! to parse is a typed `MalformedResponse`, never a silent `None`.
+//!
+//! Grounding: O1/O4 are the insert/list operations of
+//! https://developers.google.com/youtube/v3/live/docs/liveStreams and
+//! O2/O3/O5 those of
+//! https://developers.google.com/youtube/v3/live/docs/liveBroadcasts
+//! (each request carries `Authorization: Bearer <access_token>`; the
+//! force-ssl scope already pinned in `authorization` is documented-
+//! sufficient for all five).
+//!
+//! Staging: the seam itself is live type-checked but dead until Task 2
+//! provides the concrete ureq backend implementing it (and Task 3 wires
+//! that backend into the `run` pipeline).
+//!
+//! Design plan:
+//! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
+//! (§1.1, D-T1-3, F5); TODO `.agent/todos/20261013/20261013-todo-1.md`
+//! Task 1.
 
 use super::live_error::LiveApiError;
 use super::live_models::{
