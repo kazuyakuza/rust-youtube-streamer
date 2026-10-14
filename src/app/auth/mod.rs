@@ -10,8 +10,7 @@
 //! listener bind, CSRF state, provider decline, noise-budget exhaustion,
 //! token exchange, persistence, insufficient scope, missing refresh token —
 //! is reported as exactly one redacted stderr `error:` line and exits with
-//! code 1 (the startup-failure class, `demo` precedent); exit 3 stays
-//! reserved for the `run` placeholder.
+//! code 1 (the startup-failure class, `demo` and `run` precedent).
 //!
 //! Listener lifecycle (D6): the bound listener lives only inside the flow
 //! call; the socket closes deterministically on success AND on every
