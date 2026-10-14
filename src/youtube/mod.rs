@@ -80,6 +80,8 @@ mod google_authorization_verifier;
 #[allow(dead_code)]
 mod live_models;
 #[allow(dead_code)]
+mod live_lifecycle;
+#[allow(dead_code)]
 mod live_error;
 
 pub(crate) use authorization::{
