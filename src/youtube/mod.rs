@@ -83,6 +83,8 @@ mod live_models;
 mod live_lifecycle;
 #[allow(dead_code)]
 mod live_error;
+#[allow(dead_code)]
+mod scheduled_start_time;
 
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,
