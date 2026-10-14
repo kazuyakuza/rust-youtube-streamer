@@ -14,31 +14,20 @@
 //! FFmpeg destination source field is `cdn.ingestionInfo.rtmpsIngestionAddress`
 //! per https://developers.google.com/youtube/v3/live/guides/rtmps-ingestion.
 //!
-//! Staging: the whole module sits under the parent `youtube` module's
-//! `#[allow(dead_code)]` staging declaration; the per-item
-//! `#[allow(unused_imports)]` below mark the re-exports that not even the
-//! staged design modules reference yet (the command types are already used
-//! by `api_transport`). All retire when Task 2 wires the concrete
-//! transport and consumes them.
+//! Staging: consumed by Task 2's concrete transport
+//! (`google_live_api_transport`) and orchestrator (`live_ingestion`);
+//! truly live when Task 3's run wiring roots the chain.
 //!
 //! Design plan:
 //! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
 //! (§1.1/§1.3, F1); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 1.
 
-// Retire when Task 2's concrete transport consumes the request/list types.
-#[allow(unused_imports)]
 pub(crate) use broadcast_resource::{LiveBroadcast, LiveBroadcastList};
 pub(crate) use commands::{BindCommand, CreateBroadcastCommand, CreateStreamCommand};
-// Retire when Task 2's concrete transport consumes the request/list types.
-#[allow(unused_imports)]
 pub(crate) use stream_cdn::StreamCreationCdn;
-// Retire when Task 2's concrete transport consumes the request/list types.
-#[allow(unused_imports)]
 pub(crate) use stream_resource::{LiveStream, LiveStreamList};
 
 // Re-exported for Task 2's concrete transport and for offline model tests.
-// Retire when Task 2's concrete transport consumes the request/list types.
-#[allow(unused_imports)]
 pub(crate) use request_bodies::{BroadcastRequestBody, StreamRequestBody};
 
 mod broadcast_resource;

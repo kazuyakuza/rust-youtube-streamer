@@ -14,18 +14,15 @@
 //! Streaming is not enabled) is documented by
 //! https://developers.google.com/youtube/v3/live/authentication.
 //!
-//! Staging: dead until Task 2's concrete transport classifies API failures
-//! through `classify_api_error` and Task 3's `run` path reports the Display
-//! lines; the `#[allow(unused_imports)]` re-export below retires with them.
+//! Staging: the classifier is consumed by Task 2's concrete transport
+//! (`google_live_api_transport`); the Display lines become live when
+//! Task 3's `run` path reports them.
 //!
 //! Design plan:
 //! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
 //! (§1.5, D-T1-4, F4); TODO `.agent/todos/20261013/20261013-todo-1.md`
 //! Task 1.
 
-// Re-exported for Task 2's concrete transport and for offline tests.
-// Retire when Task 2's concrete transport consumes the classifier.
-#[allow(unused_imports)]
 pub(crate) use classify::classify_api_error;
 
 mod classify;

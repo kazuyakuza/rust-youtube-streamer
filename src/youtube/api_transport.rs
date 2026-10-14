@@ -31,7 +31,7 @@ use super::live_models::{
 };
 
 /// The five Phase-05 runtime operations (plan §1.1). The concrete ureq
-/// backend is Task 2 (`google_live_api`); offline fakes implement this
+/// backend is Task 2 (`google_live_api_transport`); offline fakes implement this
 /// trait in Task 2 tests.
 pub(crate) trait LiveApiTransport {
     /// O1 `liveStreams.insert` (part=snippet,cdn): creates the ingestion

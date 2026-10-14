@@ -49,91 +49,87 @@
 //!   the verify-first refresh decision, the channels.list(mine=true)
 //!   probe evidence and the status→error mapping table are in
 //!   `.kilo/plans/20261012-phase04-task4-credential-service.md`.
-//! - Phase-05 staged design artifacts (TODO Task 1, plan
-//!   `.kilo/plans/20261013-phase05-task1-official-api-research-design.md` §4):
-//!   five offline design files carry the production-live runtime contract
-//!   without being wired anywhere yet — `live_models` (typed O1–O5 request
-//!   and response models from documented fields only), `live_lifecycle`
-//!   (the broadcast/stream status state machine), `live_error` (the typed
-//!   `LiveApiError` taxonomy plus the status-first `classify_api_error`
-//!   table), `scheduled_start_time` (the RFC 3339 `now + 1 minute` helper),
-//!   and `api_transport` (the mockable `LiveApiTransport` seam). Each is
-//!   declared with the whole-module `#[allow(dead_code)]` staging contract
-//!   below; the retirement contract is that Task 2 (the concrete ureq
-//!   backend + polling) and Task 3 (the production `run` wiring) consume
-//!   and retire them, exactly as the Phase-04 `credential_service` and
-//!   `google_authorization_verifier` staging is retired by the run-phase
-//!   wiring. Standing rule for their tests: no network, no Google contact,
-//!   no real credentials — every boundary is faked offline (fixtures only).
+//!
+//! Phase-05 live runtime (TODO Task 2, plan
+//! `.kilo/plans/20261013-phase05-task2-broadcast-ingestion-lifecycle.md`
+//! plus Amendments 1–2): the five Task-1 staged design modules
+//! (`live_models`, `live_lifecycle`, `live_error`,
+//! `scheduled_start_time`, `api_transport`) are now consumed by the
+//! concrete backend (`google_live_api_transport` + its `api_request`
+//! wire sibling), the orchestrator (`live_ingestion`), the readiness
+//! and confirmation waits (`readiness_wait`), the destination wrapper
+//! (`rtmps_ingestion`) and the cancellation seam (`wait_cancellation`);
+//! their whole-module staging allows were deleted in that retirement
+//! act. The task-2 modules themselves keep staged `#[allow(dead_code)]`
+//! declarations (D-T2-14: nothing prod-reachable roots the chain until
+//! Task 3's `run` wiring — whichever residual allows the compiler
+//! demanded retire there, exactly like the Phase-04
+//! `credential_service`/`google_authorization_verifier` staging).
+//!
+//! Standing rule for all of this module's tests: no network, no Google
+//! contact, no real credentials — every boundary is a fake or a
+//! `127.0.0.1` loopback server (fixtures only).
 
+// Staged for the Task 3 run wiring; retire the allow there (the wire
+// plumbing is consumed by the staged transport until that wiring roots
+// the chain).
+#[allow(dead_code)]
+mod api_request;
+// Consumed by Task 2's concrete transport/orchestrator/waits; truly live
+// when Task 3's run wiring roots the chain.
+mod api_transport;
 mod authorization;
 mod client_config;
-mod credentials;
-mod error;
-mod file_credential_store;
-// Staged for the Task 3 run wiring; retire the allow there (the new
-// task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
-// constructs the transport until that wiring roots the chain).
-#[allow(dead_code)]
-mod google_live_api_transport;
-mod google_token_endpoint;
-// Staged for the Task 3 run wiring; retire the allow there (the new
-// task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
-// runs the orchestrator until that wiring roots the chain).
-#[allow(dead_code)]
-mod live_ingestion;
-mod persisted_credentials;
-// Staged for the Task 3 run wiring; retire the allow there (the new
-// task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
-// constructs the wait until that wiring roots the chain).
-#[allow(dead_code)]
-mod readiness_wait;
-// Staged for the Task 3 run wiring; retire the allow there (the new
-// task-2 modules land staged per D-T2-14 step 1; the app glue that
-// consumes the destination reveal point is Task 3).
-#[allow(dead_code)]
-mod rtmps_ingestion;
-mod token;
-mod transport;
-mod verify;
-// Staged for the Task 3 run wiring; retire the allow there (the new
-// task-2 modules land staged per D-T2-14 step 1; the poll loops
-// consuming this seam are themselves dead until that wiring roots the
-// chain).
-#[allow(dead_code)]
-mod wait_cancellation;
-
 // Staged until the future run-phase wiring constructs the load/refresh/
-// verify service and its concrete verifier (deliberate staging, the
-// Phase-02 `#[allow(dead_code)] mod chat;` precedent; retire there).
+// verify service (deliberate Phase-04 staging; retire there).
 #[allow(dead_code)]
 mod credential_service;
 mod credential_service_error;
+mod credentials;
+mod error;
+mod file_credential_store;
 // Staged until the future run-phase wiring injects the concrete verifier
 // into the credential service (same staging contract as above).
 #[allow(dead_code)]
 mod google_authorization_verifier;
-
-// Staged design artifacts for the Phase-05 runtime (TODO Task 1): typed
-// models, the lifecycle state machine, typed failures, scheduled-start
-// helper and the mockable LiveApiTransport seam. The staging allows retire
-// when Task 2 (concrete backend + polling) and Task 3 (run wiring) consume
-// them; until then they must not be wired anywhere.
-// Staged for the Task 3 run wiring; retire the allow there (the new
-// task-2 modules land staged per D-T2-14 step 1; the wire plumbing is
-// consumed by the staged transport until that wiring roots the chain).
+// Staged for the Task 3 run wiring; retire the allow there (nothing
+// prod-reachable constructs the transport until that wiring roots the
+// chain).
 #[allow(dead_code)]
-mod api_request;
-#[allow(dead_code)]
-mod api_transport;
-#[allow(dead_code)]
+mod google_live_api_transport;
+mod google_token_endpoint;
+// Consumed by Task 2's concrete transport; truly live when Task 3's run
+// wiring roots the chain.
 mod live_error;
+// Staged for the Task 3 run wiring; retire the allow there (nothing
+// prod-reachable runs the orchestrator until that wiring roots the
+// chain).
 #[allow(dead_code)]
+mod live_ingestion;
+// Consumed by Task 2's backend/orchestrator/waits; truly live when
+// Task 3's run wiring roots the chain.
 mod live_lifecycle;
-#[allow(dead_code)]
 mod live_models;
+mod persisted_credentials;
+// Staged for the Task 3 run wiring; retire the allow there (nothing
+// prod-reachable constructs the wait until that wiring roots the chain).
 #[allow(dead_code)]
+mod readiness_wait;
+// Staged for the Task 3 run wiring; retire the allow there (the app glue
+// that consumes the destination reveal point is Task 3).
+#[allow(dead_code)]
+mod rtmps_ingestion;
+// Consumed by Task 2's orchestrator; truly live when Task 3's run wiring
+// roots the chain.
 mod scheduled_start_time;
+mod token;
+mod transport;
+mod verify;
+// Staged for the Task 3 run wiring; retire the allow there (the poll
+// loops consuming this seam are themselves dead until that wiring roots
+// the chain).
+#[allow(dead_code)]
+mod wait_cancellation;
 
 // Shared offline test fixtures for the Phase-05 Task-2 runtime tests (the
 // `config::test_fixtures` precedent; Amendment 1 ruling 1); never built in
