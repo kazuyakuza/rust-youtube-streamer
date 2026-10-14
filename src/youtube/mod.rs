@@ -72,6 +72,14 @@ mod credential_service_error;
 #[allow(dead_code)]
 mod google_authorization_verifier;
 
+// Staged design artifacts for the Phase-05 runtime (TODO Task 1): typed
+// models, the lifecycle state machine, typed failures, scheduled-start
+// helper and the mockable LiveApiTransport seam. The staging allows retire
+// when Task 2 (concrete backend + polling) and Task 3 (run wiring) consume
+// them; until then they must not be wired anywhere.
+#[allow(dead_code)]
+mod live_models;
+
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,
     AuthorizationCallback, REQUIRED_SCOPE,
