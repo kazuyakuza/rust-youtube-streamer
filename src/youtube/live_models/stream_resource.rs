@@ -31,33 +31,33 @@ pub(crate) struct LiveStreamList {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LiveStream {
-    pub(super) id: Option<String>,
-    pub(super) status: Option<StreamStatus>,
-    pub(super) cdn: Option<StreamCdn>,
+    pub(crate) id: Option<String>,
+    pub(crate) status: Option<StreamStatus>,
+    pub(crate) cdn: Option<StreamCdn>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct StreamCdn {
     pub(super) ingestion_type: Option<String>,
-    pub(super) ingestion_info: Option<IngestionInfo>,
+    pub(crate) ingestion_info: Option<IngestionInfo>,
 }
 
 /// The documented ingestion-address family (never real keys in fixtures).
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IngestionInfo {
-    pub(super) stream_name: Option<String>,
+    pub(crate) stream_name: Option<String>,
     pub(super) ingestion_address: Option<String>,
     pub(super) backup_ingestion_address: Option<String>,
-    pub(super) rtmps_ingestion_address: Option<String>,
+    pub(crate) rtmps_ingestion_address: Option<String>,
     pub(super) rtmps_backup_ingestion_address: Option<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct StreamStatus {
-    pub(super) stream_status: Option<String>,
+    pub(crate) stream_status: Option<String>,
     pub(super) health_status: Option<StreamHealth>,
 }
 

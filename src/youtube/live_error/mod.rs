@@ -35,24 +35,45 @@ mod display;
 /// readiness waits around them.
 #[derive(Debug)]
 pub(crate) enum LiveApiError {
-    InvalidMetadata { field: String },
+    InvalidMetadata {
+        field: String,
+    },
     LiveStreamingNotEnabled,
     ChannelLiveBlocked,
     InsufficientPermissions,
     AuthorizationRejected,
-    QuotaLike { reason: String },
-    BroadcastState { detail: String },
-    ApiNotFound { resource: String },
-    ApiRejected { status: u16, reason: String },
-    BackendUnavailable { reason: String },
-    Network { reason: String },
-    MalformedResponse { field: String },
-    ReadinessTimeout { stage: String },
+    QuotaLike {
+        reason: String,
+    },
+    BroadcastState {
+        detail: String,
+    },
+    ApiNotFound {
+        resource: String,
+    },
+    ApiRejected {
+        status: u16,
+        reason: String,
+    },
+    BackendUnavailable {
+        reason: String,
+    },
+    Network {
+        reason: String,
+    },
+    MalformedResponse {
+        field: String,
+    },
+    ReadinessTimeout {
+        stage: String,
+    },
     /// The readiness wait observed a stop request (D-T2-11): a typed
     /// cancellation — not a timeout, not a transport/backend failure —
     /// that Task 3 maps to the normal-shutdown path.
     WaitCancelled,
-    DestinationMissing { field: String },
+    DestinationMissing {
+        field: String,
+    },
 }
 
 #[cfg(test)]

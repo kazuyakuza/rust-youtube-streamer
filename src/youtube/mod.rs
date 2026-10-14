@@ -73,6 +73,11 @@ mod error;
 mod file_credential_store;
 mod google_token_endpoint;
 mod persisted_credentials;
+// Staged for the Task 3 run wiring; retire the allow there (the new
+// task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
+// constructs the wait until that wiring roots the chain).
+#[allow(dead_code)]
+mod readiness_wait;
 mod token;
 mod transport;
 mod verify;
@@ -109,6 +114,12 @@ mod live_lifecycle;
 mod live_models;
 #[allow(dead_code)]
 mod scheduled_start_time;
+
+// Shared offline test fixtures for the Phase-05 Task-2 runtime tests (the
+// `config::test_fixtures` precedent; Amendment 1 ruling 1); never built in
+// production and never reaching Google.
+#[cfg(test)]
+mod live_test_fixtures;
 
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,

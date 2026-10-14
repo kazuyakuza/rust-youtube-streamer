@@ -48,6 +48,14 @@ pub(crate) struct StreamCreationCdn {
 impl StreamCreationCdn {
     pub(crate) const RTMP_INGESTION_TYPE: &'static str = "rtmp";
 
+    pub(crate) fn resolution(&self) -> &str {
+        &self.resolution
+    }
+
+    pub(crate) fn frame_rate(&self) -> &str {
+        &self.frame_rate
+    }
+
     /// Pure config→CDN mapping over the typed `VideoConfig` (one
     /// argument — max-2-params rule).
     pub(crate) fn from_video_config(video: &VideoConfig) -> Self {

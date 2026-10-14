@@ -28,10 +28,10 @@ pub(crate) struct LiveBroadcastList {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LiveBroadcast {
-    pub(super) id: Option<String>,
+    pub(crate) id: Option<String>,
     pub(super) snippet: Option<BroadcastSnippet>,
-    pub(super) status: Option<BroadcastStatus>,
-    pub(super) content_details: Option<BroadcastContentDetails>,
+    pub(crate) status: Option<BroadcastStatus>,
+    pub(crate) content_details: Option<BroadcastContentDetails>,
 }
 
 #[derive(Deserialize)]
@@ -45,7 +45,7 @@ pub(crate) struct BroadcastSnippet {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BroadcastStatus {
-    pub(super) life_cycle_status: Option<String>,
+    pub(crate) life_cycle_status: Option<String>,
     pub(super) privacy_status: Option<String>,
     pub(super) recording_status: Option<String>,
 }
@@ -53,5 +53,5 @@ pub(crate) struct BroadcastStatus {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BroadcastContentDetails {
-    pub(super) bound_stream_id: Option<String>,
+    pub(crate) bound_stream_id: Option<String>,
 }
