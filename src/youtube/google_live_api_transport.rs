@@ -27,10 +27,6 @@ use super::token::AccessToken;
 
 /// The documented Live API root; request paths append after the slash.
 const LIVE_API_BASE_URL: &str = "https://www.googleapis.com/youtube/v3/";
-/// Fixed text when a 2xx reply body cannot be read (the Phase-04
-/// `UNREADABLE_BODY_TEXT` precedent).
-const UNREADABLE_BODY_TEXT: &str = "the YouTube API response body could not be read";
-
 pub(crate) struct GoogleLiveApiTransport {
     agent: ureq::Agent,
     base_url: String,
