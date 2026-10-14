@@ -17,22 +17,18 @@ const COLLISION_SUFFIX_SEPARATOR: &str = "_";
 const FIRST_COLLISION_SUFFIX: u32 = 2;
 const MAX_SUFFIX_ATTEMPTS: u32 = 1000;
 
-/// Which pipeline names the recording: the demo command uses `demo-`;
-/// `session-` is reserved for the future production/local pipeline.
+/// Which pipeline names the recording. Production streaming writes to the
+/// RTMPS destination (no local file, so no `OutputKind`), so the demo
+/// command is the only producer of local recordings today.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OutputKind {
     Demo,
-    // `session-` is reserved for the future production pipeline (Task-1
-    // contract); the demo is the only runtime OutputKind in this phase.
-    #[allow(dead_code)]
-    Session,
 }
 
 impl OutputKind {
     pub(crate) fn filename_prefix(self) -> &'static str {
         match self {
             OutputKind::Demo => "demo",
-            OutputKind::Session => "session",
         }
     }
 }

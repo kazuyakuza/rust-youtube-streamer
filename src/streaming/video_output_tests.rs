@@ -31,7 +31,6 @@ fn exists_over(existing: HashSet<String>) -> impl FnMut(&Path) -> bool {
 #[test]
 fn filename_prefixes_match_outputs() {
     assert_eq!(OutputKind::Demo.filename_prefix(), "demo");
-    assert_eq!(OutputKind::Session.filename_prefix(), "session");
 }
 
 #[test]
