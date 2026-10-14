@@ -43,7 +43,7 @@ NOT called by the Phase-05 runtime (recorded in the taxonomy, documented only): 
 
 Scope ruling: `https://www.googleapis.com/auth/youtube.force-ssl` alone is documented-sufficient for every selected operation (each official per-method reference states the request requires `youtube` OR `youtube.force-ssl`); `REQUIRED_SCOPE` (`src/youtube/authorization.rs`) stays unchanged. Citations: liveBroadcasts reference, liveStreams reference, the errors reference, the RTMPS-ingestion guide, the authentication page (OAuth-not-API-key; service-account-unsupported; channel-eligibility `insufficientPermissions` note), the Life-of-a-Broadcast page (autoStart/autoStop wording), and the FFmpeg-protocols rtmp URL-shape page — all URLs recorded in the Task-1 plan §1.1–§1.3.
 
-Quota-cost line (Task-1 research record): insert/bind ≈ 50 units per call, list ≈ 1 unit per call; the default project quota is 10,000 units/day at $0.
+Quota-cost line: the official quota-cost table (`developers.google.com/youtube/v3/determine_quota_cost`, Last updated 2026-10-08 UTC) costs every `liveBroadcasts.*`/`liveStreams.*` method at 1 unit per call — matching the `docs/google-cloud-prerequisites.md` table; the Task-1 research record's ≈50-unit insert/bind estimate is superseded by the official table (see Deviations item 3). The default project quota is 10,000 units/day at $0.
 
 ## Dependencies
 
@@ -79,7 +79,7 @@ Fresh-grep redaction confirmation (this task, §Security Review outputs): `key=`
 
 ## Files Created/Changed
 
-59 commits from the version bump `acfabde` through the metadata commit `f03b999`; the full verbatim list is in [Evidence Index](#evidence-index). This report's own commit hash is intentionally absent (embed only already-landed hashes). The Task-4 docs commits (`fc1402c` … `f03b999`) landed BEFORE the fresh gate/builds/audit evidence runs; this report commit lands after them and cites their results.
+61 commits from the version bump `acfabde` through the metadata commit `f03b999`; the full verbatim list is in [Evidence Index](#evidence-index). This report's own commit hash is intentionally absent (embed only already-landed hashes). The Task-4 docs commits (`fc1402c` … `f03b999`) landed BEFORE the fresh gate/builds/audit evidence runs; this report commit lands after them and cites their results.
 
 | Task | Files (created/changed) | Commits |
 | --- | --- | --- |
@@ -268,7 +268,7 @@ Findings: none. Gitignore rules intact (read this task; no rule altered in the p
 - **Task-4-local deviations / observations (recorded, no action taken):**
   1. S0 expected a clean `git status --porcelain`; observed exactly one untracked file — the Task-4 plan itself (expected: S1 commits it). No tree mutation occurred.
   2. D-T4-6 item 1's parenthetical tied the `src/streaming/` 19-file claim to "(incl. `spawn.rs`, `source_helpers.rs`)": `spawn.rs` is in `src/streaming/` (verified) but `source_helpers.rs` lives in `src/app/pipeline/` (verified; the structure map documents it there). The 19-file claim itself is true; the parenthetical's second filename is a plan-wording slip, not a tree defect.
-  3. `docs/google-cloud-prerequisites.md`'s quota table lists `liveBroadcasts.*`/`liveStreams.*` at 1 unit per call, while the Task-1 research record (cited in §Selected API Operations & Scopes) has insert/bind at ≈50 units. D-T4-5 item 6 scoped this task's edit to the lifecycle-table row only ("Nothing else in that file changes"), so the quota table was left untouched; this tension is flagged for a planner decision (possible docs-specialist correction pass) and is NOT reconciled unilaterally here.
+  3. `docs/google-cloud-prerequisites.md`'s quota table lists `liveBroadcasts.*`/`liveStreams.*` at 1 unit per call, while the Task-1 research record (cited in §Selected API Operations & Scopes) has insert/bind at ≈50 units. D-T4-5 item 6 scoped this task's edit to the lifecycle-table row only ("Nothing else in that file changes"), so the quota table was left untouched; this tension is flagged for a planner decision (possible docs-specialist correction pass) and is NOT reconciled unilaterally here. RESOLVED post-review: the official quota-cost table (Last updated 2026-10-08 UTC) costs every `liveBroadcasts.*`/`liveStreams.*` method at 1 unit per call, matching `docs/google-cloud-prerequisites.md`; the §Selected API Operations quota-cost line was corrected accordingly, and the Task-1 plan's ≈50-unit estimate stands only as the historical research record.
   4. The fresh gate's `cargo test` build shows the two warn-only dead-code warnings (`with_token_url`, `token_type`) — the known Phase-04 adjudicated carry-over; clippy (`-D warnings`) passed.
   5. A post-review docs-specialist pass may append a correction section to this report per the Phase-04 punctuation/line-count drift precedent (D-T4-7); this report embeds only observed evidence.
 

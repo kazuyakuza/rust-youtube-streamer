@@ -92,7 +92,7 @@ Documented limitations (inherited Phase-03 Ctrl+C list): repeated Ctrl+C is iner
 - The broadcast is created with `enableAutoStop=true` (and `enableAutoStart=true`, no monitor stream), so YouTube automatically ends the broadcast about a minute after ingestion stops (official Life-of-a-Broadcast behavior). After a successful clean stop, the broadcast is expected in YouTube Studio as `complete`/ended — confirm there.
 - Startup failures after the stream/broadcast inserts leave the `ready` resources in place: nothing went live and no video flowed, but repeated failing runs ACCUMULATE orphaned broadcasts/streams (a typed `userBroadcastsExceedLimit` outcome surfaces when the limit is hit). Operator guidance: delete stale broadcasts/streams in YouTube Studio — automated cleanup is out of scope.
 - On an abrupt crash there is no application cleanup: inspect and end any still-live broadcast in YouTube Studio manually.
-- Failure recovery pointers: OAuth problems → [`docs/authentication.md`](authentication.md) (recovery table); Google Cloud/API-quota topics → [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md); any still-live broadcast after a crash → this document, §7 (there is no separate streaming-recovery document — the recovery content lives here).
+- Failure recovery pointers: OAuth problems → [`docs/authentication.md`](authentication.md) (recovery table); Google Cloud/API-quota topics → [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md); any still-live broadcast after a crash → this document's "Broadcast/Stream Fate" section above (there is no separate streaming-recovery document — the recovery content lives here).
 
 ## Manual Verification Procedure (Operator-Run)
 
@@ -106,7 +106,7 @@ The canonical safe test plan (D-T4-8). It is performed by the human operator aga
 6. Actual video arrival: open YouTube Studio → the broadcast enters live; verify real frames appear (continuous rendered video; the Phase 05 stream has NO chat text — expected, chat is Phase 06). Confirm at least ~1–2 minutes of continuous video.
 7. Ctrl+C shutdown: after confirming video, press Ctrl+C. Expected: frame loop stops; the stdout line `streaming stopped; the broadcast auto-completes on YouTube after ingestion ends`; process exit code 0.
 8. Post-shutdown broadcast status: wait about 1–2 minutes (the `enableAutoStop` auto-complete window), then open YouTube Studio → confirm the broadcast identified in step 5 shows a completed/ended status (`complete`); record the observed transition moment. (This autoStop fact comes from the official Life-of-a-Broadcast documentation cited in the Phase-05 Task-1 plan — any deviation observed live is recorded honestly, never reconciled by editing the code.)
-9. On any startup failure: capture the single redacted `error:` line, verify no token/key text appears in it, and use the failure/recovery tables (this document §7, [`docs/authentication.md`](authentication.md)) — again keeping secrets private.
+9. On any startup failure: capture the single redacted `error:` line, verify no token/key text appears in it, and use the failure/recovery tables (this document's "Broadcast/Stream Fate" section, [`docs/authentication.md`](authentication.md)) — again keeping secrets private.
 10. Evidence-recording guidance for the operator: record the unlisted-broadcast creation, video arrival, Ctrl+C shutdown message, exit code, and post-shutdown status — each with timestamps — in whatever tracking artifact the operator prefers.
 
 ## Out of Scope
