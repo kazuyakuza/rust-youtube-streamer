@@ -24,7 +24,8 @@ use super::live_lifecycle::{BroadcastLifecycle, StreamStatusKind};
 use super::live_models::LiveStream;
 use super::wait_cancellation::WaitCanceller;
 use observation::{
-    attempt_exhausted, broadcast_observation, broadcast_state, is_transient, stream_observation,
+    attempt_exhausted, broadcast_observation, broadcast_state, sleep_between_polls,
+    stream_observation, tolerate_transient,
 };
 
 const READINESS_BUDGET_SECONDS: u64 = 180;
@@ -91,7 +92,7 @@ impl<'a> ReadinessWait<'a> {
             if let Some(confirmed_stream) = self.poll_cycle(&mut readiness)? {
                 return Ok(confirmed_stream);
             }
-            std::thread::sleep(std::time::Duration::from_secs(self.poll_interval_seconds));
+            sleep_between_polls(self.poll_interval_seconds);
         }
         Err(attempt_exhausted(READINESS_STAGE))
     }
@@ -102,28 +103,26 @@ impl<'a> ReadinessWait<'a> {
         &self,
         readiness: &mut ReadinessFlags,
     ) -> Result<Option<LiveStream>, LiveApiError> {
-        let observed = self
-            .transport
-            .lookup_stream(self.stream_id)
-            .and_then(stream_observation);
-        let (stream, stream_status) = match observed {
-            Ok(observation) => observation,
-            Err(error) if is_transient(&error) => return Ok(None),
-            Err(error) => return Err(error),
+        let observed = tolerate_transient(
+            self.transport
+                .lookup_stream(self.stream_id)
+                .and_then(stream_observation),
+        )?;
+        let Some((stream, stream_status)) = observed else {
+            return Ok(None);
         };
         match stream_status {
             StreamStatusKind::Error => return Err(broadcast_state(STREAM_STATUS_ERROR_DETAIL)),
             StreamStatusKind::Ready => readiness.stream_ready = true,
             _ => {}
         }
-        let lifecycle = self
-            .transport
-            .lookup_broadcast(self.broadcast_id)
-            .and_then(broadcast_observation);
-        let broadcast_lifecycle = match lifecycle {
-            Ok(observed_lifecycle) => observed_lifecycle,
-            Err(error) if is_transient(&error) => return Ok(None),
-            Err(error) => return Err(error),
+        let lifecycle = tolerate_transient(
+            self.transport
+                .lookup_broadcast(self.broadcast_id)
+                .and_then(broadcast_observation),
+        )?;
+        let Some(broadcast_lifecycle) = lifecycle else {
+            return Ok(None);
         };
         if broadcast_lifecycle == BroadcastLifecycle::Revoked {
             return Err(broadcast_state(BROADCAST_REVOKED_DETAIL));

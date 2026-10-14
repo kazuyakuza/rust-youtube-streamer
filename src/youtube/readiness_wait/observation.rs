@@ -46,11 +46,29 @@ pub(super) fn broadcast_observation(
     BroadcastLifecycle::from_api_label(label)
 }
 
-pub(super) fn is_transient(error: &LiveApiError) -> bool {
+fn is_transient(error: &LiveApiError) -> bool {
     matches!(
         error,
         LiveApiError::Network { .. } | LiveApiError::BackendUnavailable { .. }
     )
+}
+
+/// Attempt-matrix gate (D-T2-9): a transient failure consumes one attempt
+/// (`Ok(None)`); any other error is immediate and fatal.
+pub(super) fn tolerate_transient<T>(
+    outcome: Result<T, LiveApiError>,
+) -> Result<Option<T>, LiveApiError> {
+    match outcome {
+        Ok(observed) => Ok(Some(observed)),
+        Err(error) if is_transient(&error) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
+
+/// Sleep between poll attempts — shared by both attempt-bounded waits
+/// (plan F-T2-3 `sleep_between_polls`).
+pub(super) fn sleep_between_polls(seconds: u64) {
+    std::thread::sleep(std::time::Duration::from_secs(seconds));
 }
 
 pub(super) fn attempt_exhausted(stage: &str) -> LiveApiError {

@@ -4,7 +4,10 @@
 //! 24 attempts). Transient tolerance and the terminal mappings are the
 //! shared `observation` matrix; the readiness budget lives in `super`.
 
-use super::observation::{attempt_exhausted, broadcast_state, is_transient, stream_observation};
+use super::observation::{
+    attempt_exhausted, broadcast_state, sleep_between_polls, stream_observation,
+    tolerate_transient,
+};
 use super::*;
 
 const CONFIRMATION_BUDGET_SECONDS: u64 = 120;
@@ -52,20 +55,12 @@ fn confirmation_poll(
             .lookup_stream(stream_pair.stream_id)
             .and_then(stream_observation)
             .map(|(_stream, status)| status);
-        let status = match observed {
-            Ok(status) => status,
-            Err(error) if is_transient(&error) => {
-                std::thread::sleep(std::time::Duration::from_secs(poll_interval_seconds));
-                continue;
-            }
-            Err(error) => return Err(error),
-        };
-        match status {
-            StreamStatusKind::Active => return Ok(()),
-            StreamStatusKind::Error => return Err(broadcast_state(STREAM_STATUS_ERROR_DETAIL)),
-            _ => {}
+        match tolerate_transient(observed)? {
+            Some(StreamStatusKind::Active) => return Ok(()),
+            Some(StreamStatusKind::Error) => return Err(broadcast_state(STREAM_STATUS_ERROR_DETAIL)),
+            Some(_) | None => {}
         }
-        std::thread::sleep(std::time::Duration::from_secs(poll_interval_seconds));
+        sleep_between_polls(poll_interval_seconds);
     }
     Err(attempt_exhausted(CONFIRMATION_STAGE))
 }
