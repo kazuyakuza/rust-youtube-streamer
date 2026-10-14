@@ -79,6 +79,8 @@ mod google_authorization_verifier;
 // them; until then they must not be wired anywhere.
 #[allow(dead_code)]
 mod live_models;
+#[allow(dead_code)]
+mod live_error;
 
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,
