@@ -77,6 +77,11 @@ mod file_credential_store;
 #[allow(dead_code)]
 mod google_live_api_transport;
 mod google_token_endpoint;
+// Staged for the Task 3 run wiring; retire the allow there (the new
+// task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
+// runs the orchestrator until that wiring roots the chain).
+#[allow(dead_code)]
+mod live_ingestion;
 mod persisted_credentials;
 // Staged for the Task 3 run wiring; retire the allow there (the new
 // task-2 modules land staged per D-T2-14 step 1; nothing prod-reachable
