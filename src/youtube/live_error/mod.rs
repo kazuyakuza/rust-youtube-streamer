@@ -8,6 +8,8 @@
 //! bodies, and bodies are never embedded.
 
 // Re-exported for Task 2's concrete transport and for offline tests.
+// Retire when Task 2's concrete transport consumes the classifier.
+#[allow(unused_imports)]
 pub(crate) use classify::classify_api_error;
 
 mod classify;

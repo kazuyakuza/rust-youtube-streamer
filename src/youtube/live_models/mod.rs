@@ -7,12 +7,20 @@
 //! Request bodies lock the exact documented JSON shapes offline before
 //! any transport exists. Only config dependency: `VideoConfig` (D-T1-6).
 
+// Retire when Task 2's concrete transport consumes the request/list types.
+#[allow(unused_imports)]
 pub(crate) use broadcast_resource::{LiveBroadcast, LiveBroadcastList};
 pub(crate) use commands::{BindCommand, CreateBroadcastCommand, CreateStreamCommand};
+// Retire when Task 2's concrete transport consumes the request/list types.
+#[allow(unused_imports)]
 pub(crate) use stream_cdn::StreamCreationCdn;
+// Retire when Task 2's concrete transport consumes the request/list types.
+#[allow(unused_imports)]
 pub(crate) use stream_resource::{LiveStream, LiveStreamList};
 
 // Re-exported for Task 2's concrete transport and for offline model tests.
+// Retire when Task 2's concrete transport consumes the request/list types.
+#[allow(unused_imports)]
 pub(crate) use request_bodies::{BroadcastRequestBody, StreamRequestBody};
 
 mod broadcast_resource;
