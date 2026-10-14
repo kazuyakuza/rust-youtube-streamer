@@ -36,19 +36,28 @@ pub(crate) struct LiveBroadcastPreparer {
     broadcast_command: CreateBroadcastCommand,
 }
 
-/// The prepared result: the non-secret operator-diagnostics broadcast id
-/// and the redacting destination wrapper (D-T2-12's one reveal point is
+/// The prepared result: the non-secret operator-diagnostics ids and the
+/// redacting destination wrapper (D-T2-12's one reveal point is
 /// `RtmpsIngestion::into_url`, Task-3 app glue only). The derived
 /// `Debug` is secret-safe: the only secret-typed field redacts itself.
 #[derive(Debug)]
 pub(crate) struct PreparedBroadcast {
     broadcast_id: String,
+    stream_id: String,
     ingestion: RtmpsIngestion,
 }
 
 impl PreparedBroadcast {
     pub(crate) fn broadcast_id(&self) -> &str {
         &self.broadcast_id
+    }
+
+    /// The bound stream id, needed by Task 3's post-start O4 confirmation
+    /// wait (`prepare` currently has it in scope only during the bind).
+    /// Retire the allow when the Task-3 run wiring consumes it.
+    #[allow(dead_code)]
+    pub(crate) fn stream_id(&self) -> &str {
+        &self.stream_id
     }
 
     pub(crate) fn into_ingestion(self) -> RtmpsIngestion {
@@ -97,6 +106,7 @@ impl LiveBroadcastPreparer {
         let ingestion = confirmed_ingestion(&confirmed)?;
         Ok(PreparedBroadcast {
             broadcast_id,
+            stream_id,
             ingestion,
         })
     }

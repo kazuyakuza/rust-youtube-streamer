@@ -70,6 +70,22 @@ fn prepare_returns_broadcast_id_and_redacted_ingestion() {
 }
 
 #[test]
+fn prepared_broadcast_exposes_bound_stream_and_broadcast_ids() {
+    let transport = ScriptedLiveApiTransport::default();
+    queue_preparation(&transport);
+    let prepared = preparer()
+        .prepare(&transport, &WaitCanceller::new())
+        .expect("the happy script prepares");
+    assert_eq!(prepared.stream_id(), STREAM_ID_FIXTURE);
+    assert_eq!(prepared.broadcast_id(), BROADCAST_ID_FIXTURE);
+    assert_eq!(
+        prepared.into_ingestion().into_url(),
+        format!("{INGEST_BASE_FIXTURE}/{STREAM_NAME_FIXTURE}"),
+        "the destination reveal stays EXACT with the stream id carried alongside"
+    );
+}
+
+#[test]
 fn prepare_records_exact_commands_from_validated_config() {
     let transport = ScriptedLiveApiTransport::default();
     queue_preparation(&transport);
