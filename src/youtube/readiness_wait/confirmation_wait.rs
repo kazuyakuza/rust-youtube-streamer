@@ -5,8 +5,7 @@
 //! shared `observation` matrix; the readiness budget lives in `super`.
 
 use super::observation::{
-    attempt_exhausted, broadcast_state, sleep_between_polls, stream_observation,
-    tolerate_transient,
+    attempt_exhausted, broadcast_state, sleep_between_polls, stream_observation, tolerate_transient,
 };
 use super::*;
 
@@ -57,7 +56,9 @@ fn confirmation_poll(
             .map(|(_stream, status)| status);
         match tolerate_transient(observed)? {
             Some(StreamStatusKind::Active) => return Ok(()),
-            Some(StreamStatusKind::Error) => return Err(broadcast_state(STREAM_STATUS_ERROR_DETAIL)),
+            Some(StreamStatusKind::Error) => {
+                return Err(broadcast_state(STREAM_STATUS_ERROR_DETAIL))
+            }
             Some(_) | None => {}
         }
         sleep_between_polls(poll_interval_seconds);
