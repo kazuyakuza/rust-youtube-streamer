@@ -133,3 +133,37 @@ fn backend_and_unknown_map_status_first() {
         LiveApiError::BackendUnavailable { .. }
     ));
 }
+
+#[test]
+fn classifier_never_produces_wait_cancelled() {
+    // One representative (status, reason) pair per classifier arm: a
+    // cancellation never originates from an API response (D-T2-11).
+    let representatives = [
+        (401, "unauthorized"),
+        (403, "liveStreamingNotEnabled"),
+        (403, "livePermissionBlocked"),
+        (403, "insufficientLivePermissions"),
+        (403, "invalidTransition"),
+        (403, "userRequestsExceedRateLimit"),
+        (403, "brandNewReason"),
+        (404, "liveBroadcastNotFound"),
+        (404, "liveStreamNotFound"),
+        (404, "otherNotFound"),
+        (400, "invalidTitle"),
+        (400, "limitExceeded"),
+        (400, "otherBadRequest"),
+        (500, "backendError"),
+        (418, "teapot"),
+    ];
+    for (status, reason) in representatives {
+        let error = classify(status, reason);
+        assert!(
+            !matches!(error, LiveApiError::WaitCancelled),
+            "the classifier must never produce WaitCancelled for ({status}, '{reason}')"
+        );
+    }
+    assert!(!matches!(
+        classify_api_error(503, None),
+        LiveApiError::WaitCancelled
+    ));
+}

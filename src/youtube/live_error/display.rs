@@ -39,6 +39,7 @@ impl fmt::Display for LiveApiError {
             Self::Network { reason } => Self::display_network(formatter, reason),
             Self::MalformedResponse { field } => Self::display_malformed(formatter, field),
             Self::ReadinessTimeout { stage } => Self::display_timeout(formatter, stage),
+            Self::WaitCancelled => Self::display_wait_cancelled(formatter),
             Self::DestinationMissing { field } => Self::display_destination(formatter, field),
         }
     }
@@ -133,6 +134,13 @@ impl LiveApiError {
         write!(
             formatter,
             "YouTube readiness wait timed out (stage '{stage}')"
+        )
+    }
+
+    fn display_wait_cancelled(formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "the YouTube readiness wait was cancelled by the stop request"
         )
     }
 

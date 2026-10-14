@@ -48,6 +48,10 @@ pub(crate) enum LiveApiError {
     Network { reason: String },
     MalformedResponse { field: String },
     ReadinessTimeout { stage: String },
+    /// The readiness wait observed a stop request (D-T2-11): a typed
+    /// cancellation — not a timeout, not a transport/backend failure —
+    /// that Task 3 maps to the normal-shutdown path.
+    WaitCancelled,
     DestinationMissing { field: String },
 }
 

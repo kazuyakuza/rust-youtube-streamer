@@ -82,3 +82,15 @@ fn every_variant_display_stable_and_secret_free() {
         assert!(!actual.contains("stream key"), "no stream key in: {actual}");
     }
 }
+
+#[test]
+fn wait_cancelled_display_is_stable_and_secret_free() {
+    let rendered = LiveApiError::WaitCancelled.to_string();
+    assert_eq!(
+        rendered,
+        "the YouTube readiness wait was cancelled by the stop request"
+    );
+    assert!(!rendered.contains("rtmps"), "no RTMPS text in: {rendered}");
+    assert!(!rendered.contains("Bearer"), "no token text in: {rendered}");
+    assert!(!rendered.contains("url"), "no URL text in: {rendered}");
+}
