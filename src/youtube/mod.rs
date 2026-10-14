@@ -89,7 +89,15 @@ mod google_live_api_transport;
 mod google_token_endpoint;
 mod live_error;
 mod live_ingestion;
+// Wired by the Phase-05 run runtime; the residual item is the
+// pending-state predicate (`is_transition_pending`) reserved for a future
+// phase that reads it — retire when consumption lands.
+#[allow(dead_code)]
 mod live_lifecycle;
+// Wired by the Phase-05 run runtime; the residual items are the
+// documented-but-unread resource fields reserved for a future phase that
+// reads them — retire when consumption lands.
+#[allow(dead_code)]
 mod live_models;
 mod persisted_credentials;
 mod readiness_wait;
