@@ -3,7 +3,7 @@
 //! verification evidence, and required-scope evidence passes.
 
 use crate::app::run::error::RunError;
-use crate::app::run::runtime_test_fixtures::{
+use crate::app::run::runtime_credential_fakes::{
     fixture_client_config, FakeEndpoint, FakeStore, FakeVerifier,
 };
 use crate::youtube::{ClientConfig, CredentialService};

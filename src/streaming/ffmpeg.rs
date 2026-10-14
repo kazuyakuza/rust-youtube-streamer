@@ -1,30 +1,34 @@
 //! Starts FFmpeg without a shell, keeps refusing pipe deadlocks by draining
-//! stdout and stderr on dedicated threads, waits for clean stdin-EOF
-//! finalization, and maps exit codes/diagnostic tails to typed errors.
-//! Drain threads are joined BEFORE `child.wait()` so a fast-exiting FFmpeg
-//! can never fill its pipe while we wait; there is no timeout in Task 1
-//! (hang handling belongs to Task 2's pacing/shutdown design); the child is
-//! killed on Drop so an abandoned process cannot leak into the operator's
-//! machine. The argument vector is deliberately never echoed into logs or
-//! error text; diagnostics carry the captured stderr tail only, with the
-//! streaming destination URL redacted (`[redacted]`) before any error
-//! payload is built (plan D-T3-5 F-S3). Two spawn paths share one engine:
-//! `start` targets a local MP4 (demo), `start_stream` targets the RTMPS
-//! destination (production; no local file).
+//! stdout and stderr on dedicated threads (the `pipe_drain` split), waits
+//! for clean stdin-EOF finalization, and maps exit codes/diagnostic tails
+//! to typed errors. Drain threads are joined BEFORE `child.wait()` so a
+//! fast-exiting FFmpeg can never fill its pipe while we wait; there is no
+//! timeout in Task 1 (hang handling belongs to Task 2's pacing/shutdown
+//! design); the child is killed on Drop so an abandoned process cannot
+//! leak into the operator's machine. The argument vector is deliberately
+//! never echoed into logs or error text; diagnostics carry the captured
+//! stderr tail only, with the streaming destination URL redacted
+//! (`[redacted]`) before any error payload is built (plan D-T3-5 F-S3).
+//! Two spawn paths share one engine: `start` targets a local MP4 (demo),
+//! `start_stream` targets the RTMPS destination (production; no local
+//! file).
 
-use std::io::{self, Read, Write};
-use std::path::{Path, PathBuf};
+use std::io::{self, Write};
+use std::path::PathBuf;
 use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
-use std::thread::{self, JoinHandle};
+use std::thread::JoinHandle;
 
 use crate::config::model::AppConfig;
 use crate::streaming::args;
-use crate::streaming::error::{trailing_bytes, StreamingError};
+use crate::streaming::error::StreamingError;
+use crate::streaming::local_finalize::verify_local_output;
+use crate::streaming::pipe_drain::{exit_diagnostics, join_drain, spawn_drain, CapturedPipe};
 use crate::streaming::rtmps_destination::RtmpsDestination;
-use crate::streaming::sink::{CompletedOutput, CompletedVideo, FrameSink};
+use crate::streaming::sink::{CompletedOutput, FrameSink};
 
-const DIAGNOSTIC_CAPTURE_LIMIT_BYTES: usize = 4096;
-const REDACTED_TEXT: &str = "[redacted]";
+/// The redaction marker replacing every occurrence of the destination URL
+/// in captured diagnostics (D-T1-11/D-T1-13; §7 pinned).
+pub(super) const REDACTED_TEXT: &str = "[redacted]";
 
 /// Supervised FFmpeg child process: complete frames go to its stdin, both
 /// output pipes are continuously drained, and `finish` reports only a
@@ -38,12 +42,6 @@ pub struct FfmpegProcess {
     redaction_target: Option<String>,
     stdout_drain: Option<JoinHandle<CapturedPipe>>,
     stderr_drain: Option<JoinHandle<CapturedPipe>>,
-}
-
-/// What a drain thread captured from one output pipe.
-struct CapturedPipe {
-    collected_bytes: Vec<u8>,
-    final_error: Option<io::Error>, // a read failure ends reading; bytes stay
 }
 
 impl FfmpegProcess {
@@ -122,27 +120,6 @@ fn prepare_piped_command(command: &mut Command, arguments: &[String]) {
         .stderr(Stdio::piped());
 }
 
-fn spawn_drain<R: Read + Send + 'static>(pipe: Option<R>) -> JoinHandle<CapturedPipe> {
-    thread::spawn(move || capture_pipe(pipe))
-}
-
-fn capture_pipe<R: Read>(pipe: Option<R>) -> CapturedPipe {
-    let Some(mut pipe) = pipe else {
-        return CapturedPipe {
-            collected_bytes: Vec::new(),
-            final_error: Some(io::Error::other(
-                "an output pipe was unexpectedly unavailable",
-            )),
-        };
-    };
-    let mut collected_bytes = Vec::new();
-    let final_error = pipe.read_to_end(&mut collected_bytes).err();
-    CapturedPipe {
-        collected_bytes,
-        final_error,
-    }
-}
-
 impl FrameSink for FfmpegProcess {
     fn write_frame(&mut self, frame: &[u8]) -> Result<(), StreamingError> {
         let Some(stdin) = self.stdin.as_mut() else {
@@ -171,28 +148,6 @@ impl FrameSink for FfmpegProcess {
     }
 }
 
-/// The local-output finalization check (OutputFinalize path), extracted so
-/// the streaming finish never runs it: RTMPS leaves no file behind.
-fn verify_local_output(output_path: PathBuf) -> Result<CompletedVideo, StreamingError> {
-    if !is_output_finalized(&output_path) {
-        return Err(StreamingError::OutputFinalize { path: output_path });
-    }
-    Ok(CompletedVideo::new(output_path))
-}
-
-/// Joins one drain thread. A missing handle or a panicked thread both map
-/// to the typed wait failure — never an unwrap.
-fn join_drain(drain: Option<JoinHandle<CapturedPipe>>) -> Result<CapturedPipe, StreamingError> {
-    let Some(handle) = drain else {
-        return Err(StreamingError::WaitFailed {
-            source: io::Error::other("a drain thread handle was unexpectedly unavailable"),
-        });
-    };
-    handle.join().map_err(|_| StreamingError::WaitFailed {
-        source: io::Error::other("a drain thread panicked"),
-    })
-}
-
 fn report_exit_failure(
     status: &ExitStatus,
     stderr: &CapturedPipe,
@@ -201,42 +156,10 @@ fn report_exit_failure(
     if status.success() {
         return Ok(());
     }
-    let mut diagnostics = trailing_bytes(&stderr.collected_bytes, DIAGNOSTIC_CAPTURE_LIMIT_BYTES);
-    append_read_failure_note(&mut diagnostics, stderr.final_error.as_ref());
-    redact_destination(&mut diagnostics, redaction_target);
     Err(StreamingError::ExitFailure {
         exit_code: status.code(),
-        diagnostics,
+        diagnostics: exit_diagnostics(stderr, redaction_target),
     })
-}
-
-/// FFmpeg echoes the output URL in its stderr (`Output #0, flv, to
-/// 'rtmps://…/<key>'`); every occurrence is replaced BEFORE any
-/// `ExitFailure` payload is built. The read-failure note is app-generated
-/// text appended before this pass and can never carry the URL.
-fn redact_destination(diagnostics: &mut String, redaction_target: Option<&str>) {
-    if let Some(target) = redaction_target {
-        *diagnostics = diagnostics.replace(target, REDACTED_TEXT);
-    }
-}
-
-fn append_read_failure_note(diagnostics: &mut String, read_failure: Option<&io::Error>) {
-    if let Some(error) = read_failure {
-        diagnostics.push_str(&format!(";\n(read failure: {error})"));
-    }
-}
-
-/// Finalization check with the conservative direction: a probe ERROR
-/// (permissions etc.) counts as NOT finalized, so success is never
-/// reported on doubt.
-fn is_output_finalized(output_path: &Path) -> bool {
-    matches!(output_path.try_exists(), Ok(true)) && output_file_is_non_empty(output_path)
-}
-
-fn output_file_is_non_empty(output_path: &Path) -> bool {
-    output_path
-        .metadata()
-        .is_ok_and(|metadata| metadata.len() > 0)
 }
 
 impl Drop for FfmpegProcess {

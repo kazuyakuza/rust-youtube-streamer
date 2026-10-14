@@ -13,12 +13,13 @@ use crate::config::valid_config;
 use crate::youtube::{LiveApiError, WaitCanceller};
 
 use super::error::RunError;
-use super::runtime_runner_fixture::{RecordingStreamingRunner, RunnerScript};
-use super::runtime_test_fixtures::{
-    fixture_client_config, stream_with_status, FakeEndpoint, FakeStore, FakeVerifier,
-    ScriptedTransport, STREAM_ID_FIXTURE,
+use super::run_runtime;
+use super::runtime_credential_fakes::{
+    fixture_client_config, FakeEndpoint, FakeStore, FakeVerifier,
 };
-use super::{run_runtime, RunStops, RuntimeStart, ServiceStops};
+use super::runtime_runner_fixture::{RecordingStreamingRunner, RunnerScript};
+use super::runtime_test_fixtures::{stream_with_status, ScriptedTransport, STREAM_ID_FIXTURE};
+use super::seams::{RunStops, RuntimeStart, ServiceStops};
 
 fn run_with_scripted(
     transport: &Arc<ScriptedTransport>,

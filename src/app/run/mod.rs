@@ -3,8 +3,8 @@
 //! run-side permission gate → transport → broadcast/stream resources →
 //! the ONE destination reveal → FFmpeg start → the thread-parallel
 //! post-start confirmation gate → the continuous chat-free frame loop →
-//! ordered shutdown), its exit funnel, and the seam parameter objects.
-//! Resource fate (D-T3-6 rule 8): NEVER delete, NEVER transition — with
+//! ordered shutdown), its exit funnel, and (in `seams`) the testability
+//! parameter objects. Resource fate (D-T3-6 rule 8): NEVER delete, NEVER transition — with
 //! `enableAutoStop=true` the broadcast auto-completes ~1 minute after
 //! ingestion ends; startup failures AFTER O1/O2 leave the created `ready`
 //! resources in place (repeat-run accumulation is the documented
@@ -17,6 +17,7 @@ mod broadcast;
 mod credentials;
 mod error;
 mod gate;
+mod seams;
 mod source;
 mod streaming;
 
@@ -27,15 +28,13 @@ use tracing::info;
 use crate::app::pipeline::{install_stop_request_handler, StopFlag};
 use crate::config::AppConfig;
 use crate::streaming::RtmpsDestination;
-use crate::youtube::{
-    AccessToken, AuthorizationVerifier, CredentialService, CredentialStore, GoogleLiveApiTransport,
-    LiveApiTransport, TokenEndpointTransport, WaitCanceller,
-};
+use crate::youtube::{CredentialService, GoogleLiveApiTransport, WaitCanceller};
 
 use broadcast::{prepare_broadcast, StageRuntime};
 use credentials::{authorize_from_service, authorize_scope_evidence, establish_credentials};
 use error::RunError;
 use gate::{spawn_startup_gate, GatePlan};
+use seams::{RunStops, RuntimeStart, ServiceStops};
 use streaming::{PreparedStreaming, StreamingExecution, StreamingRunner};
 
 /// Exit code of a clean run stop (D-T3-8).
@@ -158,42 +157,13 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
     )
 }
 
-/// The Ctrl+C pair handed to the startup (one handler, both flags).
-pub(super) struct RunStops {
-    pub(super) stop_flag: StopFlag,
-    pub(super) canceller: WaitCanceller,
-}
-
-/// Stage 2's four injected service seams (D-T3-9).
-pub(super) struct ServiceStops<'a> {
-    pub(super) client_config: &'a crate::youtube::ClientConfig,
-    pub(super) store: &'a dyn CredentialStore,
-    pub(super) endpoint: &'a dyn TokenEndpointTransport,
-    pub(super) verifier: &'a dyn AuthorizationVerifier,
-}
-
-/// The shared transport handle type: `Arc` so the confirmation gate
-/// thread can hold a clone after `prepare` (the ONE sanctioned
-/// `Send + Sync` wrapper form; the compiler confirmed the concrete ureq
-/// transport satisfies it directly — no Mutex wrapper was needed).
-pub(super) type BroadcastTransport = Arc<dyn LiveApiTransport + Send + Sync>;
-
-/// Tests substitute the fake here; production builds the concrete ureq
-/// transport from the verified access token.
-pub(super) type TransportFactory<'a> = Box<dyn FnOnce(AccessToken) -> BroadcastTransport + 'a>;
-
-/// The whole startup after the Ctrl+C pair install, parameterized for
-/// offline testing (≤2-args rule via parameter object).
-pub(super) struct RuntimeStart<'a> {
-    pub(super) config: &'a AppConfig,
-    pub(super) stops: RunStops,
-    pub(super) service: ServiceStops<'a>,
-    pub(super) build_transport: TransportFactory<'a>,
-}
-
 #[cfg(test)]
 #[path = "runtime_test_fixtures.rs"]
 mod runtime_test_fixtures;
+
+#[cfg(test)]
+#[path = "runtime_credential_fakes.rs"]
+mod runtime_credential_fakes;
 
 #[cfg(test)]
 #[path = "runtime_runner_fixture.rs"]

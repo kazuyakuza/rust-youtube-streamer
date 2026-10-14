@@ -23,6 +23,8 @@
 mod args;
 mod error;
 mod ffmpeg;
+mod local_finalize;
+mod pipe_drain;
 mod rtmps_destination;
 mod sink;
 mod utc_timestamp;
