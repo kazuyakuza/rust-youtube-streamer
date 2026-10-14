@@ -39,7 +39,7 @@ Every operation this service performs is a **YouTube Data API v3** operation:
 | Operation | Used by | Phase |
 | --- | --- | --- |
 | `channels.list` (`part=id&mine=true`) — authorization probe | reusable credential service | Phase 04 (implemented) |
-| `liveBroadcasts` / `liveStreams` lifecycle | future production `run` backend | later phases |
+| `liveBroadcasts` / `liveStreams` lifecycle | the production `run` command (Phase 05: [`docs/production-run.md`](production-run.md)) | Phase 05 (implemented) |
 | `liveChatMessages` / `liveChatMessages.streamList` | future live-chat integration | later phases |
 
 Google's rule is explicit: *"Any application that calls Google APIs needs to enable those APIs in the API Console."* If the API is not enabled in the project that owns your OAuth client, the first API call fails.

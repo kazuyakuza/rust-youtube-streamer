@@ -18,7 +18,7 @@ This guide covers the `auth` command: the Google OAuth 2.0 installed-application
 
 The `auth` command performs the OAuth 2.0 authorization-code flow for a Google-installed application: it prints the authorization URL to the console, waits for the browser callback on a loopback-only listener, exchanges the code (with PKCE S256), validates the exchanged token response offline for the minimum required scope and a refresh token, and persists the credentials for later unattended use (the live network probe belongs to the reusable credential service, below). The scope authority is the project brief; the requested scope is `https://www.googleapis.com/auth/youtube.force-ssl` — the minimal YouTube API permission covering the needs of the subsequent broadcast/chat phases, which reuse the same grant. The research ledger for the scope choice and Google's installed-application requirements lives in [`.kilo/plans/20261012-phase04-task1-oauth-design.md`](../.kilo/plans/20261012-phase04-task1-oauth-design.md) §1.
 
-The reusable credential layer (load → verify → refresh → persist) lives under `src/youtube/`; the interactive flow lives under `src/app/auth/`. Neither `run` (non-interactive placeholder, exit 3) nor `demo` (local-only recording) contacts OAuth endpoints.
+The reusable credential layer (load → verify → refresh → persist) lives under `src/youtube/`; the interactive flow lives under `src/app/auth/`. `demo` (local-only recording) never contacts OAuth endpoints; `run` consumes the credential service non-interactively (load → verify-first → refresh-once → persist → re-verify) — see [`docs/production-run.md`](production-run.md).
 
 ## Prerequisites
 
@@ -45,7 +45,7 @@ Console output at each stage:
 - Success: `authorization succeeded: YouTube credentials saved at <credentials_path>; the required YouTube scope was granted` on stdout, exit 0.
 - Any failure: exactly one `error: <redacted reason>` line on stderr, exit 1.
 
-Exit codes for `auth`: `0` = verified success; `1` = configuration error, unreadable/invalid client file, listener-bind failure, CSRF state mismatch, provider decline, noise-budget exhaustion, token-exchange failure, persistence failure, insufficient scope, or missing refresh token; `3` is never returned by `auth` (it is reserved for the `run` placeholder).
+Exit codes for `auth`: `0` = verified success; `1` = configuration error, unreadable/invalid client file, listener-bind failure, CSRF state mismatch, provider decline, noise-budget exhaustion, token-exchange failure, persistence failure, insufficient scope, or missing refresh token; `3` is never returned by `auth` (exit code 3 is no longer used by any command).
 
 ## Credential Files
 
@@ -89,7 +89,7 @@ Distinct failure classes, each one redacted stderr line and exit 1:
 | Expired, unrefreshable | The access token is expired and no refresh token is stored. | Re-run `auth`. |
 | Insufficient scope | The stored/granted scopes do not include `https://www.googleapis.com/auth/youtube.force-ssl`. | Re-run `auth` and approve the requested YouTube permission. |
 
-The single recovery path for revoked or unrefreshable refresh credentials is re-running `auth`; there is no silent re-authorization and no manual token entry.
+The single recovery path for revoked or unrefreshable refresh credentials is re-running `auth`; there is no silent re-authorization and no manual token entry. Failures during an unattended production `run` are classified in [`docs/production-run.md`](production-run.md); the recovery path for revoked/unrefreshable credentials remains re-running `auth`.
 
 ## Security Notes
 
