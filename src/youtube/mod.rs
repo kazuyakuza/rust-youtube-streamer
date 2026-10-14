@@ -49,6 +49,22 @@
 //!   the verify-first refresh decision, the channels.list(mine=true)
 //!   probe evidence and the status→error mapping table are in
 //!   `.kilo/plans/20261012-phase04-task4-credential-service.md`.
+//! - Phase-05 staged design artifacts (TODO Task 1, plan
+//!   `.kilo/plans/20261013-phase05-task1-official-api-research-design.md` §4):
+//!   five offline design files carry the production-live runtime contract
+//!   without being wired anywhere yet — `live_models` (typed O1–O5 request
+//!   and response models from documented fields only), `live_lifecycle`
+//!   (the broadcast/stream status state machine), `live_error` (the typed
+//!   `LiveApiError` taxonomy plus the status-first `classify_api_error`
+//!   table), `scheduled_start_time` (the RFC 3339 `now + 1 minute` helper),
+//!   and `api_transport` (the mockable `LiveApiTransport` seam). Each is
+//!   declared with the whole-module `#[allow(dead_code)]` staging contract
+//!   below; the retirement contract is that Task 2 (the concrete ureq
+//!   backend + polling) and Task 3 (the production `run` wiring) consume
+//!   and retire them, exactly as the Phase-04 `credential_service` and
+//!   `google_authorization_verifier` staging is retired by the run-phase
+//!   wiring. Standing rule for their tests: no network, no Google contact,
+//!   no real credentials — every boundary is faked offline (fixtures only).
 
 mod authorization;
 mod client_config;
