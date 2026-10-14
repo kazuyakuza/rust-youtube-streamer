@@ -3,6 +3,9 @@
 //! observed `active`, within the D-T2-9 post-start budget (120 s / 5 s →
 //! 24 attempts). Transient tolerance and the terminal mappings are the
 //! shared `observation` matrix; the readiness budget lives in `super`.
+//!
+//! Plan: `.kilo/plans/20261013-phase05-task2-broadcast-ingestion-lifecycle.md`
+//! (+ Amendments 1–2); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 2.
 
 use super::observation::{
     attempt_exhausted, broadcast_state, sleep_between_polls, stream_observation, tolerate_transient,

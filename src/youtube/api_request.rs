@@ -11,6 +11,11 @@
 //! refactor). Response bodies are NEVER embedded into errors — only the
 //! non-secret `reason` code is surfaced.
 //!
+//! Grounding: the five documented request forms and query parts (D-T2-4)
+//! are the O1–O5 operations of the liveStreams / liveBroadcasts references
+//! cited in `api_transport`; bind carries no request body per
+//! https://developers.google.com/youtube/v3/live/docs/liveBroadcasts.
+//!
 //! Plan: `.kilo/plans/20261013-phase05-task2-broadcast-ingestion-lifecycle.md`
 //! (F-T2-1, D-T2-4..6); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 2.
 

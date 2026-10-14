@@ -9,6 +9,12 @@
 //! timeout (verifier parity); no transition/delete calls anywhere.
 //! Loopback-tested in the sibling tests; no test reaches Google.
 //!
+//! Grounding: OAuth 2.0 Bearer (never an API key; service accounts are
+//! unsupported) per
+//! https://developers.google.com/youtube/v3/live/authentication; the five
+//! request forms are the O1–O5 operations of the liveStreams /
+//! liveBroadcasts references cited in `api_transport`.
+//!
 //! Plan: `.kilo/plans/20261013-phase05-task2-broadcast-ingestion-lifecycle.md`
 //! (F-T2-1, D-T2-2..7, D-T2-16); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 2.
 

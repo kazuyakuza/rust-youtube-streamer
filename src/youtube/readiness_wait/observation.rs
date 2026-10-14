@@ -6,6 +6,9 @@
 //! consumed), every other classified API error is immediate and fatal;
 //! `Ok(None)` lookups are `ApiNotFound` and missing/unknown labels are
 //! `MalformedResponse`.
+//!
+//! Plan: `.kilo/plans/20261013-phase05-task2-broadcast-ingestion-lifecycle.md`
+//! (+ Amendments 1–2); TODO `.agent/todos/20261013/20261013-todo-1.md` Task 2.
 
 use crate::youtube::live_error::LiveApiError;
 use crate::youtube::live_lifecycle::{BroadcastLifecycle, StreamStatusKind};
