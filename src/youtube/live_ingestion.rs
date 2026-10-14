@@ -52,10 +52,8 @@ impl PreparedBroadcast {
         &self.broadcast_id
     }
 
-    /// The bound stream id, needed by Task 3's post-start O4 confirmation
-    /// wait (`prepare` currently has it in scope only during the bind).
-    /// Retire the allow when the Task-3 run wiring consumes it.
-    #[allow(dead_code)]
+    /// The bound stream id, consumed by Task 3's post-start O4
+    /// confirmation wait.
     pub(crate) fn stream_id(&self) -> &str {
         &self.stream_id
     }

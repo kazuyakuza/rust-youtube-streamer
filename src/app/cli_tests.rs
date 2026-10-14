@@ -154,3 +154,15 @@ fn usage_text_advertises_the_auth_command() {
     assert!(USAGE
         .contains("  auth                 authorize YouTube access and store OAuth credentials"));
 }
+
+#[test]
+fn usage_text_advertises_the_implemented_run_command() {
+    assert!(
+        USAGE.contains("  run                  stream the configured broadcast to YouTube Live")
+    );
+}
+
+#[test]
+fn usage_text_no_longer_claims_not_implemented() {
+    assert!(!USAGE.contains("not implemented"));
+}

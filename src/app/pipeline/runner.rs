@@ -13,7 +13,7 @@ use crate::chat::{ChatStore, ChatStoreSettings};
 use crate::config::model::AppConfig;
 use crate::renderer::{Frame, RenderInput, Renderer, RendererSettings, TextRenderer};
 use crate::streaming::{
-    resolve_output_path, CompletedOutput, FfmpegProcess, FrameSink, OutputKind,
+    resolve_output_path, CompletedOutput, FfmpegProcess, FrameSink, OutputKind, RtmpsDestination,
 };
 
 /// Assembled parts for one frame pipeline. Callers (TODO Task 3 demo mode,
@@ -36,6 +36,14 @@ pub(crate) struct PipelineConstruction {
     pub(crate) source: Box<dyn MessageSource>,
     pub(crate) stop_flag: StopFlag,
     pub(crate) output_kind: OutputKind,
+}
+
+/// Cell types for `prepared_stream_pipeline` (the production streaming
+/// constructor; ≤2-arguments rule via parameter object).
+pub(crate) struct StreamParts {
+    pub(crate) source: Box<dyn MessageSource>,
+    pub(crate) stop_flag: StopFlag,
+    pub(crate) destination: RtmpsDestination,
 }
 
 /// The continuous frame pipeline: accepts at most one due message per frame
@@ -149,6 +157,31 @@ pub(crate) fn prepared_pipeline(
         clock: Box::new(SystemFrameClock::new()),
         pacing,
         stop_flag: construction.stop_flag,
+    };
+    Ok(FramePipeline::new(parts))
+}
+
+/// Production streaming constructor for the run mode (plan D-T3-10): the
+/// existing production assembly (`PipelinePacing::from_config`,
+/// `build_chat_store`, `build_renderer`, `SystemFrameClock`) with the ONLY
+/// difference that the sink is `FfmpegProcess::start_stream` toward the
+/// RTMPS destination (no local output file). `prepared_pipeline`,
+/// `PipelineConstruction` and `OutputKind` stay untouched.
+pub(crate) fn prepared_stream_pipeline(
+    config: &AppConfig,
+    parts: StreamParts,
+) -> Result<FramePipeline<FfmpegProcess>, FramePipelineError> {
+    let pacing = PipelinePacing::from_config(&config.video)?;
+    let process =
+        FfmpegProcess::start_stream(config, parts.destination).map_err(FramePipelineError::Sink)?;
+    let parts = PipelineParts {
+        chat_store: build_chat_store(config)?,
+        renderer: build_renderer(config)?,
+        sink: process,
+        source: parts.source,
+        clock: Box::new(SystemFrameClock::new()),
+        pacing,
+        stop_flag: parts.stop_flag,
     };
     Ok(FramePipeline::new(parts))
 }

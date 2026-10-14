@@ -23,7 +23,7 @@ usage: rust-youtube-streamer-service [--config <path>] <command>
 commands:
   auth                 authorize YouTube access and store OAuth credentials
   demo                 run a local-only FFmpeg demo recording (no YouTube)
-  run                  start the streaming runtime (not implemented yet)
+  run                  stream the configured broadcast to YouTube Live
 
 options:
   --config <path>      configuration file to load (default: config/config.json)

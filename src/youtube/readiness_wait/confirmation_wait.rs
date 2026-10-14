@@ -19,7 +19,6 @@ const CONFIRMATION_STAGE: &str = "ingestion-confirmation";
 
 /// O4-only confirmation wait (D-T1-8 step 8; Task-3-consumed): polls
 /// until the stream status is observed `active`.
-#[allow(dead_code)]
 pub(crate) fn wait_until_stream_active(
     transport: &dyn LiveApiTransport,
     stream_pair: &StreamObservationRequest<'_>,

@@ -14,9 +14,10 @@
 mod confirmation_wait;
 mod observation;
 
+pub(crate) use confirmation_wait::wait_until_stream_active;
 #[cfg(test)]
 pub(super) use confirmation_wait::wait_until_stream_active_with_polling;
-pub(super) use observation::StreamObservationRequest;
+pub(crate) use observation::StreamObservationRequest;
 
 use super::api_transport::LiveApiTransport;
 use super::live_error::LiveApiError;

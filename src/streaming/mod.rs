@@ -30,6 +30,7 @@ mod video_output;
 
 pub(crate) use error::StreamingError;
 pub(crate) use ffmpeg::FfmpegProcess;
+pub(crate) use rtmps_destination::RtmpsDestination;
 pub(crate) use sink::{CompletedOutput, FrameSink};
 pub(crate) use video_output::{resolve_output_path, OutputKind};
 

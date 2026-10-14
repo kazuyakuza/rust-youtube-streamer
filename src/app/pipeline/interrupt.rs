@@ -81,6 +81,19 @@ pub(crate) fn install_interrupt_handler() -> Result<StopFlag, InterruptHandlerEr
     Ok(stop_flag)
 }
 
+/// Generic stop-request installer used by the run mode (the auth/demo
+/// precedent handles keep their own entry): the app's SINGLE ctrlc handler
+/// runs the caller-built flag flips. Inherits the documented limitations of
+/// this module (single handler, pacing-sleep latency, mid-frame latency, no
+/// background-signal claim, unbounded finish wait).
+pub(crate) fn install_stop_request_handler(
+    request: Box<dyn Fn() + Send>,
+) -> Result<(), InterruptHandlerError> {
+    ctrlc::set_handler(request).map_err(|error| InterruptHandlerError {
+        reason: error.to_string(),
+    })
+}
+
 #[cfg(test)]
 impl InterruptHandlerError {
     /// Test-only construction for Display/exit-code mapping tests; real

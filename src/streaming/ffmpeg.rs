@@ -58,8 +58,6 @@ impl FfmpegProcess {
     /// The production streaming spawn: locked stream vector, the RTMPS
     /// destination as the final argument, no local output file, and the
     /// destination recorded as the stderr-redaction target.
-    /// Consume at the Task-3 run wiring; retire there.
-    #[allow(dead_code)]
     pub fn start_stream(
         config: &AppConfig,
         destination: RtmpsDestination,

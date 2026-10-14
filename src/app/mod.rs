@@ -5,19 +5,18 @@
 //! startup funnel works in raw `u8` exit codes so tests can assert them;
 //! [`run`] performs the single `ExitCode` conversion at the process
 //! boundary. The exit codes are a stable contract: 1 = configuration or
-//! logging-init startup failures and also demo- and auth-origin fatal
-//! failures reported through their handlers, 2 = command-line usage error,
-//! 3 = the `run` mode not implemented yet. The `demo` mode makes
-//! the `pipeline` submodule (the chat → renderer → streaming frame
-//! pipeline) reachable from `main`.
+//! logging-init startup failures and also demo-, auth- and run-origin
+//! fatal failures reported through their handlers, 2 = command-line usage
+//! error. The `demo` mode makes the `pipeline` submodule (the chat →
+//! renderer → streaming frame pipeline) reachable from `main`.
 
 mod auth;
 mod cli;
 mod demo;
 mod error;
 mod logging;
-mod modes;
 mod pipeline;
+mod run;
 
 use std::ffi::OsString;
 use std::path::Path;
@@ -119,7 +118,7 @@ fn load_configuration(config_path: &str) -> Result<AppConfig, StartupError> {
 fn dispatch(mode: &cli::Mode, app_config: &AppConfig) -> u8 {
     match mode {
         cli::Mode::Auth => auth::run_auth(app_config),
-        cli::Mode::Run => modes::run(app_config),
+        cli::Mode::Run => run::run_command(app_config),
         cli::Mode::Demo => demo::run_demo(app_config),
     }
 }

@@ -54,9 +54,8 @@ impl RtmpsIngestion {
         })
     }
 
-    /// The ONE reveal point. Retire the allow when Task 3's app glue
-    /// consumes it (`RtmpsDestination::new(prepared_ingestion.into_url())`).
-    #[allow(dead_code)]
+    /// The ONE reveal point, consumed by the run-mode app glue
+    /// (`RtmpsDestination::new(prepared_ingestion.into_url())`).
     pub(crate) fn into_url(self) -> String {
         self.url
     }

@@ -16,8 +16,12 @@ mod runner;
 mod source;
 
 pub(crate) use error::FramePipelineError;
-pub(crate) use interrupt::{install_interrupt_handler, InterruptHandlerError, StopFlag};
-pub(crate) use runner::{prepared_pipeline, PipelineConstruction};
+pub(crate) use interrupt::{
+    install_interrupt_handler, install_stop_request_handler, InterruptHandlerError, StopFlag,
+};
+pub(crate) use runner::{
+    prepared_pipeline, prepared_stream_pipeline, PipelineConstruction, StreamParts,
+};
 pub(crate) use source::MessageSource;
 
 #[cfg(test)]

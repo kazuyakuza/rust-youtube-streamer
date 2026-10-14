@@ -9,8 +9,6 @@ use super::token::{AccessToken, GrantedScopes};
 
 /// Evidence that the effective authorization carries the required scope.
 pub(crate) struct VerifiedAuthorization {
-    // Staged for the future run-phase wiring (the scope-evidence reader).
-    #[allow(dead_code)]
     granted_scopes: GrantedScopes,
 }
 
@@ -21,9 +19,8 @@ impl VerifiedAuthorization {
     }
 
     /// The granted-scope evidence, for exact-membership checks against
-    /// [`super::authorization::REQUIRED_SCOPE`].
-    // Staged for the future run-phase wiring (the scope-evidence reader).
-    #[allow(dead_code)]
+    /// [`super::authorization::REQUIRED_SCOPE`] (the run-side permission
+    /// gate consumes it before any resource creation).
     pub(crate) fn granted_scopes(&self) -> &GrantedScopes {
         &self.granted_scopes
     }

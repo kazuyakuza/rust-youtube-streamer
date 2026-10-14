@@ -16,8 +16,6 @@ pub(crate) struct RtmpsDestination {
 
 impl RtmpsDestination {
     /// Wraps the assembled destination URL at the production reveal point.
-    /// Retire the allow when the Task-3 run wiring constructs it.
-    #[allow(dead_code)]
     pub(crate) fn new(url: String) -> Self {
         Self { url }
     }
