@@ -63,6 +63,14 @@ The human-visible lines/events appear in this order (via `tracing` on stderr; st
 
 Standing secret guarantees: OAuth tokens, refresh tokens, client secrets, stream keys, full RTMPS URLs, and authorization codes NEVER appear in logs, error lines, or diagnostics. FFmpeg's own stderr echo of the output URL is replaced with `[redacted]` in captured diagnostics, and the stream key/RTMPS URL is never embedded in command logs, error text, or debug output.
 
+Inspecting the logs: the `run` command writes no log file — every operational line is a `tracing` event on stderr. Run the executable in a terminal to read the lines live, or redirect stderr to a file for later inspection (the secret guarantees above keep captured lines safe to store). Verbosity follows the exact, case-sensitive `RUST_LOG` environment variable (default `info`); e.g. `RUST_LOG=debug rust-youtube-streamer-service run`. Full filter semantics: [README's Logging (RUST_LOG) guide](../README.md#logging-rust_log).
+
+Identifying FFmpeg failures: every FFmpeg-origin failure ends the run with exit 1 and one `error:` line naming the stage:
+
+- `unable to start the FFmpeg executable '<path>': ...` — `ffmpeg.executable` points at a missing or non-runnable binary; verify the installed path (see [`docs/configuration.md`](configuration.md)).
+- `writing a frame to the FFmpeg process failed: broken pipe; the FFmpeg process exited while receiving frames` — FFmpeg died while streaming; the underlying cause appears in its captured stderr.
+- `FFmpeg exited with failure status <N>; captured diagnostics follow: ...` (or `FFmpeg terminated by a signal; captured diagnostics follow: ...`) — the tail of FFmpeg's own stderr is appended, with the RTMPS output URL replaced by `[redacted]`.
+
 ## Shutdown Behavior
 
 - **Ctrl+C during streaming**: the frame loop stops within at most one frame interval; FFmpeg's stdin is closed (EOF) and the process is waited on; any in-progress API wait is cancelled. Success prints on stdout, verbatim:
@@ -93,6 +101,15 @@ Documented limitations (inherited Phase-03 Ctrl+C list): repeated Ctrl+C is iner
 - Startup failures after the stream/broadcast inserts leave the `ready` resources in place: nothing went live and no video flowed, but repeated failing runs ACCUMULATE orphaned broadcasts/streams (a typed `userBroadcastsExceedLimit` outcome surfaces when the limit is hit). Operator guidance: delete stale broadcasts/streams in YouTube Studio — automated cleanup is out of scope.
 - On an abrupt crash there is no application cleanup: inspect and end any still-live broadcast in YouTube Studio manually.
 - Failure recovery pointers: OAuth problems → [`docs/authentication.md`](authentication.md) (recovery table); Google Cloud/API-quota topics → [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md); any still-live broadcast after a crash → this document's "Broadcast/Stream Fate" section above (there is no separate streaming-recovery document — the recovery content lives here).
+
+Common ingestion/API failures (each surfaces as the single redacted `error:` line with exit 1; the run performs no automatic retries):
+
+- Live-streaming eligibility — `live streaming is not enabled; see youtube.com/features` or `this channel cannot stream live now; see youtube.com/features`: enable/verify live streaming on the channel, then delete the leftover `ready` resources in YouTube Studio before re-running.
+- Authorization/scope — `access token rejected mid-run; run auth again`, `authorization lacks live permissions; run auth again`, or the scope-gate failure naming the required scope: re-authorize with `auth` ([`docs/authentication.md`](authentication.md) recovery table).
+- Quota and rate limits — `YouTube quota or rate limit (reason '...'); retry later`, including `userBroadcastsExceedLimit` once accumulated stale resources hit the limit: delete stale broadcasts/streams in YouTube Studio and retry later; quota model: [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md).
+- Readiness timeouts — `YouTube readiness wait timed out (stage 'readiness')`, or the post-start confirmation timing out (stage `ingestion-confirmation`): both waits are bounded (180 s / 120 s at 5 s intervals); verify channel eligibility and API enablement, clean up leftover `ready` resources in YouTube Studio, then re-run.
+- Broadcast-state conflicts — `broadcast state forbids this operation (reason '...')`: typically stale resources from earlier failing runs; clean them up in YouTube Studio and re-run.
+- Transient backend/network — `YouTube backend temporarily unavailable (reason '...')` or `unable to reach the YouTube API: ...`: resolve connectivity, then re-run.
 
 ## Manual Verification Procedure (Operator-Run)
 
