@@ -3,10 +3,10 @@
 //! the locked config→CDN mapping and the exact insert-body JSON shapes
 //! (plan §5 T1). Fixtures are fake-shaped; no test contacts Google.
 
+use crate::config::model::VideoConfig;
 use serde_json::json;
 
 use super::*;
-use crate::config::model::VideoConfig;
 
 fn video_config(width: u32, height: u32, fps: u32) -> VideoConfig {
     VideoConfig {
@@ -99,26 +99,21 @@ fn stream_page_item_deserializes_ingestion_info_all_five_fields() {
         .ingestion_info
         .as_ref()
         .expect("ingestionInfo present");
-    assert_eq!(
+    let observed = [
         ingestion.stream_name.as_deref(),
-        Some("stream-name-fixture")
-    );
-    assert_eq!(
         ingestion.ingestion_address.as_deref(),
-        Some("rtmp://a.example.test/fixture")
-    );
-    assert_eq!(
         ingestion.backup_ingestion_address.as_deref(),
-        Some("rtmp://b.example.test/fixture")
-    );
-    assert_eq!(
         ingestion.rtmps_ingestion_address.as_deref(),
-        Some("rtmps://a.example.test/fixture")
-    );
-    assert_eq!(
         ingestion.rtmps_backup_ingestion_address.as_deref(),
-        Some("rtmps://b.example.test/fixture")
-    );
+    ];
+    let documented = [
+        Some("stream-name-fixture"),
+        Some("rtmp://a.example.test/fixture"),
+        Some("rtmp://b.example.test/fixture"),
+        Some("rtmps://a.example.test/fixture"),
+        Some("rtmps://b.example.test/fixture"),
+    ];
+    assert_eq!(observed, documented);
 }
 
 #[test]
