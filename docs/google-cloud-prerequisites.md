@@ -6,6 +6,7 @@ This document explains the Google Cloud setup that [`docs/authentication.md`](au
 
 - [Overview](#overview)
 - [The Requirements, Term by Term](#the-requirements-term-by-term)
+- [Channel Live-Streaming Access (YouTube-Side Requirement)](#channel-live-streaming-access-youtube-side-requirement)
 - [Why Not an API Key, a Service Account, or Just a Browser?](#why-not-an-api-key-a-service-account-or-just-a-browser)
 - [Step-by-Step Setup](#step-by-step-setup)
 - [Costs and Quotas](#costs-and-quotas)
@@ -58,6 +59,28 @@ The **client type** determines which redirect mechanism is permitted:
 | Service account | Machine identity; only for YouTube **content owners** via `onBehalfOfContentOwner` | No — see the alternatives section |
 
 The service's `auth` command binds a listener on `127.0.0.1` (loopback only, ephemeral port), prints the authorization URL, and waits for Google to redirect the browser back to that loopback address. The downloaded JSON for a Desktop-app client carries `client_id`, `client_secret`, `auth_uri`, and `token_uri`; any declared `auth_uri`/`token_uri` is validated against the accepted Google endpoint forms (both Google's legacy `…/o/oauth2/auth` and the `/v2/auth` form are accepted, as are the token endpoint forms). The endpoints actually used for requests are the app's own constants — the file's declared values are only used for the tampering check.
+
+## Channel Live-Streaming Access (YouTube-Side Requirement)
+
+The three artifacts above are the Google Cloud side of the setup. A separate, independent **YouTube-side** requirement also exists: the channel that will carry the broadcast must itself have live-streaming access. Enabling the *YouTube Data API v3* in a Google Cloud project does NOT enable live streaming on the channel — the two are granted independently. Google's Live Streaming API documentation states the API-visible rule: *"A channel must be approved to use the YouTube Live feature"* — a request on behalf of a channel that is not enabled or eligible to stream live *"will return an `insufficientPermissions` error"* ([Implementing OAuth 2.0 Authentication](https://developers.google.com/youtube/v3/live/authentication), Last updated 2026-09-14 UTC). This is the failure the `run` command surfaces as `live streaming is not enabled` / `this channel cannot stream live now` (see [`docs/production-run.md`](production-run.md)).
+
+Official channel-side requirements (YouTube Help):
+
+| Requirement | Official source |
+| --- | --- |
+| No live-streaming restrictions in the past 90 days, and the channel is verified | ["Get started with live streaming"](https://support.google.com/youtube/answer/2474026) — *"To live stream, you need to have no live streaming restrictions in the past 90 days and you need to verify your channel"* |
+| Phone verification is what unlocks the live-streaming feature | ["Verify your YouTube account"](https://support.google.com/youtube/answer/171664) and ["See & unlock features with phone verification"](https://support.google.com/youtube/answer/9722880) — *Live streaming* appears among the features granted by verifying the phone number |
+| First-time enablement is not instant: it *"may take up to 24 hours"* | ["Create a YouTube live stream with an encoder"](https://support.google.com/youtube/answer/2907883) — the encoder path this service's external FFmpeg follows |
+| Minimum age to live stream is 16 (YouTube policy) | ["Get started with live streaming"](https://support.google.com/youtube/answer/2474026) |
+
+Where to check (both lookups act on the channel and require signing in as the channel owner):
+
+- `https://www.youtube.com/features` — the URL the `run` failure lines point to; it is a per-account page, so it resolves only after sign-in.
+- YouTube Studio (`studio.youtube.com`) → **Settings → Channel → Features** — the documented location of the phone-verification feature screen ([See & unlock features with phone verification](https://support.google.com/youtube/answer/9722880)).
+
+Phone verification is per channel; Google's anti-abuse rule allows one phone number to be linked to no more than 2 channels per year ([Verify your YouTube account](https://support.google.com/youtube/answer/171664)).
+
+Operator-supplied status (2026-10-14, user report — never agent-observed): the channel-owning operator enabled live access on the target channel and the channel is awaiting activation, with an expected wait of about 24 hours; the real manual test ([`docs/production-run.md`](production-run.md)) is ON HOLD until live access is active. The official sources above state the general rule (*"may take up to 24 hours"* on first-time enablement); the operator report is that rule's dated, user-supplied instance.
 
 ## Why Not an API Key, a Service Account, or Just a Browser?
 
@@ -131,6 +154,7 @@ Consequences for this project:
 | `403 quotaExceeded` | The project's daily quota is exhausted | Wait for the midnight PT reset, reduce usage, or apply for a quota extension |
 | `No such file` / unreadable client file at `auth` startup | `oauth.client_config_path` points at a missing or unreadable file | Verify the path and place the downloaded JSON there |
 | Configuration rejected before `auth` starts | Blank or identical `oauth.client_config_path` / `oauth.credentials_path` | Use two distinct, non-blank paths |
+| `insufficientPermissions` (live API error reason) | The channel is not enabled/eligible for live streaming — a YouTube-side channel requirement, separate from this page's Google Cloud setup | Enable live streaming on the channel (see [Channel Live-Streaming Access](#channel-live-streaming-access-youtube-side-requirement)); the `run` failure lines point to `youtube.com/features` |
 
 ## Handling the Credentials Securely
 
@@ -150,6 +174,7 @@ Before running `auth`, confirm:
 - [ ] JSON saved at `oauth.client_config_path` (default `credentials/client_secret.json`).
 - [ ] `oauth.credentials_path` set to a different path (default `credentials/tokens.json`).
 - [ ] Both paths under the gitignored `credentials/` directory.
+- [ ] The channel has live-streaming access (channel phone verification done; first-time activation may take up to 24 hours).
 
 ## See Also
 
@@ -160,3 +185,5 @@ Before running `auth`, confirm:
 - [OAuth 2.0 for installed applications](https://developers.google.com/youtube/v3/guides/auth/installed-apps)
 - [Quota costs for API requests](https://developers.google.com/youtube/v3/determine_quota_cost)
 - [Quota and compliance audits](https://developers.google.com/youtube/v3/guides/quota_and_compliance_audits)
+- [Get started with live streaming](https://support.google.com/youtube/answer/2474026) — official YouTube channel-side live-streaming requirements.
+- [Create a YouTube live stream with an encoder](https://support.google.com/youtube/answer/2907883) — the encoder path and the first-time enablement window (up to 24 hours).

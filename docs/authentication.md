@@ -7,6 +7,7 @@ This guide covers the `auth` command: the Google OAuth 2.0 installed-application
 - [Overview](#overview)
 - [Prerequisites](#prerequisites)
 - [First Authorization (Interactive, Once)](#first-authorization-interactive-once)
+- [One Grant = One Channel Identity](#one-grant--one-channel-identity)
 - [Credential Files](#credential-files)
 - [Unattended Operation](#unattended-operation)
 - [Revoked / Unrefreshable / Insufficient States](#revoked--unrefreshable--insufficient-states)
@@ -46,6 +47,16 @@ Console output at each stage:
 - Any failure: exactly one `error: <redacted reason>` line on stderr, exit 1.
 
 Exit codes for `auth`: `0` = verified success; `1` = configuration error, unreadable/invalid client file, listener-bind failure, CSRF state mismatch, provider decline, noise-budget exhaustion, token-exchange failure, persistence failure, insufficient scope, or missing refresh token; `3` is never returned by `auth` (exit code 3 is no longer used by any command).
+
+## One Grant = One Channel Identity
+
+The OAuth grant binds to exactly ONE YouTube channel identity, and the choice is made by the operator at consent time, never by the application:
+
+- Which channel the grant covers is decided during the Google sign-in / channel-pick page of the consent flow; where one account controls several channels, that page selects the specific channel. The application neither selects, surfaces, nor verifies WHICH channel was granted — the persisted scope evidence records only the granted scopes, never a channel identity.
+- The authorization probe that `auth` relies on (`GET /youtube/v3/channels?part=id&mine=true`, see Unattended Operation) reads the authorized channel as an access check; it never prints or validates which channel it is.
+- Unattended refresh binds the SAME channel: the stored refresh token can obtain new access tokens for the original grant only; it cannot switch the persisted grant to a different channel.
+- To operate a different channel, re-run `auth` and select the intended channel at consent — the persisted credentials are replaced by a fresh grant for that channel.
+- During real streaming tests, confirm in YouTube Studio that the broadcast landed on the expected channel (manual-procedure reminder: [`docs/production-run.md`](production-run.md)); phone-verified live access is a per-channel YouTube-side requirement, not a per-application one (see [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md), Channel Live-Streaming Access).
 
 ## Credential Files
 
