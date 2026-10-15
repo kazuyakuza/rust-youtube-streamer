@@ -19,6 +19,7 @@ use super::streaming::{primary_shutdown_outcome, StreamingExecution, StreamingRu
 pub(super) struct RecordedExecution {
     pub(super) destination_debug: String,
     pub(super) stream_id: String,
+    pub(super) watch_url: String,
     pub(super) gate_finish: &'static str,
 }
 
@@ -81,6 +82,7 @@ impl StreamingRunner for RecordingStreamingRunner {
     fn run(&self, _app_config: &AppConfig, execution: StreamingExecution) -> Result<(), RunError> {
         let destination_debug = format!("{:?}", execution.destination);
         let stream_id = execution.stream_id.clone();
+        let watch_url = execution.watch_url.clone();
         let stream_outcome = self.scripted_stream_outcome(&execution.stop_flag);
         if stream_outcome.is_err() {
             execution.canceller.request_cancel();
@@ -89,6 +91,7 @@ impl StreamingRunner for RecordingStreamingRunner {
         *self.recorded.lock().expect("fixture mutex") = Some(RecordedExecution {
             destination_debug,
             stream_id,
+            watch_url,
             gate_finish: gate_label(&gate_finish),
         });
         primary_shutdown_outcome(stream_outcome, gate_finish)

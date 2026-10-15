@@ -11,6 +11,8 @@
 //! stop flags. Joining costs at most one confirmation poll interval plus
 //! any in-flight request (D-T2-16(a) carried: NO request-level timeout).
 //!
+//! On success the thread also emits the watch-link info event (D-T2W-1).
+//!
 //! D-T3-12 (recorded, voided behavior): post-start the runtime polls O4
 //! ONLY; the broadcast's `live` transition (via autoStart) is never
 //! observed, so no ready→live lifecycle log exists — no later agent may
@@ -28,12 +30,17 @@ use crate::youtube::{
     WaitCanceller,
 };
 
+/// The watch-link event's printable line message (D-T2W-1): single
+/// source of truth, pinned verbatim by a test.
+pub(super) const WATCH_LINK_MESSAGE: &str = "public watch link for the live stream";
+
 /// The gate thread's owned collaborators (the `'static` spawn requirement
 /// makes every field owned or `Arc`-shared).
 pub(super) struct GatePlan {
     pub(super) transport: Arc<dyn LiveApiTransport + Send + Sync>,
     pub(super) cancellation: WaitCanceller,
     pub(super) stream_id: String,
+    pub(super) watch_url: String,
     pub(super) stop_flag: StopFlag,
 }
 
@@ -96,6 +103,7 @@ fn run_confirmation(plan: GatePlan, state: &Mutex<GateState>) {
     let outcome = match result {
         Ok(()) => {
             info!("stream confirmed active on YouTube");
+            info!(watch_url = %plan.watch_url, "{}", WATCH_LINK_MESSAGE);
             GateFinish::Confirmed
         }
         Err(LiveApiError::WaitCancelled) => GateFinish::Cancelled,

@@ -30,7 +30,7 @@ use crate::config::AppConfig;
 use crate::streaming::RtmpsDestination;
 use crate::youtube::{CredentialService, GoogleLiveApiTransport, WaitCanceller};
 
-use broadcast::{prepare_broadcast, StageRuntime};
+use broadcast::{prepare_broadcast, public_watch_url, StageRuntime};
 use credentials::{authorize_from_service, authorize_scope_evidence, establish_credentials};
 use error::RunError;
 use gate::{spawn_startup_gate, GatePlan};
@@ -137,12 +137,14 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
         broadcast_id = prepared.broadcast_id(),
         "broadcast prepared for streaming"
     );
+    let watch_url = public_watch_url(prepared.broadcast_id());
     let stream_id = prepared.stream_id().to_string();
     let destination = RtmpsDestination::new(prepared.into_ingestion().into_url());
     let gate = spawn_startup_gate(GatePlan {
         transport: Arc::clone(&transport),
         cancellation: start.stops.canceller.clone(),
         stream_id: stream_id.clone(),
+        watch_url: watch_url.clone(),
         stop_flag: start.stops.stop_flag.clone(),
     });
     runner.run(
@@ -152,6 +154,7 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
             canceller: start.stops.canceller,
             destination,
             stream_id,
+            watch_url,
             gate,
         },
     )

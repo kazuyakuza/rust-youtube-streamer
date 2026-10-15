@@ -36,13 +36,14 @@ pub(super) trait StreamingRunner: Send {
 
 /// Everything the streaming stage needs after the destination reveal
 /// (D-T3-9). `destination` carries the redacting `Debug`; there is no url
-/// accessor. `stream_id` rides along as non-secret operator diagnostics
-/// for recorded-test capture (the gate owns its own copy).
+/// accessor. `stream_id` and `watch_url` ride along as non-secret operator
+/// diagnostics for recorded-test capture (the gate owns its own copy).
 pub(super) struct StreamingExecution {
     pub(super) stop_flag: StopFlag,
     pub(super) canceller: WaitCanceller,
     pub(super) destination: RtmpsDestination,
     pub(super) stream_id: String,
+    pub(super) watch_url: String,
     pub(super) gate: SpawnedGate,
 }
 
@@ -57,9 +58,10 @@ impl StreamingRunner for PreparedStreaming {
             stop_flag,
             canceller,
             destination,
-            // The bundle copy exists for recorded-test capture; the
+            // The bundle copies exist for recorded-test capture; the
             // production stage owns its confirmation copy in the gate.
             stream_id: _stream_id,
+            watch_url: _watch_url,
             gate,
         } = execution;
         let pipeline = prepared_stream_pipeline(

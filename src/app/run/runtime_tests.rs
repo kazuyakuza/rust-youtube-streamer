@@ -12,13 +12,16 @@ use crate::app::pipeline::StopFlag;
 use crate::config::valid_config;
 use crate::youtube::{LiveApiError, WaitCanceller};
 
+use super::broadcast::public_watch_url;
 use super::error::RunError;
 use super::run_runtime;
 use super::runtime_credential_fakes::{
     fixture_client_config, FakeEndpoint, FakeStore, FakeVerifier,
 };
 use super::runtime_runner_fixture::{RecordingStreamingRunner, RunnerScript};
-use super::runtime_test_fixtures::{stream_with_status, ScriptedTransport, STREAM_ID_FIXTURE};
+use super::runtime_test_fixtures::{
+    stream_with_status, ScriptedTransport, BROADCAST_ID_FIXTURE, STREAM_ID_FIXTURE,
+};
 use super::seams::{RunStops, RuntimeStart, ServiceStops};
 
 fn run_with_scripted(
@@ -75,6 +78,7 @@ fn run_runtime_orchestrates_credentials_then_resources_then_streaming() {
     let recorded = runner.take_recorded();
     assert_eq!(recorded.destination_debug, "RtmpsDestination(<redacted>)");
     assert_eq!(recorded.stream_id, STREAM_ID_FIXTURE);
+    assert_eq!(recorded.watch_url, public_watch_url(BROADCAST_ID_FIXTURE));
     assert_eq!(recorded.gate_finish, "confirmed");
 }
 

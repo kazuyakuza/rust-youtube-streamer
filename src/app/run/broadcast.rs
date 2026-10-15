@@ -26,6 +26,19 @@ pub(super) fn prepare_broadcast(
     preparer.prepare(stage.transport, stage.cancellation)
 }
 
+/// The public watch-page prefix of a prepared broadcast (D-T2W-2), the
+/// single runtime definition site of the watch URL text.
+pub(super) const WATCH_URL_PREFIX: &str = "https://www.youtube.com/watch?v=";
+
+/// The public watch URL of the prepared broadcast (D-T2W-2): YouTube
+/// treats the broadcast id as the corresponding video's id (recorded
+/// Phase-05 Task-1 research, §1.3, from the official liveBroadcasts
+/// reference). The URL is NON-SECRET — it carries only the broadcast
+/// id already printed in `broadcast prepared for streaming`.
+pub(super) fn public_watch_url(broadcast_id: &str) -> String {
+    format!("{WATCH_URL_PREFIX}{broadcast_id}")
+}
+
 /// The clock read for the `scheduledStartTime` derivation (D-T1-5). A
 /// pre-epoch (or failed) read falls back to 0, which the server rejects
 /// as a typed `invalidScheduledStartTime` → `InvalidMetadata` —

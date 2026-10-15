@@ -7,7 +7,10 @@
 use std::sync::Arc;
 
 use crate::app::pipeline::StopFlag;
-use crate::app::run::runtime_test_fixtures::{stream_with_status, ScriptedTransport};
+use crate::app::run::broadcast::public_watch_url;
+use crate::app::run::runtime_test_fixtures::{
+    stream_with_status, ScriptedTransport, BROADCAST_ID_FIXTURE,
+};
 use crate::youtube::{LiveApiError, WaitCanceller};
 
 use super::{spawn_startup_gate, GateFinish, GatePlan};
@@ -19,6 +22,7 @@ fn gate_plan(transport: Arc<ScriptedTransport>, cancellation: WaitCanceller) -> 
         transport,
         cancellation,
         stream_id: FIXTURE_STREAM_ID.to_string(),
+        watch_url: public_watch_url(BROADCAST_ID_FIXTURE),
         stop_flag: StopFlag::new(),
     }
 }
