@@ -104,7 +104,7 @@
 
 # Root files
 
-- Cargo.toml - Rust package manifest: `rust-youtube-streamer-service` v0.8.0, edition 2021; deps: ab_glyph (renderer font rasterization), ctrlc (cross-platform Ctrl+C flag-flip handler for the pipeline stop seam), oauth2 5.0 with the `ureq` feature (OAuth authorization-code flow + PKCE + refresh; no Tokio), serde (derive), serde_json, tracing, tracing-subscriber (env-filter), ureq 2 (synchronous HTTP transport for the OAuth token endpoint, the authorization verifier and the YouTube Live API transport); dev-dep: tempfile
+- Cargo.toml - Rust package manifest: `rust-youtube-streamer-service` v0.9.0, edition 2021; deps: ab_glyph (renderer font rasterization), ctrlc (cross-platform Ctrl+C flag-flip handler for the pipeline stop seam), oauth2 5.0 with the `ureq` feature (OAuth authorization-code flow + PKCE + refresh; no Tokio), serde (derive), serde_json, tracing, tracing-subscriber (env-filter), ureq 2 (synchronous HTTP transport for the OAuth token endpoint, the authorization verifier and the YouTube Live API transport); dev-dep: tempfile
 - Cargo.lock - tracked lockfile for the executable package (sole root-level generated artifact)
 - src/main.rs - entry point delegating to the `app` layer (`mod app; mod chat; mod config; mod renderer; mod streaming; mod youtube;` — no `#[allow(dead_code)]` attributes; they were retired when Phase 03 wired chat/renderer into the runtime)
 - Dockerfile - pinned official `rust:1.82` base; installs rustfmt/clippy components for checks, `gcc-mingw-w64-x86-64` (Windows GNU cross toolchain: fallback linker route + objdump import audit) and the `x86_64-pc-windows-gnu` Rust target for the Windows cross-build
