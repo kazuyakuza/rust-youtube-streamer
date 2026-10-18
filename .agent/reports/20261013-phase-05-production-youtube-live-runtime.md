@@ -369,7 +369,7 @@ Recovery after a crash therefore happens OUTSIDE the application:
 1. **YouTube-side**: the broadcast is created with `enableAutoStop=true` (stage O2, decision D-T1-7), so YouTube auto-completes the broadcast about a minute after ingestion stops — the official Life-of-a-Broadcast behavior (`https://developers.google.com/youtube/v3/live/life-of-a-broadcast`, recorded in the Phase-05 Task-1 plan (`.kilo/plans/20261013-phase05-task1-official-api-research-design.md`) and documented operator-facing in `docs/production-run.md` §Broadcast/Stream Fate).
 2. **Operator-side**: leftover `ready` broadcasts/streams (accumulated by repeated failing runs; the typed `userBroadcastsExceedLimit` surfaces on the limit) are deleted manually in YouTube Studio — automated cleanup is out of scope by policy (report Known Limitations item (e)).
 
-Related documented limitations this reality sits beside (cited by name): the unbounded FFmpeg exit wait in `finish()` (report Known Limitations item (c)), the absent ureq request-level timeout (D-T2-16(a), report Known Limitations item (d)), and repeated-Ctrl+C inertness — all already on the report's Known Limitations list and in `docs/production-run.md` §Shutdown Behavior.
+Related documented limitations this reality sits beside (cited by name): the unbounded FFmpeg exit wait in `finish()` (report Known Limitations item (c) and `docs/production-run.md` §Shutdown Behavior), the absent ureq request-level timeout (D-T2-16(a), report Known Limitations item (d)), and repeated-Ctrl+C inertness (`docs/production-run.md` §Shutdown Behavior) — each already documented where cited; none is introduced by this addendum.
 
 ### Ranked hardening candidates (future planning input — record-only)
 
@@ -392,7 +392,7 @@ Ordered exactly as analyzed on 2026-10-14; ranks are not re-derived, merged, or 
 
 ### Final-tree verification evidence (Task 3)
 
-Ran on the final Task-3 tree: the standard dev-checks gate plus the D-T4-10 hygiene/secret audit set adapted to the current tree; all exits 0; nothing was implemented by this addendum, so code/artifact facts are unchanged from Task 2. (Empty `git grep` rows are git's documented no-match exit 1; empty `git ls-files`/`git status --porcelain` rows are exit 0 with no output.)
+Ran on the final Task-3 tree: the standard dev-checks gate plus the D-T4-10 hygiene/secret audit set adapted to the current tree; every command ended with its expected exit status; nothing was implemented by this addendum, so code/artifact facts are unchanged from Task 2. (Empty `git grep` rows are git's documented no-match exit 1; empty `git ls-files`/`git status --porcelain` rows are exit 0 with no output.)
 
 | Command | Exit | Observed result |
 | --- | --- | --- |
