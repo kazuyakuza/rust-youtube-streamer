@@ -392,4 +392,38 @@ Ordered exactly as analyzed on 2026-10-14; ranks are not re-derived, merged, or 
 
 ### Final-tree verification evidence (Task 3)
 
-Ran on the final Task-3 tree: the standard dev-checks gate plus the D-T4-10 hygiene/secret audit set adapted to the current tree; all exits 0; nothing was implemented by this addendum, so code/artifact facts are unchanged from Task 2. Evidence rows from the recorded runs follow.
+Ran on the final Task-3 tree: the standard dev-checks gate plus the D-T4-10 hygiene/secret audit set adapted to the current tree; all exits 0; nothing was implemented by this addendum, so code/artifact facts are unchanged from Task 2. (Empty `git grep` rows are git's documented no-match exit 1; empty `git ls-files`/`git status --porcelain` rows are exit 0 with no output.)
+
+| Command | Exit | Observed result |
+| --- | --- | --- |
+| `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh` (VM) | 0 | `PASS fmt-check exit=0 (3 s)`; `PASS check exit=0 (12 s)`; `PASS test exit=0 (22 s)`; `PASS clippy exit=0 (1 s)`; `test result: ok. 357 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s`; `ALL CHECKS PASSED`; log `logs/checks/20261018T014255Z.log` (the MCP capture cut before the summary block; the four PASS lines and `ALL CHECKS PASSED` were read from the log tail via `sh -c "tail -n 30 /rust-youtube-streamer/logs/checks/20261018T014255Z.log"`, exit 0) |
+| `ls -l /rust-youtube-streamer/dist/rust-youtube-streamer-service` (VM, read-only) | 0 | `-rwxrwx--- 1 root vboxsf 5197144 Oct 15 03:23 /rust-youtube-streamer/dist/rust-youtube-streamer-service` — 5197144 bytes, matches the Task-2 cited size; no delta |
+| `ls -l /rust-youtube-streamer/dist/windows/rust-youtube-streamer-service.exe` (VM, read-only) | 0 | `-rwxrwx--- 1 root vboxsf 8618273 Oct 15 03:23 /rust-youtube-streamer/dist/windows/rust-youtube-streamer-service.exe` — 8618273 bytes, matches the Task-2 cited size; no delta |
+| `git status` | 0 | `On branch feat/phase05-1-operator-feedback` / `nothing to commit, working tree clean` |
+| `git status --porcelain` | 0 | (empty at audit time, before this evidence-recording commit) |
+| `git ls-files dist/` | 0 | (empty) |
+| `git ls-files videos/` | 0 | (empty) |
+| `git ls-files credentials/` | 0 | `credentials/.gitkeep` |
+| `git ls-files "config/config.json"` | 0 | (empty) |
+| `git ls-files "*.mp4"` | 0 | (empty) |
+| `git ls-files "*.exe"` | 0 | (empty) |
+| `git check-ignore -v config/config.json` | 0 | `.gitignore:48:/config/config.json` |
+| `git check-ignore -v dist` | 0 | `.gitignore:34:dist/` |
+| `git check-ignore -v credentials/tokens.json` | 0 | `.gitignore:52:credentials/*` |
+| `git grep -n -F "allow(dead_code)" -- src/` | 0 | 8 attribute lines (`app/auth/mod.rs:86`, `chat/model.rs:44`, `chat/store.rs:123`, `youtube/authorization.rs:35/93`, `youtube/error.rs:24`, `youtube/mod.rs:95/100`) + 1 comment-text mention (`youtube/mod.rs:68`) |
+| `git grep -n -F "allow(unused_imports)" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -in "liveChat" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -n "transition(" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -n "liveBroadcasts.delete" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -n "liveStreams.delete" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -n -F "key=" -- src/` | 0 | 1 hit: `src/youtube/google_live_api_transport.rs:3` doc-comment ("NEVER an API key, no `key=`") |
+| `git grep -n "NOT_IMPLEMENTED_EXIT" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -c "ya29" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -c "AIza" -- src/` | 1 | (empty — 0 hits) |
+| `git grep -n "watch?v" -- src/` | 0 | exactly 2 hits: `src/app/run/broadcast.rs:31` (`WATCH_URL_PREFIX` constant), `src/app/run/mod_tests.rs:28` (pinned test literal) |
+| `git grep -n "stream-key-fixture" -- src/` | 0 | 6 hits, all in `src/streaming/{args_tests,ffmpeg_stream_tests,rtmps_destination_tests}.rs` fixtures/assertions |
+| `git grep -n "client_secret" -- src/` | 0 | schema/type path names + test fixtures only (`client_secret_fixture`, `client-secret-fixture`, `credentials/client_secret.json` default-path strings) — never a literal value |
+| `git grep -n "refresh_token" -- src/` | 0 | schema/type path names + test fixtures only (`refresh_token_fixture`, `refreshed_refresh_token_fixture`, `RefreshToken` type usages, the persisted-schema key name) — never a literal value |
+| `git grep -n -E "println!|eprintln!" -- src/app/run/` | 0 | 3 pre-existing lines: `mod.rs:55`, `mod.rs:59`, `mod.rs:70` |
+
+Any deviation between an expected and an observed value above would have paused execution and escalated; the recorded table is the observed run.
