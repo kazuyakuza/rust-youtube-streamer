@@ -19,6 +19,7 @@
 - [Deviations / Carry-Forwards](#deviations--carry-forwards)
 - [Known Limitations & Phase-06 Handoff](#known-limitations--phase-06-handoff)
 - [Evidence Index](#evidence-index)
+- [Addendum (2026-10-14): Resilience Planning — Crash/Concurrency Analysis](#addendum-2026-10-14-resilience-planning--crashconcurrency-analysis)
 
 ## Overview
 
@@ -354,3 +355,41 @@ c31dc60 feat: add typed live api failures with status mapping
 3b7129b docs: track the phase 05 task 1 implementation plan
 acfabde chore: bump version to 0.8.0
 ```
+
+## Addendum (2026-10-14): Resilience Planning — Crash/Concurrency Analysis
+
+This addendum records the 2026-10-14 operator Q&A crash/concurrency analysis for FUTURE planning only (record-only, per global plan decision D-GF6 in `.kilo/plans/20261014-phase05-1-operator-feedback.md`). The analysis originated in a user-directed chat follow-up on 2026-10-14, after the Phase-05 closure Q&A; the user asked that it be recorded in the completion reports so it can be planned for in the future. It is planning input, not a work order: nothing below is implemented, scheduled, or committed.
+
+### Crash-recovery reality
+
+An in-process watchdog — or any auxiliary thread or child process owned by the application — CANNOT clean up after a crash of the main process: a crashed process runs no code, so no handler, thread, or child can run recovery on its behalf. This is the standing recorded reality: brief §12.4 ("An abrupt process crash cannot execute the application's own cleanup code"), fate-policy rule 8 in the `src/app/run/mod.rs` module docs (an abrupt crash leaves no application cleanup — manual Studio recovery, also recorded in this report's Lifecycle / Shutdown / Resource-Fate Decisions), and the report's Known Limitations item (e) (repeated-run resource accumulation with Studio cleanup); `docs/production-run.md` §Broadcast/Stream Fate states it operator-facing ("On an abrupt crash there is no application cleanup: inspect and end any still-live broadcast in YouTube Studio manually").
+
+Recovery after a crash therefore happens OUTSIDE the application:
+
+1. **YouTube-side**: the broadcast is created with `enableAutoStop=true` (stage O2, decision D-T1-7), so YouTube auto-completes the broadcast about a minute after ingestion stops — the official Life-of-a-Broadcast behavior (`https://developers.google.com/youtube/v3/live/life-of-a-broadcast`, recorded in the Phase-05 Task-1 plan (`.kilo/plans/20261013-phase05-task1-official-api-research-design.md`) and documented operator-facing in `docs/production-run.md` §Broadcast/Stream Fate).
+2. **Operator-side**: leftover `ready` broadcasts/streams (accumulated by repeated failing runs; the typed `userBroadcastsExceedLimit` surfaces on the limit) are deleted manually in YouTube Studio — automated cleanup is out of scope by policy (report Known Limitations item (e)).
+
+Related documented limitations this reality sits beside (cited by name): the unbounded FFmpeg exit wait in `finish()` (report Known Limitations item (c)), the absent ureq request-level timeout (D-T2-16(a), report Known Limitations item (d)), and repeated-Ctrl+C inertness — all already on the report's Known Limitations list and in `docs/production-run.md` §Shutdown Behavior.
+
+### Ranked hardening candidates (future planning input — record-only)
+
+Ordered exactly as analyzed on 2026-10-14; ranks are not re-derived, merged, or designed here:
+
+1. **Bounded FFmpeg exit wait + escalation.** Today `finish()` in `src/streaming/ffmpeg.rs` waits unbounded — no timeout configuration field exists (Phase-03 documented limitation, carried into production operations; report Known Limitations item (c)). A bounded wait with a defined escalation (e.g., a typed escalation outcome rather than an indefinite wait) is the top-ranked candidate.
+2. **ureq request-level timeout.** Today the concrete ureq 2 transports (token endpoint, authorization verifier, `GoogleLiveApiTransport`) perform requests with no request-level timeout (recorded deviation D-T2-16(a); report Known Limitations item (d)): one stalled TCP connection can hang one API call (the post-start confirmation gate join cost is documented). Second-ranked.
+3. **In-process hang watchdog thread.** A dedicated thread could detect prolonged lack of progress (e.g., an FFmpeg process no longer consuming stdin, or a wait loop stuck beyond its documented budget), escalate by terminating the FFmpeg child, and surface a typed error. This addresses HANGS only — it does NOT address crashes, which run no application code (see "Crash-recovery reality" above). Third-ranked.
+4. **External supervisor (systemd).** The brief (§12.4) leaves service supervision to a future Ubuntu deployment ("A future Ubuntu deployment may use systemd or another external supervisor"), and the recorded project scope decision states the application is a normal executable, not a service — supervisor configuration belongs to deployment, not to the application. Fourth-ranked; the brief also records that a supervisor "can restart the service, but it does not by itself guarantee correct cleanup of a previously created broadcast."
+
+### Standing behaviors that stay
+
+- Repeated Ctrl+C inertness STAYS as documented: the installed handler replaces default termination (the Phase-03 five-point Ctrl+C limitations list, source `src/app/pipeline/interrupt.rs` module docs; restated in `docs/production-run.md` §Shutdown Behavior). A process stuck in a long blocking operation must be terminated with OS tools — that remains the documented escape, and this analysis proposes no change to it.
+- The shutdown order, the resource-fate policy, and the secret-redaction guarantees are NOT touched or re-discussed by this addendum.
+
+### What was not done / how this section is to be used
+
+- Nothing is claimed implemented: no hardening item above was coded, prototyped, adopted into a TODO, or claimed as test coverage; no configuration field, timeout, error variant, or module changed.
+- This addendum is future-work PLANNING INPUT for a later TODO; the ranked candidates are candidates, not commitments.
+
+### Final-tree verification evidence (Task 3)
+
+Ran on the final Task-3 tree: the standard dev-checks gate plus the D-T4-10 hygiene/secret audit set adapted to the current tree; all exits 0; nothing was implemented by this addendum, so code/artifact facts are unchanged from Task 2. Evidence rows from the recorded runs follow.
