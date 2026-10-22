@@ -51,7 +51,7 @@ impl<'a> LiveApiRequestSpec<'a> {
         }
     }
 
-    /// Bodyless POST (O3 bind: "Do not provide a request body").
+    /// Bodyless POST (O3 bind: zero body bytes transmitted WITH Content-Length: 0; the documented "do not provide a request body" semantics).
     pub(super) fn posting(path_query: String) -> Self {
         Self {
             method: LiveApiMethod::Post,

@@ -7,6 +7,9 @@
 //! `extract_reason` is the deliberate D-T2-6 local duplicate of the
 //! verifier's private extraction. Limits (D-T2-16): no request-level
 //! timeout (verifier parity); no transition/delete calls anywhere.
+//! The bodyless POST (O3 bind) transmits zero body bytes WITH Content-Length: 0 via
+//! send_bytes(&[]) (the HTTP 411 fix, loopback-pinned); GET forms stay on the no-body
+//! call() path.
 //! Loopback-tested in the sibling tests; no test reaches Google.
 //!
 //! Grounding: OAuth 2.0 Bearer (never an API key; service accounts are
@@ -75,7 +78,7 @@ impl GoogleLiveApiTransport {
             Some(body) => pending
                 .set("Content-Type", "application/json")
                 .send_string(body.to_string().as_str()),
-            None => pending.call(),
+            None => bodyless_post_or_get(spec.method, pending).map_err(|boxed_error| *boxed_error),
         };
         self.respond(reply)
     }
@@ -101,6 +104,21 @@ impl GoogleLiveApiTransport {
 
 fn is_success_status(status: u16) -> bool {
     (200..300).contains(&status)
+}
+
+/// The no-body reply path: GET keeps the bare no-body `call()`; POST
+/// sends exactly zero body bytes WITH `Content-Length: 0` (mechanism (a);
+/// pinned by the bind wire tests), so a Google-like enforcing server
+/// accepts the bind form instead of answering 411 Length Required. The
+/// error is boxed to satisfy clippy's `result_large_err` hygiene bar.
+fn bodyless_post_or_get(
+    method: LiveApiMethod,
+    pending: ureq::Request,
+) -> Result<ureq::Response, Box<ureq::Error>> {
+    match method {
+        LiveApiMethod::Get => pending.call().map_err(Box::new),
+        LiveApiMethod::Post => pending.send_bytes(&[]).map_err(Box::new),
+    }
 }
 
 impl LiveApiTransport for GoogleLiveApiTransport {
@@ -159,3 +177,11 @@ mod google_live_api_transport_tests;
 #[cfg(test)]
 #[path = "google_live_api_transport_outcomes_tests.rs"]
 mod google_live_api_transport_outcomes_tests;
+
+#[cfg(test)]
+#[path = "google_live_api_transport_bind_wire_tests.rs"]
+mod google_live_api_transport_bind_wire_tests;
+
+#[cfg(test)]
+#[path = "google_live_api_transport_bind_checks_tests.rs"]
+mod google_live_api_transport_bind_checks_tests;
