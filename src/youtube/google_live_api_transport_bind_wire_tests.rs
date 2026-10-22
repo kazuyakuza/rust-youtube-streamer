@@ -108,7 +108,7 @@ fn record_request(stream: &mut std::net::TcpStream) -> ServedRequest {
         }
         bytes.extend_from_slice(&chunk[..read]);
     }
-    let text = String::from_utf8_lossy(&bytes).to_string();
+    let text = String::from_utf8_lossy(&bytes);
     ServedRequest {
         request_line: text.lines().next().unwrap_or_default().to_string(),
         content_length: header_value(&text, "content-length"),
@@ -117,7 +117,7 @@ fn record_request(stream: &mut std::net::TcpStream) -> ServedRequest {
 }
 
 fn read_body_tail(stream: &mut std::net::TcpStream, head: &[u8]) -> String {
-    let head_text = String::from_utf8_lossy(head).to_string();
+    let head_text = String::from_utf8_lossy(head);
     let content_length = header_value(&head_text, "content-length")
         .and_then(|value| value.parse::<usize>().ok())
         .unwrap_or(0);
