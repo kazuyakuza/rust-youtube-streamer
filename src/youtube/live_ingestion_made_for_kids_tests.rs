@@ -12,32 +12,25 @@ use super::*;
 
 #[test]
 fn declared_true_flows_from_config_to_the_broadcast_command() {
-    let mut config = valid_config();
-    config.youtube.broadcast.made_for_kids = Some(true);
-    let transport = ScriptedLiveApiTransport::default();
-    queue_preparation(&transport);
-    LiveBroadcastPreparer::from_config(&config, FIXED_NOW_EPOCH_SECS)
-        .prepare(&transport, &WaitCanceller::new())
-        .expect("the happy script prepares");
-    let captured_broadcast = transport.captured_create_broadcast.borrow();
-    let broadcast = captured_broadcast
-        .as_ref()
-        .expect("the O2 command was captured");
-    assert_eq!(broadcast.made_for_kids, Some(true));
+    assert_eq!(captured_declaration_for(true), Some(true));
 }
 
 #[test]
 fn declared_false_flows_from_config_to_the_broadcast_command() {
+    assert_eq!(captured_declaration_for(false), Some(false));
+}
+
+fn captured_declaration_for(declared: bool) -> Option<bool> {
     let mut config = valid_config();
-    config.youtube.broadcast.made_for_kids = Some(false);
+    config.youtube.broadcast.made_for_kids = Some(declared);
     let transport = ScriptedLiveApiTransport::default();
     queue_preparation(&transport);
     LiveBroadcastPreparer::from_config(&config, FIXED_NOW_EPOCH_SECS)
         .prepare(&transport, &WaitCanceller::new())
         .expect("the happy script prepares");
     let captured_broadcast = transport.captured_create_broadcast.borrow();
-    let broadcast = captured_broadcast
+    captured_broadcast
         .as_ref()
-        .expect("the O2 command was captured");
-    assert_eq!(broadcast.made_for_kids, Some(false));
+        .expect("the O2 command was captured")
+        .made_for_kids
 }
