@@ -3,7 +3,10 @@
 //! code, and the public watch-link line/URL are pinned verbatim.
 
 use super::broadcast::{public_watch_url, WATCH_URL_PREFIX};
-use super::gate::WATCH_LINK_MESSAGE;
+use super::gate::{
+    READINESS_TIMEOUT_STATUS_UNAVAILABLE_MESSAGE, READINESS_TIMEOUT_STREAM_STATUS_MESSAGE,
+    WATCH_LINK_MESSAGE,
+};
 use super::runtime_test_fixtures::BROADCAST_ID_FIXTURE;
 use super::{RUN_STARTUP_STOP_MESSAGE, RUN_STOP_MESSAGE, RUN_SUCCESS_EXIT};
 
@@ -38,4 +41,16 @@ fn derived_watch_url_carries_no_secret_material() {
     assert!(!watch_url.contains("stream-name-fixture"));
     assert!(!watch_url.contains("bearer"));
     assert!(!watch_url.contains("access-token"));
+}
+
+#[test]
+fn gate_timeout_stream_status_messages_are_pinned() {
+    assert_eq!(
+        READINESS_TIMEOUT_STREAM_STATUS_MESSAGE,
+        "confirmation gate timed out; last observed streamStatus"
+    );
+    assert_eq!(
+        READINESS_TIMEOUT_STATUS_UNAVAILABLE_MESSAGE,
+        "confirmation gate timed out; the stream status could not be observed"
+    );
 }

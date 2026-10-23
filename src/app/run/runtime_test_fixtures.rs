@@ -142,7 +142,7 @@ fn confirmed_ready_stream() -> LiveStream {
     stream_with_status("ready")
 }
 
-fn inserted_stream() -> LiveStream {
+pub(super) fn inserted_stream() -> LiveStream {
     stream_from_json(json!({
         "id": STREAM_ID_FIXTURE,
         "cdn": {"ingestionInfo": ingestion_info()}

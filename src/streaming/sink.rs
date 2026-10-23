@@ -29,6 +29,39 @@ impl CompletedVideo {
     }
 }
 
+/// Exit/exit-evidence bundle of a FINISHED streaming FFmpeg process
+/// (run diagnostics task): the exit code verbatim (`None` = signal
+/// death) and the captured stderr tail AFTER the destination has been
+/// redacted to `[redacted]` — the redaction happens at CAPTURE time in
+/// `FfmpegProcess::finish`, so no consumer ever sees the URL. No
+/// `Display`: app-layer tracing consumes the accessors.
+#[derive(Debug)]
+pub struct StreamExit {
+    exit_code: Option<i32>,
+    stderr_tail: String,
+}
+
+impl StreamExit {
+    /// The streaming-family constructor (`ffmpeg.rs` is the only
+    /// production builder; tests never fabricate carriers).
+    pub(super) fn new(exit_code: Option<i32>, stderr_tail: String) -> Self {
+        Self {
+            exit_code,
+            stderr_tail,
+        }
+    }
+
+    /// The child's exit status code; `None` means it died by signal.
+    pub(crate) fn exit_code(&self) -> Option<i32> {
+        self.exit_code
+    }
+
+    /// The redacted trailing stderr diagnostics (≤ 4096 bytes).
+    pub(crate) fn stderr_tail(&self) -> &str {
+        &self.stderr_tail
+    }
+}
+
 /// Sends complete RGB24 frames to the FFmpeg process, then finalizes it.
 pub trait FrameSink {
     /// Writes exactly one complete frame. Implementations loop short writes
@@ -52,6 +85,8 @@ pub enum CompletedOutput {
     /// A verified local MP4 recording (`demo`; the prior `CompletedVideo`
     /// semantics, unchanged).
     Recording(CompletedVideo),
-    /// FFmpeg exited cleanly streaming to the RTMPS destination.
-    Stream,
+    /// FFmpeg exited cleanly streaming to the RTMPS destination; the
+    /// payload carries its exit status and redacted stderr tail for the
+    /// app's shutdown evidence lines.
+    Stream(StreamExit),
 }

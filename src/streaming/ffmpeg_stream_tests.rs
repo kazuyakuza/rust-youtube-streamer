@@ -14,6 +14,7 @@ use super::*;
 
 const FIXTURE_URL: &str = "rtmps://ingest.example.test/ingest/stream-key-fixture";
 const STDIN_DRAIN_EXIT_ZERO_BODY: &str = "cat > /dev/null; exit 0";
+const STDIN_DRAIN_ECHO_EXIT_ZERO_BODY: &str = "cat > /dev/null; echo \"Output #0, flv, to 'rtmps://ingest.example.test/ingest/stream-key-fixture'\" 1>&2; exit 0";
 const URL_ECHOING_EXITER_BODY: &str = r#"echo "Output #0, flv, to 'rtmps://ingest.example.test/ingest/stream-key-fixture'" 1>&2
 exit 1"#;
 const ETXTBSY_SPAWN_ATTEMPTS: u8 = 8;
@@ -74,7 +75,27 @@ fn clean_stream_exit_returns_the_stream_completion() {
     let completed = process
         .finish()
         .expect("a clean streaming exit must complete without a local finalize check");
-    assert!(matches!(completed, CompletedOutput::Stream));
+    assert!(matches!(completed, CompletedOutput::Stream(_)));
+}
+
+#[test]
+fn stream_completion_carries_exit_code_and_redacted_stderr_tail() {
+    let directory = tempfile::tempdir().expect("a TempDir must be creatable");
+    let executable_path = write_fake_executable(directory.path(), STDIN_DRAIN_ECHO_EXIT_ZERO_BODY);
+    let config = stream_config(&executable_path);
+    let mut process = start_stream_fake(&config, FIXTURE_URL).expect("the fake must spawn");
+
+    process
+        .write_frame(&[0u8; 2304])
+        .expect("one frame must be accepted");
+
+    let Ok(CompletedOutput::Stream(stream_exit)) = process.finish() else {
+        panic!("a clean echo-exiting fake must complete as a Stream carrier");
+    };
+    assert_eq!(stream_exit.exit_code(), Some(0));
+    assert!(stream_exit.stderr_tail().contains("[redacted]"));
+    assert!(!stream_exit.stderr_tail().contains("rtmps://"));
+    assert!(!stream_exit.stderr_tail().contains("stream-key-fixture"));
 }
 
 #[test]

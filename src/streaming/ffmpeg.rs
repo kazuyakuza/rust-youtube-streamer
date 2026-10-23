@@ -24,7 +24,7 @@ use crate::streaming::error::StreamingError;
 use crate::streaming::local_finalize::verify_local_output;
 use crate::streaming::pipe_drain::{exit_diagnostics, join_drain, CapturedPipe};
 use crate::streaming::rtmps_destination::RtmpsDestination;
-use crate::streaming::sink::{CompletedOutput, FrameSink};
+use crate::streaming::sink::{CompletedOutput, FrameSink, StreamExit};
 use crate::streaming::spawn::{spawn_with, SpawnPlan};
 
 /// The redaction marker replacing every occurrence of the destination URL
@@ -75,19 +75,20 @@ impl FfmpegProcess {
         spawn_with(config, plan)
     }
 
-    /// Non-zero exit maps to the typed failure whose diagnostics carry the
-    /// captured stderr tail with the destination redacted FIRST (D-T1-11).
+    /// Non-zero exit maps to the typed failure whose diagnostics are the
+    /// PRE-REDACTED tail computed by `finish` — the redaction happened at
+    /// capture time, so this helper never sees the destination URL.
     fn report_exit_failure(
         &self,
         status: &ExitStatus,
-        stderr: &CapturedPipe,
+        stderr_tail: &str,
     ) -> Result<(), StreamingError> {
         if status.success() {
             return Ok(());
         }
         Err(StreamingError::ExitFailure {
             exit_code: status.code(),
-            diagnostics: exit_diagnostics(stderr, self.redaction_target.as_deref()),
+            diagnostics: stderr_tail.to_string(),
         })
     }
 }
@@ -112,9 +113,13 @@ impl FrameSink for FfmpegProcess {
             .child
             .wait()
             .map_err(|source| StreamingError::WaitFailed { source })?;
-        self.report_exit_failure(&status, &captured_stderr)?;
+        let stderr_tail = exit_diagnostics(&captured_stderr, self.redaction_target.as_deref());
+        self.report_exit_failure(&status, &stderr_tail)?;
         let Some(output_path) = self.local_output.take() else {
-            return Ok(CompletedOutput::Stream);
+            return Ok(CompletedOutput::Stream(StreamExit::new(
+                status.code(),
+                stderr_tail,
+            )));
         };
         verify_local_output(output_path).map(CompletedOutput::Recording)
     }

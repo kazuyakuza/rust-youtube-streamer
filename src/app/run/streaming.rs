@@ -10,11 +10,11 @@
 //! because the gate-fatal REQUESTED the stop, making any later
 //! pipeline/finalize error downstream (D-T3-6 rule 6).
 
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::app::pipeline::{prepared_stream_pipeline, FramePipelineError, StopFlag, StreamParts};
 use crate::config::AppConfig;
-use crate::streaming::RtmpsDestination;
+use crate::streaming::{CompletedOutput, RtmpsDestination, StreamExit, StreamingError};
 use crate::youtube::WaitCanceller;
 
 use super::error::RunError;
@@ -47,6 +47,22 @@ pub(super) struct StreamingExecution {
     pub(super) gate: SpawnedGate,
 }
 
+/// The info event at the END of a streaming run when FFmpeg exited
+/// cleanly (exit status 0): the operator log records the exit AND the
+/// redacted stderr tail (brief §11.1). Pinned verbatim by a unit test.
+pub(super) const FFMPEG_CLEAN_EXIT_MESSAGE: &str =
+    "FFmpeg streaming process exited cleanly (exit status 0)";
+
+/// The warn event when FFmpeg exited non-zero during the streaming run
+/// (signal death included): NEVER a second `error:` line — the single
+/// `error:`-line contract holds (plan-encoded choice). Pinned verbatim.
+pub(super) const FFMPEG_EXIT_FAILURE_MESSAGE: &str =
+    "FFmpeg streaming process exited with a failure status";
+
+/// The note substituted when the captured stderr tail is EMPTY so the
+/// event text stays truthful without an awkward empty suffix.
+pub(super) const FFMPEG_NO_DIAGNOSTICS_NOTE: &str = "none captured";
+
 /// Production runner: `prepared_stream_pipeline` (the runner sibling
 /// constructor) toward the destination, the gate left as provided, the
 /// paced loop, then the D-T3-6 shutdown rules.
@@ -74,7 +90,8 @@ impl StreamingRunner for PreparedStreaming {
         )
         .map_err(RunError::Pipeline)?;
         info!("FFmpeg started toward the configured streaming destination");
-        let stream_outcome = pipeline.run().map(|_completed| ());
+        let stream_outcome = pipeline.run();
+        log_stream_shutdown_evidence(&stream_outcome);
         // D-T3-6 rule 2: on a frame-pipeline FATAL the confirmation wait is
         // cancelled BEFORE the gate join, so a mid-interval wait ends on its
         // next attempt check instead of running to its budget.
@@ -82,7 +99,7 @@ impl StreamingRunner for PreparedStreaming {
             canceller.request_cancel();
         }
         let gate_finish = gate.finish();
-        primary_shutdown_outcome(stream_outcome, gate_finish)
+        primary_shutdown_outcome(stream_outcome.map(|_completed| ()), gate_finish)
     }
 }
 
@@ -101,6 +118,59 @@ pub(super) fn primary_shutdown_outcome(
     }
 }
 
+/// The end-of-run FFmpeg evidence (incident 2026-10-22): a clean exit
+/// and its stderr tail are surfaced on the gate-timeout shutdown path
+/// where the gate error outranks the (healthy) pipeline outcome, and a
+/// non-zero exit gets the encoded warn line. `Ok(Recording)` is
+/// unreachable on this production path (demo owns it) and stays silent.
+fn log_stream_shutdown_evidence(stream_outcome: &Result<CompletedOutput, FramePipelineError>) {
+    match stream_outcome {
+        Ok(CompletedOutput::Stream(stream_exit)) => log_clean_stream_exit(stream_exit),
+        Err(FramePipelineError::Sink(StreamingError::ExitFailure {
+            exit_code,
+            diagnostics,
+        })) => log_failed_stream_exit(exit_code, diagnostics),
+        _ => {}
+    }
+}
+
+fn log_clean_stream_exit(stream_exit: &StreamExit) {
+    info!(
+        exit_code = ?stream_exit.exit_code(),
+        "{}; captured diagnostics follow: {}",
+        FFMPEG_CLEAN_EXIT_MESSAGE,
+        diagnostics_text(stream_exit.stderr_tail())
+    );
+}
+
+fn log_failed_stream_exit(exit_code: &Option<i32>, stderr_tail: &str) {
+    warn!(
+        exit_code = ?exit_code,
+        "{}; captured diagnostics follow: {}",
+        FFMPEG_EXIT_FAILURE_MESSAGE,
+        diagnostics_text(stderr_tail)
+    );
+}
+
+/// Single-section boolean rule: the warn arm's decision lives behind a
+/// named predicate (a `Some(0)` status is the exactly-clean shape).
+#[cfg(test)]
+pub(super) fn stream_exit_failed(exit_code: Option<i32>) -> bool {
+    !matches!(exit_code, Some(0))
+}
+
+pub(super) fn diagnostics_text(stderr_tail: &str) -> &str {
+    if stderr_tail.is_empty() {
+        FFMPEG_NO_DIAGNOSTICS_NOTE
+    } else {
+        stderr_tail
+    }
+}
+
 #[cfg(test)]
 #[path = "streaming_stage_tests.rs"]
 mod streaming_stage_tests;
+
+#[cfg(test)]
+#[path = "streaming_diagnostics_tests.rs"]
+mod streaming_diagnostics_tests;

@@ -52,7 +52,7 @@ fn stream_pipeline_passes_the_destination_to_the_ffmpeg_argv() {
     let completed = pipeline
         .run()
         .expect("the pre-stopped zero-frame run must complete");
-    assert!(matches!(completed, CompletedOutput::Stream));
+    assert!(matches!(completed, CompletedOutput::Stream(_)));
 
     let capture_path = directory.path().join(format!("{SCRIPT_NAME}.argv"));
     let argv: Vec<String> = fs::read_to_string(capture_path)

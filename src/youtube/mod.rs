@@ -132,7 +132,12 @@ pub(crate) use google_live_api_transport::GoogleLiveApiTransport;
 pub(crate) use google_token_endpoint::GoogleTokenEndpoint;
 pub(crate) use live_error::LiveApiError;
 pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
+pub(crate) use live_models::LiveStream;
 pub(crate) use readiness_wait::{wait_until_stream_active, StreamObservationRequest};
+// Test-only crate export for the confirmation-gate zero-sleep timeout
+// tests (production uses the D-T2-9 budget; no signature changes).
+#[cfg(test)]
+pub(crate) use readiness_wait::wait_until_stream_active_with_polling;
 pub(crate) use token::{AccessToken, AuthorizationCode, TokenResponse};
 pub(crate) use transport::{CodeExchangeRequest, TokenEndpointTransport};
 pub(crate) use verify::AuthorizationVerifier;
@@ -148,7 +153,7 @@ pub(crate) use transport::RefreshRequest;
 // live resources through these models; production code never uses them.
 #[cfg(test)]
 pub(crate) use live_models::{
-    BindCommand, CreateBroadcastCommand, CreateStreamCommand, LiveBroadcast, LiveStream,
+    BindCommand, CreateBroadcastCommand, CreateStreamCommand, LiveBroadcast,
 };
 // Test-only re-exports: the run runtime's offline fakes implement the
 // transport/verifier seams and script wait outcomes, which requires

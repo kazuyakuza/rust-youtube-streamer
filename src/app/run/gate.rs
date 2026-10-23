@@ -30,6 +30,14 @@ use crate::youtube::{
     WaitCanceller,
 };
 
+#[path = "gate_diagnostics.rs"]
+mod gate_diagnostics;
+#[cfg(test)]
+pub(super) use gate_diagnostics::{
+    observed_status_label, READINESS_TIMEOUT_STATUS_UNAVAILABLE_MESSAGE,
+    READINESS_TIMEOUT_STREAM_STATUS_MESSAGE,
+};
+
 /// The watch-link event's printable line message (D-T2W-1): single
 /// source of truth, pinned verbatim by a test.
 pub(super) const WATCH_LINK_MESSAGE: &str = "public watch link for the live stream";
@@ -87,6 +95,35 @@ impl SpawnedGate {
     }
 }
 
+/// Test-only confirmation budget: ONE attempt at a ZERO-second interval
+/// exhausts without any sleep, allowing a zero-sleep ReadinessTimeout
+/// test (the gate_tests zero-sleep rule). Production never sees this.
+#[cfg(test)]
+const TEST_CONFIRMATION_ATTEMPTS: u32 = 1;
+#[cfg(test)]
+const TEST_CONFIRMATION_INTERVAL_SECONDS: u64 = 0;
+
+#[cfg(test)]
+fn confirmation_budget_wait(
+    transport: &dyn LiveApiTransport,
+    stream_pair: &StreamObservationRequest<'_>,
+) -> Result<(), LiveApiError> {
+    crate::youtube::wait_until_stream_active_with_polling(
+        transport,
+        stream_pair,
+        TEST_CONFIRMATION_ATTEMPTS,
+        TEST_CONFIRMATION_INTERVAL_SECONDS,
+    )
+}
+
+#[cfg(not(test))]
+fn confirmation_budget_wait(
+    transport: &dyn LiveApiTransport,
+    stream_pair: &StreamObservationRequest<'_>,
+) -> Result<(), LiveApiError> {
+    wait_until_stream_active(transport, stream_pair)
+}
+
 /// The confirmation wait on its dedicated thread (plan A5): Ok →
 /// `Confirmed` + the startup-success event; `WaitCancelled` →
 /// `Cancelled`; any other typed failure records `Fatal` AND requests the
@@ -99,7 +136,7 @@ fn run_confirmation(plan: GatePlan, state: &Mutex<GateState>) {
         stream_id: &plan.stream_id,
         cancellation: &plan.cancellation,
     };
-    let result = wait_until_stream_active(plan.transport.as_ref(), &observation);
+    let result = confirmation_budget_wait(plan.transport.as_ref(), &observation);
     let outcome = match result {
         Ok(()) => {
             info!("stream confirmed active on YouTube");
@@ -108,6 +145,9 @@ fn run_confirmation(plan: GatePlan, state: &Mutex<GateState>) {
         }
         Err(LiveApiError::WaitCancelled) => GateFinish::Cancelled,
         Err(error) => {
+            if gate_diagnostics::is_confirmation_timeout(&error) {
+                gate_diagnostics::log_last_stream_status(plan.transport.as_ref(), &plan.stream_id);
+            }
             plan.stop_flag.request_stop();
             GateFinish::Fatal(error)
         }
