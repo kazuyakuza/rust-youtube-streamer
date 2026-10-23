@@ -36,6 +36,8 @@ Run shutdown diagnostics (v0.10.0, run-diagnostics Task 1): the run shutdown now
 
 JSON configuration is loaded at startup and validated before starting the broadcast; invalid configuration must result in a clear error and a non-zero exit code (brief §5). `config/config.example.json` is versioned; the real `config.json`, which carries secrets and OAuth credentials, must stay out of version control (brief §6.4).
 
+Made-for-kids broadcast config (v0.10.0, made-for-kids Task 2): `youtube.broadcast.made_for_kids` (optional boolean) maps verbatim into the O2 `liveBroadcasts.insert` body as `status.selfDeclaredMadeForKids` — a documented insert-settable property per the official liveBroadcasts insert reference ("You can set values for these properties: … status.selfDeclaredMadeForKids"); when ABSENT the field is never sent (`skip_serializing_if`, explicit rename — not the read-only `madeForKids`) and YouTube applies its default handling, in practice the channel-level made-for-kids setting. NO dependency change (serde's typed `Option<bool>` is the whole contract; no validation rule added — the documented rule count stays 21); absent/true/false body shapes and the config→command flow are pinned offline (loopback/fake; no test reaches Google).
+
 ## Platforms
 
 Windows and Linux development and execution; Ubuntu Server production target (brief §13). First manual validation may occur on Windows. Portable path handling, configurable executable paths, no hardcoded path separators. Docker is optional; the service must not require it to run natively.

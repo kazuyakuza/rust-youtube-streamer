@@ -44,6 +44,7 @@ All six top-level sections are required. Each field below lists its rule and the
 - `title` (string) — broadcast title; must be non-blank. Example: `Rust YouTube Streamer Prototype`.
 - `description` (string) — broadcast description; must be non-blank. Example: `YouTube Live streaming prototype`.
 - `privacy_status` (string) — one of `private`, `public`, `unlisted` (case-sensitive). Example: `unlisted`.
+- `made_for_kids` (boolean, optional) — when present, the value is sent as `status.selfDeclaredMadeForKids` on the `liveBroadcasts.insert` request (a documented insert-settable property in the official liveBroadcasts reference): `true` declares the broadcast child-directed, `false` declares it not child-directed. When ABSENT the field is never sent and YouTube applies its own default handling — in practice the channel-level made-for-kids setting (YouTube Studio → Settings → Channel → Advanced section). Any non-boolean value is rejected at deserialize time. Example: `false`.
 
 ### oauth
 
