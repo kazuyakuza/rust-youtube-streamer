@@ -33,22 +33,15 @@ pub(super) fn is_confirmation_timeout(error: &LiveApiError) -> bool {
 /// other outcome logs the unavailable message; a Network/classified
 /// failure is NEVER fatal here and never changes `GateFinish::Fatal`.
 pub(super) fn log_last_stream_status(transport: &dyn LiveApiTransport, stream_id: &str) {
-    match transport.lookup_stream(stream_id) {
-        Ok(Some(stream)) => match observed_status_label(&stream) {
-            Some(label) => {
-                info!(
-                    stream_status = label,
-                    "{}", READINESS_TIMEOUT_STREAM_STATUS_MESSAGE
-                );
-            }
-            None => {
-                info!("{}", READINESS_TIMEOUT_STATUS_UNAVAILABLE_MESSAGE);
-            }
-        },
-        Ok(None) => {
-            info!("{}", READINESS_TIMEOUT_STATUS_UNAVAILABLE_MESSAGE);
+    let observed_stream = transport.lookup_stream(stream_id).ok().flatten();
+    match observed_stream.as_ref().and_then(observed_status_label) {
+        Some(label) => {
+            info!(
+                stream_status = label,
+                "{}", READINESS_TIMEOUT_STREAM_STATUS_MESSAGE
+            );
         }
-        Err(_) => {
+        None => {
             info!("{}", READINESS_TIMEOUT_STATUS_UNAVAILABLE_MESSAGE);
         }
     }

@@ -145,15 +145,19 @@ fn run_confirmation(plan: GatePlan, state: &Mutex<GateState>) {
         }
         Err(LiveApiError::WaitCancelled) => GateFinish::Cancelled,
         Err(error) => {
-            if gate_diagnostics::is_confirmation_timeout(&error) {
-                gate_diagnostics::log_last_stream_status(plan.transport.as_ref(), &plan.stream_id);
-            }
+            log_last_stream_status_on_timeout(&plan, &error);
             plan.stop_flag.request_stop();
             GateFinish::Fatal(error)
         }
     };
     if let Ok(mut recorded) = state.lock() {
         recorded.outcome = Some(outcome);
+    }
+}
+
+fn log_last_stream_status_on_timeout(plan: &GatePlan, error: &LiveApiError) {
+    if gate_diagnostics::is_confirmation_timeout(error) {
+        gate_diagnostics::log_last_stream_status(plan.transport.as_ref(), &plan.stream_id);
     }
 }
 

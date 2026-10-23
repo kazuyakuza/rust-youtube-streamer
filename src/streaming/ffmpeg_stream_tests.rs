@@ -14,7 +14,7 @@ use super::*;
 
 const FIXTURE_URL: &str = "rtmps://ingest.example.test/ingest/stream-key-fixture";
 const STDIN_DRAIN_EXIT_ZERO_BODY: &str = "cat > /dev/null; exit 0";
-const STDIN_DRAIN_ECHO_EXIT_ZERO_BODY: &str = "cat > /dev/null; echo \"Output #0, flv, to 'rtmps://ingest.example.test/ingest/stream-key-fixture'\" 1>&2; exit 0";
+const STDIN_DRAIN_ECHO_EXIT_ZERO_BODY: &str = r#"cat > /dev/null; echo "Output #0, flv, to 'rtmps://ingest.example.test/ingest/stream-key-fixture'" 1>&2; exit 0"#;
 const URL_ECHOING_EXITER_BODY: &str = r#"echo "Output #0, flv, to 'rtmps://ingest.example.test/ingest/stream-key-fixture'" 1>&2
 exit 1"#;
 const ETXTBSY_SPAWN_ATTEMPTS: u8 = 8;

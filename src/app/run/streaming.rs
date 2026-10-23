@@ -152,8 +152,9 @@ fn log_failed_stream_exit(exit_code: &Option<i32>, stderr_tail: &str) {
     );
 }
 
-/// Single-section boolean rule: the warn arm's decision lives behind a
-/// named predicate (a `Some(0)` status is the exactly-clean shape).
+/// The test-pinned classification predicate for the stream-exit
+/// classification contract; the production warn arm decides via the
+/// `ExitFailure` match.
 #[cfg(test)]
 pub(super) fn stream_exit_failed(exit_code: Option<i32>) -> bool {
     !matches!(exit_code, Some(0))
