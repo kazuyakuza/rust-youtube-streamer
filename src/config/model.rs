@@ -37,6 +37,12 @@ pub struct BroadcastConfig {
     /// Broadcast visibility: exactly one of `private`, `public`, or
     /// `unlisted` (case-sensitive; validated at load time).
     pub privacy_status: String,
+    /// Optional per-stream made-for-kids declaration, sent as
+    /// `status.selfDeclaredMadeForKids` on liveBroadcasts.insert (documented
+    /// insert-settable property). Absent means the field is never sent and
+    /// YouTube applies its default handling (the channel's made-for-kids
+    /// setting).
+    pub made_for_kids: Option<bool>,
 }
 
 /// OAuth client and credential file locations. The two paths must be

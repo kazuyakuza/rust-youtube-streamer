@@ -164,6 +164,7 @@ fn broadcast_insert_posts_documented_path_with_locked_body() {
         description: "Fixture description".to_string(),
         privacy_status: "unlisted".to_string(),
         scheduled_start_time: "2026-10-14T12:01:00Z".to_string(),
+        made_for_kids: None,
     };
     server
         .transport()

@@ -41,3 +41,7 @@ fn parse(path: &Path, raw: &str) -> Result<AppConfig, ConfigError> {
 #[cfg(test)]
 #[path = "loader_tests.rs"]
 mod loader_tests;
+
+#[cfg(test)]
+#[path = "broadcast_made_for_kids_parse_tests.rs"]
+mod broadcast_made_for_kids_parse_tests;

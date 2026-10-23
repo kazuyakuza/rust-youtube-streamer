@@ -157,6 +157,7 @@ fn create_commands_serialize_documented_shape() {
         description: "Fixture description".to_string(),
         privacy_status: "unlisted".to_string(),
         scheduled_start_time: "2026-10-14T12:01:00Z".to_string(),
+        made_for_kids: None,
     };
     let body = BroadcastRequestBody::from_command(&broadcast_command);
     assert_eq!(

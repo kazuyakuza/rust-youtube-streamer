@@ -11,7 +11,11 @@
 //! ("consider setting enableAutoStart and enableAutoStop to true"), which
 //! removes both manual `liveBroadcasts.transition` calls; the O1 body
 //! fields are those of
-//! https://developers.google.com/youtube/v3/live/docs/liveStreams.
+//! https://developers.google.com/youtube/v3/live/docs/liveStreams;
+//! the optional `status.selfDeclaredMadeForKids` status field is the
+//! documented insert-settable property of the liveBroadcasts insert
+//! reference ("You can set values for these properties: …
+//! status.selfDeclaredMadeForKids", https://developers.google.com/youtube/v3/live/docs/liveBroadcasts/insert).
 //!
 //! Staging: consumed now — Task 2's concrete transport serializes these as
 //! the O1/O2 request bodies (via `api_request`). They live inside the
@@ -56,6 +60,7 @@ impl BroadcastRequestBody {
             },
             status: BroadcastCreationStatus {
                 privacy_status: command.privacy_status.clone(),
+                made_for_kids: command.made_for_kids,
             },
         }
     }
@@ -87,6 +92,11 @@ struct MonitorStream {
 #[serde(rename_all = "camelCase")]
 struct BroadcastCreationStatus {
     privacy_status: String,
+    #[serde(
+        rename = "selfDeclaredMadeForKids",
+        skip_serializing_if = "Option::is_none"
+    )]
+    made_for_kids: Option<bool>,
 }
 
 /// The exact O1 insert body: the stream snippet title + mapped CDN.

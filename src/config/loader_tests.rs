@@ -156,7 +156,8 @@ fn example_json() -> String {
     "broadcast": {
       "title": "Rust YouTube Streamer Prototype",
       "description": "YouTube Live streaming prototype",
-      "privacy_status": "unlisted"
+      "privacy_status": "unlisted",
+      "made_for_kids": false
     }
   },
   "oauth": {

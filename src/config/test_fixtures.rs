@@ -14,6 +14,7 @@ pub(crate) fn valid_config() -> AppConfig {
                 title: "Rust YouTube Streamer Prototype".to_string(),
                 description: "YouTube Live streaming prototype".to_string(),
                 privacy_status: "unlisted".to_string(),
+                made_for_kids: Some(false),
             },
         },
         oauth: OauthConfig {

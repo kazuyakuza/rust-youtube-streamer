@@ -110,6 +110,7 @@ fn prepare_records_exact_commands_from_validated_config() {
         broadcast.scheduled_start_time,
         scheduled_start_time_from_epoch(FIXED_NOW_EPOCH_SECS)
     );
+    assert_eq!(broadcast.made_for_kids, Some(false));
 }
 
 #[test]

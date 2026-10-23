@@ -34,6 +34,9 @@ pub(crate) struct CreateBroadcastCommand {
     pub(crate) description: String,
     pub(crate) privacy_status: String,
     pub(crate) scheduled_start_time: String,
+    /// Optional made-for-kids declaration (`None` = the field is NOT sent on
+    /// the O2 insert; YouTube applies its default made-for-kids handling).
+    pub(crate) made_for_kids: Option<bool>,
 }
 
 /// O3 (`liveBroadcasts.bind`) parameters: query-string pairs, no body

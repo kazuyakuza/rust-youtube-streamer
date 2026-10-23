@@ -39,3 +39,7 @@ mod stream_resource;
 #[cfg(test)]
 #[path = "../live_models_tests.rs"]
 mod live_models_tests;
+
+#[cfg(test)]
+#[path = "../live_models_made_for_kids_tests.rs"]
+mod live_models_made_for_kids_tests;

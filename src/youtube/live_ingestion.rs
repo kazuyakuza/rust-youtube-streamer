@@ -9,7 +9,8 @@
 //! runs D-T1-8 steps 3–6 exactly once each — O1 insert stream, O2 insert
 //! broadcast, O3 bind (asserting `boundStreamId`), the bounded readiness
 //! wait, then the destination extraction — with NO request duplication
-//! around insert/bind (brief §12.2's duplicate-broadcast risk).
+//! around insert/bind (brief §12.2's duplicate-broadcast risk). The
+//! optional per-stream made-for-kids declaration rides on the O2 insert.
 //! Redaction contract: `PreparedBroadcast` has no `Display`; its derived
 //! `Debug` is secret-safe because the only secret-typed field is the
 //! redacting `RtmpsIngestion` wrapper (D-T2-12).
@@ -80,6 +81,7 @@ impl LiveBroadcastPreparer {
                 description: broadcast.description.clone(),
                 privacy_status: broadcast.privacy_status.clone(),
                 scheduled_start_time: scheduled_start_time_from_epoch(now_epoch_secs),
+                made_for_kids: broadcast.made_for_kids,
             },
         }
     }
@@ -154,3 +156,7 @@ mod live_ingestion_tests;
 #[cfg(test)]
 #[path = "live_ingestion_failure_tests.rs"]
 mod live_ingestion_failure_tests;
+
+#[cfg(test)]
+#[path = "live_ingestion_made_for_kids_tests.rs"]
+mod live_ingestion_made_for_kids_tests;
