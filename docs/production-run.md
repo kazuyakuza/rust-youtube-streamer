@@ -193,6 +193,17 @@ Record each outcome with the timestamp and the exact Studio wording. If ALL prob
 - If any probe accidentally reached the live state, let it end/stop it, and verify the broadcast completed in Studio.
 - Remember: the key was only ever on your local command line — nothing to purge from this repository, and nothing to paste anywhere.
 
+**Product-level status (v0.11.0):** the silent-audio remedy ships config-gated —
+`ffmpeg.audio.enabled: true` (the example config enables it) adds probe (ii)'s
+wire shape (`anullsrc` 48 kHz stereo → AAC 128k → `-shortest`) to the production
+streaming vector, while absent/`false` keeps the byte-identical video-only
+stream. Once a run ships with audio enabled, the remedy path SUPERSEDES this
+procedure as the deployed fix; the probes remain the operator's verification
+and diagnosis path: if an audio-enabled run still ends with the
+publish-succeeded-but-inactive/"No data" shape, the outcome table above maps
+the cause PAST C1 (content-level or environment — report the recorded results
+to the planner rather than re-judging in the field).
+
 ## Manual Verification Procedure (Operator-Run)
 
 The canonical safe test plan (D-T4-8). It is performed by the human operator against a real YouTube account — the agent did not run, and never claims, this procedure; its result may be recorded only by the operator (e.g. in an issue/comment), never as build evidence.
@@ -215,7 +226,7 @@ The canonical safe test plan (D-T4-8). It is performed by the human operator aga
 - Live Chat retrieval, message ingestion, chat logging, or chat rendering into the video (Phase 06).
 - Broadcast reuse, multi-broadcast support, or a web dashboard.
 - Automated resource deletion or lifecycle transitions.
-- Audio.
+- Audio production or mixing (the MVP renders frames only; the v0.11.0 config-gated silent `anullsrc` audio track is an ingest-signal carrier shipped as the brief-section-10.4 explicit design change, not produced content).
 
 ## See Also
 
