@@ -59,12 +59,13 @@ pub(super) fn build_stream_arguments(
             value: config.video.pixel_format.clone(),
         });
     }
+    let audio_enabled = config.ffmpeg.audio_enabled();
     let mut arguments = stream_input_arguments(config);
-    if config.ffmpeg.audio_enabled() {
+    if audio_enabled {
         arguments.extend(audio_input_arguments());
     }
     arguments.extend(stream_video_output_arguments(config));
-    if config.ffmpeg.audio_enabled() {
+    if audio_enabled {
         arguments.extend(audio_output_arguments());
     }
     arguments.push("-f".to_string());

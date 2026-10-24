@@ -44,7 +44,7 @@ use std::path::Path;
 use crate::config::model::AppConfig;
 use crate::streaming::error::StreamingError;
 
-pub(super) const REQUIRED_PIXEL_FORMAT: &str = "rgb24";
+const REQUIRED_PIXEL_FORMAT: &str = "rgb24";
 pub(super) const PIPE_SOURCE: &str = "pipe:0";
 pub(super) const OUTPUT_PIXEL_FORMAT: &str = "yuv420p";
 const MOVFLAGS_FASTSTART: &str = "+faststart";

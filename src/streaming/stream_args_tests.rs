@@ -134,21 +134,13 @@ fn audio_absent_false_and_unset_enabled_hold_the_identical_video_only_vector() {
         enabled: Some(false),
     });
 
-    let section_absent = build_stream_arguments(
-        &without_section,
-        &RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string()),
-    )
-    .expect("section-absent audio must build the video-only vector");
-    let flag_absent = build_stream_arguments(
-        &without_flag,
-        &RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string()),
-    )
-    .expect("flag-absent audio must build the video-only vector");
-    let disabled = build_stream_arguments(
-        &explicitly_disabled,
-        &RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string()),
-    )
-    .expect("disabled audio must build the video-only vector");
+    let destination = RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string());
+    let section_absent = build_stream_arguments(&without_section, &destination)
+        .expect("section-absent audio must build the video-only vector");
+    let flag_absent = build_stream_arguments(&without_flag, &destination)
+        .expect("flag-absent audio must build the video-only vector");
+    let disabled = build_stream_arguments(&explicitly_disabled, &destination)
+        .expect("disabled audio must build the video-only vector");
 
     assert_eq!(section_absent, flag_absent);
     assert_eq!(flag_absent, disabled);
