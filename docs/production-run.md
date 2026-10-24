@@ -10,6 +10,7 @@ Operator guide for the production `run` command: what one invocation does, what 
 - [What the Logs Look Like (Without Secrets)](#what-the-logs-look-like-without-secrets)
 - [Shutdown Behavior](#shutdown-behavior)
 - [Broadcast/Stream Fate (Policy and Honest Limitations)](#broadcaststream-fate-policy-and-honest-limitations)
+- [Ingest Probe Procedure (Operator-Run)](#ingest-probe-procedure-operator-run)
 - [Manual Verification Procedure (Operator-Run)](#manual-verification-procedure-operator-run)
 - [Out of Scope](#out-of-scope)
 - [See Also](#see-also)
@@ -119,7 +120,7 @@ Common ingestion/API failures (each surfaces as the single redacted `error:` lin
 - Readiness timeouts — `YouTube readiness wait timed out (stage 'readiness')`, or the post-start confirmation timing out (stage `ingestion-confirmation`): both waits are bounded (180 s / 120 s at 5 s intervals); verify channel eligibility and API enablement, clean up leftover `ready` resources in YouTube Studio, then re-run. On an `ingestion-confirmation` timeout the run also logs the diagnostics evidence lines (table row 6 above); operator diagnosis procedure:
 
   1. `confirmation gate timed out; last observed streamStatus stream_status="ready"` — YouTube never registered the ingest: the encode side is healthy (see item 4), so investigate the YouTube side — check Studio (made-for-kids channel setting — a per-stream declaration is available: `youtube.broadcast.made_for_kids` in `config/config.json` (docs/configuration.md); stream routing, channel live access, `docs/google-cloud-prerequisites.md` eligibility) and delete the orphaned `ready` broadcast + liveStream pair (the "Broadcast/Stream Fate" section above) before re-running.
-  2. `…last observed streamStatus` naming another label (`inactive`, `error`, `created`) — treat it per the documented `liveStreams` status semantics; the `error` label points at the stream's own diagnostics.
+  2. `…last observed streamStatus` naming another label (`inactive`, `error`, `created`) — treat it per the documented `liveStreams` status semantics; the `error` label points at the stream's own diagnostics; for the publish-succeeded-but-inactive/`No data` shape (FFmpeg exited cleanly with the full frame budget), run the Ingest Probe Procedure below before re-running.
   3. `…the stream status could not be observed` — the tolerated final lookup itself failed (network/API): resolve connectivity, delete stale Studio resources, then re-run.
   4. The FFmpeg exit lines (table row 7 above) close the encode-side question: a clean exit (exit status 0) with a progress-line stderr tail means FFmpeg encoded and streamed frames for the full budget; a `warn` failure-status line names a broken-piped/encode process — its tail's last lines name the underlying cause, with the RTMPS URL pre-redacted.
   5. Studio cleanup reminder: each failed run leaves an orphaned `ready` pair per the fate policy — delete before re-running, or the account eventually hits `userBroadcastsExceedLimit`.
@@ -127,6 +128,69 @@ Common ingestion/API failures (each surfaces as the single redacted `error:` lin
 
 - Broadcast-state conflicts — `broadcast state forbids this operation (reason '...')`: typically stale resources from earlier failing runs; clean them up in YouTube Studio and re-run.
 - Transient backend/network — `YouTube backend temporarily unavailable (reason '...')` or `unable to reach the YouTube API: ...`: resolve connectivity, then re-run.
+
+## Ingest Probe Procedure (Operator-Run)
+
+Why this procedure exists: a run can finish with FFmpeg exiting cleanly at status 0 after streaming the full frame budget (the RTMPS publish succeeded at the protocol level) while the stream still sits inactive and YouTube Studio shows "No data". This operator-run probe discriminates the candidate causes behind that shape: C1 — the ingest expects an audio track; C2 — the streamed content itself fails the ingest signal lock (for example a near-zero-bitrate all-black source); environment levels (FFmpeg build capability, local network/firewall); and the connection/URL level. Like the manual verification procedure below, it is OPERATOR-RUN: the agent did not execute it, never will, and probe results are recorded only by the operator — never as build evidence. The probe results feed the implement-or-skip decision of the ingest-fix task's research gate (recorded in this work's TODO; an operator report back is the expected next step). Background fact (official): YouTube's Live Streaming API documents the configuration issue `noAudioStream` — "The ingestion stream does not contain any audio streams, but it must contain exactly one audio stream." (https://developers.google.com/youtube/v3/live/docs/liveStreams) — and the encoder-settings page instructs that pre-stream tests "should include audio and movement in the video" (https://support.google.com/youtube/answer/2853702).
+
+**Secret-safety rules (read before touching the shell):**
+
+- The stream key is pasted ONLY into the local command line of a terminal you control. It must NEVER appear in any log file, documentation file, issue, screenshot, or commit. The placeholders below (`<RTMPS_INGEST_URL>` and `<STREAM_KEY>`) are replaced by you at run time; the command with the real key is never copied into any persistent artifact.
+- Prefer a plain `cmd.exe` window (no persistent history); if your shell persists history (e.g. PowerShell's PSReadLine), clear or start a fresh session afterwards.
+- Each probe ends BY ITSELF after 60 s (`-t 60`): no manual kill needed, no orphan process.
+
+**Get a probe destination (your secret):**
+
+- In YouTube Studio (CREATE → Go live), open the Stream tab, create fresh stream settings (or reuse an existing one you are willing to delete afterwards), and copy BOTH the stream URL (an `rtmps://…` server URL) and the stream key. The FFmpeg destination is the concatenation `stream URL + "/" + stream key` — the same shape the application assembles from the API's `rtmpsIngestionAddress` and `streamName` fields, per the official form "STREAM_URL/STREAM_NAME" (https://developers.google.com/youtube/v3/live/docs/liveStreams, `cdn.ingestionInfo.rtmpsIngestionAddress`).
+- Keep Studio's stream tab OPEN on a visible surface: the probe outcomes are read there.
+
+**Preflight (local, no network, no secrets):**
+
+- `ffmpeg -devices` — confirm the device list contains `lavfi` (the lavfi input device is an internal FFmpeg component present in standard Windows builds; gyan.dev's builds include "all internal components available for Windows" per https://www.gyan.dev/ffmpeg/builds/). If `lavfi` is absent, stop: your FFmpeg build cannot run this procedure; record that fact (environment-level evidence) instead of improvising.
+- `ffmpeg -f lavfi -i "testsrc2=size=160x120:rate=30:duration=3" -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -c:a aac -shortest -f null -` — expect a clean exit 0 with no output file. This validates the exact filter/lavfi/`-shortest` syntax shape below against YOUR installed FFmpeg build before any network push.
+
+**Probe i — rich source, video-only (`testsrc2` at the app's locked streaming-vector parameters):**
+
+```bash
+ffmpeg -re -f lavfi -i "testsrc2=size=1920x1080:rate=30" -c:v libx264 -preset veryfast -b:v 6000k -g 60 -pix_fmt yuv420p -t 60 -f flv "<RTMPS_INGEST_URL>/<STREAM_KEY>"
+```
+
+Options mirror the application's streaming vector exactly (libx264, veryfast, 6000k, GOP 60 frames = the 2-second-target keyframe at 30 fps, yuv420p, FLV muxer) at 1080p30; `-re` paces the generated video at native rate; `-t 60` bounds the run. The video content moves continuously.
+
+**Probe ii — black source + silent AAC audio (the candidate remedy's wire shape):**
+
+```bash
+ffmpeg -re -f lavfi -i "color=c=black:size=1920x1080:rate=30" -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -c:v libx264 -preset veryfast -b:v 6000k -g 60 -pix_fmt yuv420p -c:a aac -b:a 128k -shortest -t 60 -f flv "<RTMPS_INGEST_URL>/<STREAM_KEY>"
+```
+
+Same video vector (all-black content = the application's frame content); adds a second lavfi input — infinite silence at 48 kHz stereo (`anullsrc`, long option names `channel_layout`/`sample_rate` per FFmpeg's `asrc_anullsrc` source) — encoded AAC at 128 kbit/s (the officially recommended stereo audio bitrate/codec), cut by `-shortest` when the bounded video input ends (FFmpeg: "Finish encoding when the shortest output stream ends.").
+
+**Probe iii — rich source + silent AAC audio (control: separates environment/connection from signal):**
+
+```bash
+ffmpeg -re -f lavfi -i "testsrc2=size=1920x1080:rate=30" -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -c:v libx264 -preset veryfast -b:v 6000k -g 60 -pix_fmt yuv420p -c:a aac -b:a 128k -shortest -t 60 -f flv "<RTMPS_INGEST_URL>/<STREAM_KEY>"
+```
+
+Same shape as probe ii with the moving `testsrc2` content — a positive signal in both halves.
+
+**How to observe (during each 60 s run):** watch the Studio stream page: whether the ingest indicator/preview shows incoming data (the exact wording YouTube shows varies — record what you see, with the timestamp). A probe is ACTIVE when the preview/health indicator shows the stream receiving data; a probe is INACTIVE when Studio keeps showing "No data".
+
+**Outcome → cause mapping (each probe's result maps 1:1):**
+
+| When... | Active probe(s) | Cause indicated | What it means for the fix task |
+| --- | --- | --- | --- |
+| i active | probe i only | **C2 — content/degenerate-signal** | video-only ingest of rich content locks; the all-black signal is the problem |
+| ii active | probe ii only (i inactive) | **C1 — audio-track** | the ingest locks once a (silent) audio track exists, even on black video — the silent-audio remedy is indicated |
+| iii active | probe iii (i and ii inactive) | **environment-level** | encoder/network/firewall/build capability: no app change warranted |
+| none active | no probe | **connection/URL-level** | key/URL assembly, Studio stream state, or account/channel-level: re-check the key and the stream's readiness before deeper diagnosis |
+
+Record each outcome with the timestamp and the exact Studio wording. If ALL probes are inactive, also re-run probe i once with a freshly copied URL+key before concluding connection/URL-level.
+
+**Cleanup after the probes:**
+
+- Delete the probe's stream/broadcast pair in YouTube Studio (the same hygiene the production fate policy requires of failed `run` attempts) — do not let probe resources accumulate.
+- If any probe accidentally reached the live state, let it end/stop it, and verify the broadcast completed in Studio.
+- Remember: the key was only ever on your local command line — nothing to purge from this repository, and nothing to paste anywhere.
 
 ## Manual Verification Procedure (Operator-Run)
 
