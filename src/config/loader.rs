@@ -45,3 +45,7 @@ mod loader_tests;
 #[cfg(test)]
 #[path = "broadcast_made_for_kids_parse_tests.rs"]
 mod broadcast_made_for_kids_parse_tests;
+
+#[cfg(test)]
+#[path = "ffmpeg_audio_parse_tests.rs"]
+mod ffmpeg_audio_parse_tests;

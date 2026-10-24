@@ -31,6 +31,7 @@ mod pipe_drain;
 mod rtmps_destination;
 mod sink;
 mod spawn;
+mod stream_args;
 mod utc_timestamp;
 mod video_output;
 

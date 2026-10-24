@@ -19,7 +19,7 @@ const MAX_PLAUSIBLE_DURATION_SECONDS: f64 = 2.5;
 /// The real-FFmpeg smoke is part of the dev-checks suite: the pinned image
 /// installs ffmpeg (Dockerfile). An absent ffmpeg binary is a suite
 /// failure, never a silent skip (no invented / absent-as-green evidence).
-fn require_image_tool(label: &str, path: &Path) -> PathBuf {
+pub(super) fn require_image_tool(label: &str, path: &Path) -> PathBuf {
     assert!(
         path.exists(),
         "{label} is missing at {}: the pinned dev-checks image must install ffmpeg (Dockerfile decision T5-D1)",
@@ -28,7 +28,7 @@ fn require_image_tool(label: &str, path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
-fn probe_value<'a>(probe_stdout: &'a str, key: &str) -> Option<&'a str> {
+pub(super) fn probe_value<'a>(probe_stdout: &'a str, key: &str) -> Option<&'a str> {
     let prefix = format!("{key}=");
     probe_stdout
         .lines()

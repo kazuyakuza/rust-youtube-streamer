@@ -3,8 +3,8 @@
 //! developer's real configuration file.
 
 use crate::config::model::{
-    AppConfig, BroadcastConfig, ChatConfig, FfmpegConfig, OauthConfig, RendererConfig, VideoConfig,
-    YouTubeConfig,
+    AppConfig, AudioConfig, BroadcastConfig, ChatConfig, FfmpegConfig, OauthConfig, RendererConfig,
+    VideoConfig, YouTubeConfig,
 };
 
 pub(crate) fn valid_config() -> AppConfig {
@@ -46,6 +46,9 @@ pub(crate) fn valid_config() -> AppConfig {
             video_codec: "libx264".to_string(),
             preset: "veryfast".to_string(),
             bitrate: "6000k".to_string(),
+            audio: Some(AudioConfig {
+                enabled: Some(true),
+            }),
         },
     }
 }

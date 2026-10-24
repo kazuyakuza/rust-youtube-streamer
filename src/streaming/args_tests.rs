@@ -1,5 +1,5 @@
-//! Argument-vector tests: the locked FFmpeg vector must be produced
-//! verbatim from a validated configuration, and the defensive
+//! Argument-vector tests: the locked local recording vector must be
+//! produced verbatim from a validated configuration, and the defensive
 //! pixel-format guard must refuse any input that is not `rgb24`.
 
 use std::path::PathBuf;
@@ -7,8 +7,6 @@ use std::path::PathBuf;
 use crate::config::valid_config;
 
 use super::*;
-
-const DESTINATION_FIXTURE_URL: &str = "rtmps://ingest.example.test/ingest/stream-key-fixture";
 
 #[test]
 fn valid_config_builds_exact_locked_vector() {
@@ -101,72 +99,4 @@ fn output_path_is_appended_last() {
         arguments.last().map(String::as_str),
         Some("/opt/app/videos/demo-20200913-122640_2.mp4")
     );
-}
-
-#[test]
-fn stream_arguments_match_the_locked_output_shape() {
-    let mut config = valid_config();
-    config.video.width = 1280;
-    config.video.height = 720;
-    config.video.fps = 25;
-    let destination = RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string());
-
-    let arguments = build_stream_arguments(&config, &destination)
-        .expect("a valid rgb24 configuration must build the stream vector");
-
-    assert_eq!(
-        arguments,
-        vec![
-            "-nostdin",
-            "-n",
-            "-f",
-            "rawvideo",
-            "-pix_fmt",
-            "rgb24",
-            "-s",
-            "1280x720",
-            "-framerate",
-            "25",
-            "-i",
-            "pipe:0",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-b:v",
-            "6000k",
-            "-g",
-            "50",
-            "-pix_fmt",
-            "yuv420p",
-            "-f",
-            "flv",
-            DESTINATION_FIXTURE_URL,
-        ]
-    );
-    assert!(!arguments.iter().any(|argument| argument == "-movflags"));
-    let length = arguments.len();
-    assert_eq!(arguments[length - 3], "-f");
-    assert_eq!(arguments[length - 2], "flv");
-}
-
-#[test]
-fn stream_gop_is_two_frames_per_second() {
-    let destination = RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string());
-    let mut config = valid_config();
-    config.video.fps = 30;
-
-    let arguments =
-        build_stream_arguments(&config, &destination).expect("30 fps must build the vector");
-    assert_eq!(gop_of(&arguments), Some("60".to_string()));
-
-    config.video.fps = 60;
-    let arguments =
-        build_stream_arguments(&config, &destination).expect("60 fps must build the vector");
-    assert_eq!(gop_of(&arguments), Some("120".to_string()));
-}
-
-fn gop_of(arguments: &[String]) -> Option<String> {
-    let position = arguments.iter().position(|argument| argument == "-g")?;
-    arguments.get(position + 1).cloned()
 }

@@ -188,7 +188,8 @@ fn example_json() -> String {
     "executable": "ffmpeg",
     "video_codec": "libx264",
     "preset": "veryfast",
-    "bitrate": "6000k"
+    "bitrate": "6000k",
+    "audio": { "enabled": true }
   }
 }"##
     .to_string()

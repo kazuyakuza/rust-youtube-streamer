@@ -144,4 +144,31 @@ pub struct FfmpegConfig {
     /// Target video bitrate in FFmpeg notation (for example `6000k`). Must
     /// not be empty or whitespace-only.
     pub bitrate: String,
+    /// Optional silent-audio section for the production streaming vector. An
+    /// absent section (or an absent/false `enabled`) keeps the video-only
+    /// argument vector byte-identical to the pre-0.11 form.
+    pub audio: Option<AudioConfig>,
+}
+
+/// Silent-audio settings for the streaming FFmpeg vector. The demo/local
+/// recording vector is unaffected: `demo` never gains audio.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AudioConfig {
+    /// `true` joins a silent AAC audio track (an `anullsrc` lavfi input at
+    /// 48 kHz stereo, 128 kbit/s, cut by `-shortest`) to the STREAMING
+    /// vector. Absent or `false` keeps the stream video-only.
+    pub enabled: Option<bool>,
+}
+
+impl FfmpegConfig {
+    /// Whether the production streaming vector extends with the silent
+    /// audio track: the section and the flag are both optional, so
+    /// section-absent, `enabled`-absent, and `false` all mean video-only.
+    pub(crate) fn audio_enabled(&self) -> bool {
+        self.audio
+            .as_ref()
+            .and_then(|audio| audio.enabled)
+            .unwrap_or(false)
+    }
 }

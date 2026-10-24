@@ -26,6 +26,7 @@ use crate::streaming::pipe_drain::{exit_diagnostics, join_drain, CapturedPipe};
 use crate::streaming::rtmps_destination::RtmpsDestination;
 use crate::streaming::sink::{CompletedOutput, FrameSink, StreamExit};
 use crate::streaming::spawn::{spawn_with, SpawnPlan};
+use crate::streaming::stream_args;
 
 /// The redaction marker replacing every occurrence of the destination URL
 /// in captured diagnostics (D-T1-11/D-T1-13; §7 pinned).
@@ -66,7 +67,7 @@ impl FfmpegProcess {
         config: &AppConfig,
         destination: RtmpsDestination,
     ) -> Result<Self, StreamingError> {
-        let arguments = args::build_stream_arguments(config, &destination)?;
+        let arguments = stream_args::build_stream_arguments(config, &destination)?;
         let plan = SpawnPlan {
             arguments,
             local_output: None,
@@ -146,3 +147,7 @@ mod ffmpeg_stream_tests;
 #[cfg(all(test, unix))]
 #[path = "ffmpeg_real_tests.rs"]
 mod ffmpeg_real_tests;
+
+#[cfg(all(test, unix))]
+#[path = "ffmpeg_real_audio_tests.rs"]
+mod ffmpeg_real_audio_tests;

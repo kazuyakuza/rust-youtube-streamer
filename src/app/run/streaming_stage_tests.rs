@@ -77,4 +77,23 @@ fn stream_pipeline_passes_the_destination_to_the_ffmpeg_argv() {
             .any(|pair| pair[0] == "-g" && pair[1] == "60"),
         "the GOP is 2 × the configured 30 fps"
     );
+    assert!(
+        argv.iter()
+            .any(|argument| argument == "anullsrc=channel_layout=stereo:sample_rate=48000"),
+        "the silent lavfi audio source rides as an explicit argv token"
+    );
+    assert!(
+        argv.windows(2)
+            .any(|pair| pair[0] == "-c:a" && pair[1] == "aac"),
+        "the silent track is encoded as native AAC"
+    );
+    assert!(
+        argv.windows(2)
+            .any(|pair| pair[0] == "-b:a" && pair[1] == "128k"),
+        "the stereo audio bitrate is 128 kbit/s"
+    );
+    assert!(
+        argv.iter().any(|argument| argument == "-shortest"),
+        "the -shortest bound terminates encoding at the shortest stream's end"
+    );
 }
