@@ -175,14 +175,15 @@ Same shape as probe ii with the moving `testsrc2` content — a positive signal 
 
 **How to observe (during each 60 s run):** watch the Studio stream page: whether the ingest indicator/preview shows incoming data (the exact wording YouTube shows varies — record what you see, with the timestamp). A probe is ACTIVE when the preview/health indicator shows the stream receiving data; a probe is INACTIVE when Studio keeps showing "No data".
 
-**Outcome → cause mapping (each probe's result maps 1:1):**
+**Outcome → cause mapping (decisive outcomes):**
 
-| When... | Active probe(s) | Cause indicated | What it means for the fix task |
-| --- | --- | --- | --- |
-| i active | probe i only | **C2 — content/degenerate-signal** | video-only ingest of rich content locks; the all-black signal is the problem |
-| ii active | probe ii only (i inactive) | **C1 — audio-track** | the ingest locks once a (silent) audio track exists, even on black video — the silent-audio remedy is indicated |
-| iii active | probe iii (i and ii inactive) | **environment-level** | encoder/network/firewall/build capability: no app change warranted |
-| none active | no probe | **connection/URL-level** | key/URL assembly, Studio stream state, or account/channel-level: re-check the key and the stream's readiness before deeper diagnosis |
+| Outcome | Meaning | Next step |
+| --- | --- | --- |
+| Probe (iii) errors locally (protocol/encoder missing) | The local encoder build lacks lavfi/rtmps support | Fix the encoder build first (gyan.dev full build), then re-run |
+| Probe (i) goes active | Video-only IS accepted — audio is not the blocker; the black video-only signal is the problem (content-level) | Record the results and report them to the planner; a product-level content decision is required (the silent-audio remedy alone does not apply) |
+| Probe (i) stays inactive, probe (ii) goes active | The audio track is the discriminator — YouTube's ingest requires an audio stream for the signal lock | The silent-audio remedy applies; proceed on that path |
+| Probes (i) and (ii) stay inactive, probe (iii) goes active | Audio is necessary but not sufficient — the black-only low-bitrate signal also fails the lock | Record the results and report them to the planner; a product-level content decision is required beyond the audio remedy |
+| All three probes stay inactive (no local errors) | Environment/URL-level: network, firewall, the encoder→YouTube path, or the key/URL shape — not a signal-content issue | Check network/firewall and the URL/key handling; no application change is warranted; record the findings |
 
 Record each outcome with the timestamp and the exact Studio wording. If ALL probes are inactive, also re-run probe i once with a freshly copied URL+key before concluding connection/URL-level.
 
