@@ -11,6 +11,7 @@ Operator guide for the production `run` command: what one invocation does, what 
 - [Shutdown Behavior](#shutdown-behavior)
 - [Broadcast/Stream Fate (Policy and Honest Limitations)](#broadcaststream-fate-policy-and-honest-limitations)
 - [Ingest Probe Procedure (Operator-Run)](#ingest-probe-procedure-operator-run)
+- [Known Stream-Health Limitation (Pure-Black MVP Content)](#known-stream-health-limitation-pure-black-mvp-content)
 - [Manual Verification Procedure (Operator-Run)](#manual-verification-procedure-operator-run)
 - [Out of Scope](#out-of-scope)
 - [See Also](#see-also)
@@ -220,6 +221,37 @@ and diagnosis path: if an audio-enabled run still ends with the
 publish-succeeded-but-inactive/"No data" shape, the outcome table above maps
 the cause PAST C1 (content-level or environment — report the recorded results
 to the planner rather than re-judging in the field).
+
+## Known Stream-Health Limitation (Pure-Black MVP Content)
+
+Operator verdict (2026-10-25): the fifth native Windows `run` (v0.11.1) is healthy on the wire,
+while YouTube Studio's **Stream Health** tab still flags "YouTube is not receiving enough video to
+maintain smooth streaming". The verdict is ACCEPT and DOCUMENT: for this MVP's pure-black content
+the flag is expected, content-rooted, and spurious for playback — it is recorded here so operators
+do not chase encoder/network causes for it.
+
+- Root cause (documented technical assessment): a 1080p static black frame carries ~zero real
+  entropy. The v0.11.1 true-CBR video block (`nal-hrd=cbr`) keeps the WIRE at the target bitrate
+  (verified ~6.1 Mbit/s below), but the filler is padding, not content — YouTube's Stream-Health
+  measurement still registers the content-level signal poverty.
+- Honest attribution: the wire facts are AGENT-VERIFIED from the operator-supplied v0.11.1 log
+  (`logs/run/20261025-200332.log`: x264 summary `kb/s:5993.65`, progress `bitrate=6132.3kbits/s`,
+  MP3 silent track ~124 kbit/s, `exit_code=Some(0)`, run exit 0). The Stream-Health flag is
+  OPERATOR-OBSERVED (Studio Stream Health tab; no bitrate graph shown in that view). The
+  zero-entropy root cause is a DOCUMENTED TECHNICAL ASSESSMENT — it is NEVER claimed as
+  agent-observed Studio behavior (the agent did not run the manual procedure and never will).
+- Operator guidance while the MVP streams a static black screen:
+  - EXPECT this warning for as long as the content is pure black; do not treat it as an encoder,
+    network, or configuration fault.
+  - It is spurious for playback: static content cannot visibly stutter. Verify smoothness on the
+    watch page (`run` prints the non-secret watch URL) instead of chasing this specific flag.
+  - The separate audio-bitrate warning ("audio bitrate (0) lower than the recommended 128 Kbps")
+    was CLEARED by the v0.11.1 MP3-CBR remedy above.
+  - This video-content warning is expected to persist until real content arrives (Phase 06 chat
+    text adds real — though still modest — content bits).
+- The v0.11.1 CBR/MP3 remedy note and the Ingest Probe Procedure above remain fully valid for
+  CONNECTION-level issues (publish-succeeded-but-inactive/"No data" shapes and the probe
+  discrimination path); this note covers only the content-level Stream-Health flag.
 
 ## Manual Verification Procedure (Operator-Run)
 
