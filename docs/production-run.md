@@ -155,9 +155,9 @@ Why this procedure exists: a run can finish with FFmpeg exiting cleanly at statu
 ffmpeg -re -f lavfi -i "testsrc2=size=1920x1080:rate=30" -c:v libx264 -preset veryfast -b:v 6000k -g 60 -pix_fmt yuv420p -t 60 -f flv "<RTMPS_INGEST_URL>/<STREAM_KEY>"
 ```
 
-Options mirror the application's streaming vector exactly (libx264, veryfast, 6000k, GOP 60 frames = the 2-second-target keyframe at 30 fps, yuv420p, FLV muxer) at 1080p30; `-re` paces the generated video at native rate; `-t 60` bounds the run. The video content moves continuously.
+Options match the application's streaming-vector encoder core (libx264, veryfast, 6000k, GOP 60 frames = the 2-second-target keyframe at 30 fps, yuv420p, FLV muxer) at 1080p30; this probe predates the v0.11.1 derived CBR block (`-maxrate`/`-minrate`/`-bufsize`/`-x264-params`) and omits it; `-re` paces the generated video at native rate; `-t 60` bounds the run. The video content moves continuously.
 
-**Probe ii — black source + silent AAC audio (the candidate remedy's wire shape):**
+**Probe ii — black source + silent AAC audio (the v0.11.0 candidate remedy's wire shape):**
 
 ```bash
 ffmpeg -re -f lavfi -i "color=c=black:size=1920x1080:rate=30" -f lavfi -i "anullsrc=channel_layout=stereo:sample_rate=48000" -c:v libx264 -preset veryfast -b:v 6000k -g 60 -pix_fmt yuv420p -c:a aac -b:a 128k -shortest -t 60 -f flv "<RTMPS_INGEST_URL>/<STREAM_KEY>"
@@ -193,11 +193,28 @@ Record each outcome with the timestamp and the exact Studio wording. If ALL prob
 - If any probe accidentally reached the live state, let it end/stop it, and verify the broadcast completed in Studio.
 - Remember: the key was only ever on your local command line — nothing to purge from this repository, and nothing to paste anywhere.
 
-**Product-level status (v0.11.0):** the silent-audio remedy ships config-gated —
-`ffmpeg.audio.enabled: true` (the example config enables it) adds probe (ii)'s
-wire shape (`anullsrc` 48 kHz stereo → AAC 128k → `-shortest`) to the production
-streaming vector, while absent/`false` keeps the byte-identical video-only
-stream. Once a run ships with audio enabled, the remedy path SUPERSEDES this
+**Product-level status (v0.11.1):** the streaming vector now enforces true CBR
+video (`-maxrate`/`-minrate` mirroring the configured bitrate, `-bufsize` at 2×
+that bitrate, plus the x264 `nal-hrd=cbr` filler) and encodes the silent track
+as MP3-CBR at 128 kbit/s (`-c:a libmp3lame -b:a 128k`) — addressing the
+measured-bitrate shape behind both Studio health warnings ("not receiving
+enough video to maintain smooth streaming", characterized at ~18.5 kbit/s
+against the 6000k stance, and "audio bitrate (0) lower than the recommended
+128 Kbps", measured at ~2 kbit/s on digital silence). What the remedy does NOT
+change: the video content stays black/filler-padded, the `anullsrc` audio is
+lossless silence, and any further Studio advisory seeded on content movement
+(Google's tests "should include audio and movement") may remain cosmetic. The
+operator's FFmpeg build must include libmp3lame (the standard full builds do);
+a build lacking it fails at stream start with the clear spawn-error path — see
+[`docs/configuration.md`](configuration.md). Verification honesty: the
+remedy's mechanism is pinned by a local-FLV ffprobe floor gate (measured
+container average ≈ the encoder-declared sum, with mux overhead and startup
+skew inside the recorded tolerance); the real remedy evidence remains the
+OPERATOR's next run against real Studio — this document claims no agent-run
+Studio observation. The `ffmpeg.audio.enabled: true` gate (the example config
+enables it) still selects whether the vector carries the silent track, while
+absent/`false` keeps the stream without any audio track (the derived CBR video
+parameters stay). Once a run ships with audio enabled, the remedy path SUPERSEDES this
 procedure as the deployed fix; the probes remain the operator's verification
 and diagnosis path: if an audio-enabled run still ends with the
 publish-succeeded-but-inactive/"No data" shape, the outcome table above maps
