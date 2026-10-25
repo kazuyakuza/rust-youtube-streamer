@@ -30,8 +30,8 @@ const HANDLER_FLAG_WAIT_ATTEMPTS: u8 = 200;
 const HANDLER_FLAG_WAIT_SLEEP_MS: u64 = 25;
 
 /// One survival-window step and the step count after the signal was sent.
-const PARENT_GROUP_SIGINT_PROOF_WINDOW_MS: u64 = 50;
-const PARENT_GROUP_SIGINT_PROOF_ATTEMPTS: u8 = 20;
+const STOP_SIGNAL_SURVIVAL_WINDOW_MS: u64 = 50;
+const STOP_SIGNAL_SURVIVAL_ATTEMPTS: u8 = 20;
 
 fn write_fake_executable(directory: &Path, body: &str) -> PathBuf {
     let script_path = directory.join("fake-ffmpeg-isolation.sh");
@@ -110,6 +110,18 @@ fn wait_for_handler_flag(handler_flag: &AtomicBool) {
     panic!("the stop signal must flip the app-shaped handler");
 }
 
+/// Shared epilogue of both isolation tests: finalize the isolated fake at stdin
+/// EOF and pin the clean Stream exit 0.
+fn assert_finalizes_at_stdin_eof_with_success(process: FfmpegProcess) {
+    let completed = process
+        .finish()
+        .expect("stdin EOF must finalize the isolated child");
+    let CompletedOutput::Stream(stream_exit) = completed else {
+        panic!("the isolated fake must complete as a Stream carrier");
+    };
+    assert_eq!(stream_exit.exit_code(), Some(0));
+}
+
 /// Honest proof structure (binding plan §1.3; caller ruling 2026-10-25): (a)
 /// this container cannot re-enact a group-wide signal — every process sits in
 /// pgid 1, so a group-directed SIGINT is a container-wide broadcast that
@@ -121,7 +133,7 @@ fn wait_for_handler_flag(handler_flag: &AtomicBool) {
 /// kill(2)'s negative-pid group addressing — is the feasible honest isolation
 /// proof here; Windows stays compile-checked + documented container-untestable.
 #[test]
-fn stream_child_survives_parent_group_sigint_and_finalizes_on_stdin_eof() {
+fn stream_child_survives_direct_stop_signal_and_finalizes_on_stdin_eof() {
     let directory = tempfile::tempdir().expect("a TempDir must be creatable");
     let executable_path =
         write_fake_executable(directory.path(), GROUP_SIGINT_IMMUNE_STDIN_READER_BODY);
@@ -142,7 +154,7 @@ fn stream_child_survives_parent_group_sigint_and_finalizes_on_stdin_eof() {
     wait_for_handler_flag(&handler_flag);
 
     let start = Instant::now();
-    for attempt in 1..=PARENT_GROUP_SIGINT_PROOF_ATTEMPTS {
+    for attempt in 1..=STOP_SIGNAL_SURVIVAL_ATTEMPTS {
         let child_state = process
             .child
             .try_wait()
@@ -151,22 +163,16 @@ fn stream_child_survives_parent_group_sigint_and_finalizes_on_stdin_eof() {
             child_state.is_none(),
             "the isolated child must stay unaffected by the stop signal (attempt {attempt})"
         );
-        std::thread::sleep(Duration::from_millis(PARENT_GROUP_SIGINT_PROOF_WINDOW_MS));
+        std::thread::sleep(Duration::from_millis(STOP_SIGNAL_SURVIVAL_WINDOW_MS));
     }
-    let steps = u64::from(PARENT_GROUP_SIGINT_PROOF_ATTEMPTS);
-    let proof_window = Duration::from_millis(steps * PARENT_GROUP_SIGINT_PROOF_WINDOW_MS);
+    let steps = u64::from(STOP_SIGNAL_SURVIVAL_ATTEMPTS);
+    let proof_window = Duration::from_millis(steps * STOP_SIGNAL_SURVIVAL_WINDOW_MS);
     assert!(
         start.elapsed() >= proof_window,
         "the survival window must span the full {proof_window:?}"
     );
 
-    let completed = process
-        .finish()
-        .expect("stdin EOF must finalize the isolated child");
-    let CompletedOutput::Stream(stream_exit) = completed else {
-        panic!("the isolated fake must complete as a Stream carrier");
-    };
-    assert_eq!(stream_exit.exit_code(), Some(0));
+    assert_finalizes_at_stdin_eof_with_success(process);
 }
 
 #[test]
@@ -187,11 +193,5 @@ fn stream_child_leads_its_own_process_group() {
         "the isolated child must lead its own process group"
     );
 
-    let completed = process
-        .finish()
-        .expect("stdin EOF must finalize the isolated child");
-    let CompletedOutput::Stream(stream_exit) = completed else {
-        panic!("the isolated fake must complete as a Stream carrier");
-    };
-    assert_eq!(stream_exit.exit_code(), Some(0));
+    assert_finalizes_at_stdin_eof_with_success(process);
 }
