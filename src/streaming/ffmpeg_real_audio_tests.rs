@@ -4,6 +4,8 @@
 
 use std::fs;
 use std::io::Write;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output};
 
@@ -46,7 +48,8 @@ fn real_ffmpeg_audio_stream_bounds_the_infinite_silence_and_carries_aac_audio() 
 }
 
 fn spawn_audio_smoke(ffmpeg_path: &Path, output_path: &Path) -> Child {
-    Command::new(ffmpeg_path)
+    let mut command = Command::new(ffmpeg_path);
+    command
         .args([
             "-nostdin",
             "-n",
@@ -85,7 +88,10 @@ fn spawn_audio_smoke(ffmpeg_path: &Path, output_path: &Path) -> Child {
         .arg(output_path)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped());
+    // D10 collateral immunity: keep this suite child out of the test process group.
+    command.process_group(0);
+    command
         .spawn()
         .expect("the image FFmpeg must spawn the audio smoke vector")
 }
@@ -127,7 +133,8 @@ fn wait_audio_smoke_bounded(child: &mut Child) -> ExitStatus {
 }
 
 fn probe_audio_smoke(ffprobe_path: &Path, output_path: &Path) -> Output {
-    Command::new(ffprobe_path)
+    let mut command = Command::new(ffprobe_path);
+    command
         .args([
             "-v",
             "error",
@@ -136,7 +143,10 @@ fn probe_audio_smoke(ffprobe_path: &Path, output_path: &Path) -> Output {
             "-of",
             "default=noprint_wrappers=1",
         ])
-        .arg(output_path)
+        .arg(output_path);
+    // D10 collateral immunity: keep this suite child out of the test process group.
+    command.process_group(0);
+    command
         .output()
         .expect("ffprobe must run inside the dev-checks image")
 }

@@ -141,6 +141,10 @@ impl Drop for FfmpegProcess {
 mod ffmpeg_tests;
 
 #[cfg(all(test, unix))]
+#[path = "ffmpeg_isolation_tests.rs"]
+mod ffmpeg_isolation_tests;
+
+#[cfg(all(test, unix))]
 #[path = "ffmpeg_stream_tests.rs"]
 mod ffmpeg_stream_tests;
 

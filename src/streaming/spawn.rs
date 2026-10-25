@@ -3,6 +3,10 @@
 //! drain threads attached before the child handle is returned. Secret
 //! safety: `SpawnPlan.redaction_target` IS the secret — no `Debug`/`Display`
 //! may ever be derived on `SpawnPlan`.
+//!
+//! The piped command is isolated from the console's Ctrl+C before spawn
+//! (Windows `CREATE_NEW_PROCESS_GROUP`; POSIX the child's own process
+//! group) so a user stop reaches only the application's handler.
 
 use std::io;
 use std::path::PathBuf;
@@ -74,4 +78,33 @@ fn prepare_piped_command(command: &mut Command, arguments: &[String]) {
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    isolate_from_console_control(command);
 }
+
+/// Windows spawn shaping: the child becomes the root of a new process group
+/// so the console's Ctrl+C event never reaches it.
+#[cfg(target_family = "windows")]
+fn isolate_from_console_control(command: &mut Command) {
+    use std::os::windows::process::CommandExt;
+    command.creation_flags(CREATE_NEW_PROCESS_GROUP);
+}
+
+/// POSIX spawn shaping: the child leaves the terminal's foreground process
+/// group so a terminal-generated SIGINT never reaches it.
+#[cfg(target_family = "unix")]
+fn isolate_from_console_control(command: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    command.process_group(ISOLATED_PROCESS_GROUP);
+}
+
+/// Windows process-creation flag (0x00000200): "the new process is the
+/// root process of a new process group … CTRL+C signals will be disabled
+/// for all processes within the new process group" (Microsoft Learn,
+/// Process Creation Flags).
+#[cfg(target_family = "windows")]
+const CREATE_NEW_PROCESS_GROUP: u32 = 0x0000_0200;
+
+/// POSIX group id passed to `setpgid(0, 0)` before exec: `0` makes the
+/// child the leader of its own new process group.
+#[cfg(target_family = "unix")]
+const ISOLATED_PROCESS_GROUP: i32 = 0;

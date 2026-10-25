@@ -6,6 +6,8 @@
 //! the child prints and the parent asserts on the captured stdout. Offline;
 //! no network, no Google account.
 
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::process::Command;
 
 use super::{print_authorization_url, print_success};
@@ -26,13 +28,18 @@ fn print_mode_requested(mode: &str) -> bool {
 }
 
 fn captured_stdout_of_print_child(test_name: &str, mode: &str) -> String {
-    let output = Command::new(std::env::current_exe().expect("the test binary path"))
+    let mut command = Command::new(std::env::current_exe().expect("the test binary path"));
+    command
         .arg("--exact")
         .arg(test_name)
         .arg("--nocapture")
-        .env(PRINT_MODE_ENV, mode)
-        .output()
-        .expect("the child test process runs");
+        .env(PRINT_MODE_ENV, mode);
+    // D10 collateral immunity: the re-exec child stays out of the test
+    // process group so the isolation pin's group-directed SIGINT can only
+    // reach the handler-protected test process.
+    #[cfg(unix)]
+    command.process_group(0);
+    let output = command.output().expect("the child test process runs");
     assert!(
         output.status.success(),
         "the child test must pass: {}",

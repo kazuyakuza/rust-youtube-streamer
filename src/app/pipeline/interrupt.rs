@@ -19,6 +19,11 @@
 //! 5. The FFmpeg exit wait in `finish()` is intentionally unbounded in this
 //!    phase (Task-1 contract: no timeout; a configured-timeout field needs D10
 //!    — deferred, not silently claimed).
+//! 6. As of the stop-path fix (2026-10-25): the FFmpeg child is spawned out of the console
+//!    Ctrl+C reach — Windows via `CREATE_NEW_PROCESS_GROUP` (Ctrl+C disabled for the process
+//!    group), POSIX via its own process group (`process_group(0)`); the console signal reaches
+//!    ONLY this application. Console/window CLOSE still terminates both abruptly (limitation
+//!    above); CTRL_BREAK on Windows still reaches the child group (documented narrow caveat).
 
 use std::fmt;
 use std::sync::atomic::{AtomicBool, Ordering};

@@ -4,6 +4,8 @@
 //! suite failure, never a silent skip.
 
 use std::fs;
+#[cfg(unix)]
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
@@ -37,7 +39,8 @@ pub(super) fn probe_value<'a>(probe_stdout: &'a str, key: &str) -> Option<&'a st
 }
 
 fn probe_recording(ffprobe_path: &Path, output_path: &Path) -> Output {
-    Command::new(ffprobe_path)
+    let mut command = Command::new(ffprobe_path);
+    command
         .args([
             "-v",
             "error",
@@ -48,7 +51,10 @@ fn probe_recording(ffprobe_path: &Path, output_path: &Path) -> Output {
             "-of",
             "default=noprint_wrappers=1",
         ])
-        .arg(output_path)
+        .arg(output_path);
+    // D10 collateral immunity: keep this suite child out of the test process group.
+    command.process_group(0);
+    command
         .output()
         .expect("ffprobe must run inside the dev-checks image")
 }
