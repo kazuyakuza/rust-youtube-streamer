@@ -21,6 +21,13 @@ fn format_errors_without_io_source() {
         "streaming pipeline requires pixel format 'rgb24' in configuration (got 'yuv420p')"
     );
     assert_eq!(
+        StreamingError::UnsupportedBitrateNotation {
+            value: "6mega".to_string()
+        }
+        .to_string(),
+        "streaming pipeline CBR bufsize derivation requires a numeric-leading bitrate in configuration (got '6mega')"
+    );
+    assert_eq!(
         StreamingError::ExecutableLocation {
             reason: "no executable".to_string()
         }
@@ -132,6 +139,9 @@ fn source_returns_io_error_where_defined() {
     let unsupported_pixel_format = StreamingError::UnsupportedPixelFormat {
         value: "gray".to_string(),
     };
+    let unsupported_bitrate_notation = StreamingError::UnsupportedBitrateNotation {
+        value: "abc".to_string(),
+    };
     let executable_location = StreamingError::ExecutableLocation {
         reason: "no executable".to_string(),
     };
@@ -152,6 +162,7 @@ fn source_returns_io_error_where_defined() {
     assert!(frame_write.source().is_some());
     assert!(wait_failed.source().is_some());
     assert!(unsupported_pixel_format.source().is_none());
+    assert!(unsupported_bitrate_notation.source().is_none());
     assert!(executable_location.source().is_none());
     assert!(output_name_exhausted.source().is_none());
     assert!(exit_failure.source().is_none());

@@ -3,6 +3,8 @@
 //! destination as the FINAL ffmpeg argv token, with `-f flv` immediately
 //! before it, no `-movflags`, and the 2×-fps GOP — captured by a
 //! temp-dir POSIX fake-FFmpeg script that never consults a real ffmpeg.
+//! The streaming argv carries the derived CBR video parameters (both audio
+//! shapes) and the MP3-CBR silent audio.
 
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -84,8 +86,8 @@ fn stream_pipeline_passes_the_destination_to_the_ffmpeg_argv() {
     );
     assert!(
         argv.windows(2)
-            .any(|pair| pair[0] == "-c:a" && pair[1] == "aac"),
-        "the silent track is encoded as native AAC"
+            .any(|pair| pair[0] == "-c:a" && pair[1] == "libmp3lame"),
+        "the silent track is encoded as MP3 CBR (silence still carries full bitrate frames)"
     );
     assert!(
         argv.windows(2)
@@ -95,5 +97,25 @@ fn stream_pipeline_passes_the_destination_to_the_ffmpeg_argv() {
     assert!(
         argv.iter().any(|argument| argument == "-shortest"),
         "the -shortest bound terminates encoding at the shortest stream's end"
+    );
+    assert!(
+        argv.windows(2)
+            .any(|pair| pair[0] == "-maxrate" && pair[1] == "6000k"),
+        "the CBR maxrate mirrors the configured bitrate"
+    );
+    assert!(
+        argv.windows(2)
+            .any(|pair| pair[0] == "-minrate" && pair[1] == "6000k"),
+        "the CBR minrate mirrors the configured bitrate"
+    );
+    assert!(
+        argv.windows(2)
+            .any(|pair| pair[0] == "-bufsize" && pair[1] == "12000k"),
+        "the CBR bufsize doubles the configured bitrate (2× multiplier)"
+    );
+    assert!(
+        argv.windows(2)
+            .any(|pair| pair[0] == "-x264-params" && pair[1] == "nal-hrd=cbr"),
+        "the x264 HRD filler mechanism signals constant bitrate mode"
     );
 }

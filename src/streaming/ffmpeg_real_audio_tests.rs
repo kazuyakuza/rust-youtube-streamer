@@ -1,6 +1,6 @@
-//! Real-FFmpeg silent-audio mechanism pin (plan 20261024 §D9-C): the
-//! production with-audio streaming shape against a LOCAL FLV target — no
-//! network, ever. An absent image tool is a suite failure, never a skip.
+//! Real-FFmpeg stream-health pin (plan 20261024 §D9-C + stream-health Task
+//! 2): the production with-audio streaming shape against a LOCAL FLV target
+//! — no network, ever. An absent image tool is a suite failure, never a skip.
 
 use std::fs;
 use std::io::Write;
@@ -9,18 +9,21 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, Command, ExitStatus, Output};
 
-use super::ffmpeg_real_tests::{probe_value, require_image_tool};
+use super::ffmpeg_real_probe_helpers::assert_smoke_streams_carry_h264_and_mp3_at_the_measured_floors;
+use super::ffmpeg_real_tests::require_image_tool;
 
 const SMOKE_FRAME_BYTES: usize = 64 * 36 * 3;
-const SMOKE_FRAME_COUNT: usize = 10;
+const SMOKE_FRAME_COUNT: usize = 50;
 const REAL_AUDIO_BOUND_WAIT_ATTEMPTS: u64 = 15;
 const REAL_AUDIO_BOUND_WAIT_SLEEP_MS: u64 = 1000;
 
 /// The production with-audio streaming shape with a LOCAL FLV target instead
 /// of an RTMPS destination — no network, ever. Pins the `-shortest`
-/// mechanism: the infinite anullsrc silence must be bounded at stdin EOF.
+/// mechanism (the infinite anullsrc must be bounded at stdin EOF) and the
+/// measured-bitrate floors of the CBR video + MP3-CBR silence remedy
+/// (h264 + mp3, 48 kHz stereo).
 #[test]
-fn real_ffmpeg_audio_stream_bounds_the_infinite_silence_and_carries_aac_audio() {
+fn real_ffmpeg_stream_reaches_the_configured_bitrate_with_cbr_video_and_mp3_silence() {
     let ffmpeg_path = require_image_tool("ffmpeg", Path::new("/usr/bin/ffmpeg"));
     let ffprobe_path = require_image_tool("ffprobe", Path::new("/usr/bin/ffprobe"));
     let directory = tempfile::tempdir().expect("a TempDir must be creatable");
@@ -44,7 +47,9 @@ fn real_ffmpeg_audio_stream_bounds_the_infinite_silence_and_carries_aac_audio() 
         "ffprobe must probe the audio smoke FLV: {}",
         String::from_utf8_lossy(&probe.stderr)
     );
-    assert_smoke_streams_carry_h264_and_aac(&String::from_utf8_lossy(&probe.stdout));
+    assert_smoke_streams_carry_h264_and_mp3_at_the_measured_floors(&String::from_utf8_lossy(
+        &probe.stdout,
+    ));
 }
 
 fn spawn_audio_smoke(ffmpeg_path: &Path, output_path: &Path) -> Child {
@@ -73,12 +78,20 @@ fn spawn_audio_smoke(ffmpeg_path: &Path, output_path: &Path) -> Child {
             "veryfast",
             "-b:v",
             "6000k",
+            "-maxrate",
+            "6000k",
+            "-minrate",
+            "6000k",
+            "-bufsize",
+            "12000k",
+            "-x264-params",
+            "nal-hrd=cbr",
             "-g",
             "10",
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
+            "libmp3lame",
             "-b:a",
             "128k",
             "-shortest",
@@ -139,7 +152,7 @@ fn probe_audio_smoke(ffprobe_path: &Path, output_path: &Path) -> Output {
             "-v",
             "error",
             "-show_entries",
-            "stream=codec_type,codec_name,sample_rate,channels",
+            "stream=codec_type,codec_name,sample_rate,channels,bit_rate:format=bit_rate,duration",
             "-of",
             "default=noprint_wrappers=1",
         ])
@@ -149,21 +162,4 @@ fn probe_audio_smoke(ffprobe_path: &Path, output_path: &Path) -> Output {
     command
         .output()
         .expect("ffprobe must run inside the dev-checks image")
-}
-
-fn assert_smoke_streams_carry_h264_and_aac(probe_stdout: &str) {
-    let codec_names: Vec<&str> = probe_stdout
-        .lines()
-        .filter_map(|line| line.strip_prefix("codec_name="))
-        .collect();
-    assert!(
-        codec_names.contains(&"h264"),
-        "the video stream must be h264: {probe_stdout}"
-    );
-    assert!(
-        codec_names.contains(&"aac"),
-        "the audio stream must be aac: {probe_stdout}"
-    );
-    assert_eq!(probe_value(probe_stdout, "sample_rate"), Some("48000"));
-    assert_eq!(probe_value(probe_stdout, "channels"), Some("2"));
 }

@@ -10,12 +10,12 @@ use super::*;
 const DESTINATION_FIXTURE_URL: &str = "rtmps://ingest.example.test/ingest/stream-key-fixture";
 
 #[test]
-fn stream_arguments_match_the_locked_output_shape() {
+fn stream_arguments_without_audio_carry_the_cbr_video_parameters() {
     let mut config = valid_config();
     config.video.width = 1280;
     config.video.height = 720;
     config.video.fps = 25;
-    // The explicit None pins the pre-0.11 video-only wire form deliberately.
+    // The explicit None pins the audio-off video-only shape deliberately.
     config.ffmpeg.audio = None;
     let destination = RtmpsDestination::new(DESTINATION_FIXTURE_URL.to_string());
 
@@ -43,6 +43,14 @@ fn stream_arguments_match_the_locked_output_shape() {
             "veryfast",
             "-b:v",
             "6000k",
+            "-maxrate",
+            "6000k",
+            "-minrate",
+            "6000k",
+            "-bufsize",
+            "12000k",
+            "-x264-params",
+            "nal-hrd=cbr",
             "-g",
             "50",
             "-pix_fmt",
@@ -94,12 +102,20 @@ fn stream_arguments_with_audio_match_the_locked_extended_shape() {
             "veryfast",
             "-b:v",
             "6000k",
+            "-maxrate",
+            "6000k",
+            "-minrate",
+            "6000k",
+            "-bufsize",
+            "12000k",
+            "-x264-params",
+            "nal-hrd=cbr",
             "-g",
             "50",
             "-pix_fmt",
             "yuv420p",
             "-c:a",
-            "aac",
+            "libmp3lame",
             "-b:a",
             "128k",
             "-shortest",

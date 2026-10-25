@@ -19,6 +19,14 @@ pub enum StreamingError {
     /// unreachable through `load_from_path`, but the argument builder still
     /// refuses to produce a wrong-format command.
     UnsupportedPixelFormat { value: String },
+    /// The configured bitrate is not numeric-leading, so the CBR bufsize
+    /// derivation cannot double it. Defensive check mirroring
+    /// [`StreamingError::UnsupportedPixelFormat`]; the config validator
+    /// accepts non-blank values only, making the reachable probability low
+    /// but never zero. The FFmpeg invocation would fail anyway; this variant
+    /// fails earlier and more clearly. The `value` field is the raw
+    /// configured bitrate text.
+    UnsupportedBitrateNotation { value: String },
     /// The application's own executable location could not be determined,
     /// so the `videos/` output directory cannot be placed beside it.
     ExecutableLocation { reason: String },
@@ -60,6 +68,10 @@ impl fmt::Display for StreamingError {
             StreamingError::UnsupportedPixelFormat { value } => write!(
                 formatter,
                 "streaming pipeline requires pixel format 'rgb24' in configuration (got '{value}')"
+            ),
+            StreamingError::UnsupportedBitrateNotation { value } => write!(
+                formatter,
+                "streaming pipeline CBR bufsize derivation requires a numeric-leading bitrate in configuration (got '{value}')"
             ),
             StreamingError::ExecutableLocation { reason } => write!(
                 formatter,
@@ -103,6 +115,7 @@ impl Error for StreamingError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             StreamingError::UnsupportedPixelFormat { .. } => None,
+            StreamingError::UnsupportedBitrateNotation { .. } => None,
             StreamingError::ExecutableLocation { .. } => None,
             StreamingError::OutputDirectoryCreate { source, .. } => Some(source),
             StreamingError::OutputNameExhausted { .. } => None,

@@ -155,3 +155,7 @@ mod ffmpeg_real_tests;
 #[cfg(all(test, unix))]
 #[path = "ffmpeg_real_audio_tests.rs"]
 mod ffmpeg_real_audio_tests;
+
+#[cfg(all(test, unix))]
+#[path = "ffmpeg_real_probe_helpers.rs"]
+mod ffmpeg_real_probe_helpers;

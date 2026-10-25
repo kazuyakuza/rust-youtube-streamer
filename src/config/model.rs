@@ -145,8 +145,9 @@ pub struct FfmpegConfig {
     /// not be empty or whitespace-only.
     pub bitrate: String,
     /// Optional silent-audio section for the production streaming vector. An
-    /// absent section (or an absent/false `enabled`) keeps the video-only
-    /// argument vector byte-identical to the pre-0.11 form.
+    /// absent section (or an absent/false `enabled`) keeps the streaming
+    /// vector without any audio track (it still carries the derived CBR
+    /// video parameters).
     pub audio: Option<AudioConfig>,
 }
 
@@ -155,9 +156,10 @@ pub struct FfmpegConfig {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AudioConfig {
-    /// `true` joins a silent AAC audio track (an `anullsrc` lavfi input at
+    /// `true` joins a silent MP3 audio track (an `anullsrc` lavfi input at
     /// 48 kHz stereo, 128 kbit/s, cut by `-shortest`) to the STREAMING
-    /// vector. Absent or `false` keeps the stream video-only.
+    /// vector. Absent or `false` keeps the stream without any audio track
+    /// (the CBR video parameters stay).
     pub enabled: Option<bool>,
 }
 
