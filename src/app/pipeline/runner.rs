@@ -197,7 +197,3 @@ fn build_renderer(config: &AppConfig) -> Result<Box<dyn Renderer>, FramePipeline
     let renderer = TextRenderer::new(settings).map_err(FramePipelineError::Render)?;
     Ok(Box::new(renderer))
 }
-
-#[cfg(test)]
-#[path = "runner_retrieval_tests.rs"]
-mod runner_retrieval_tests;

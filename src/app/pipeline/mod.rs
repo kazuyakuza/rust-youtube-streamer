@@ -49,3 +49,9 @@ mod runner_tests;
 mod source_helpers;
 #[cfg(test)]
 mod test_helpers;
+// AMENDMENT 2 ruling 6: registered at the module root (sibling of
+// `runner.rs`), not from `runner.rs`, to keep `runner.rs` within the
+// 200-line cap; test-organizational only.
+#[cfg(test)]
+#[path = "runner_retrieval_tests.rs"]
+mod runner_retrieval_tests;
