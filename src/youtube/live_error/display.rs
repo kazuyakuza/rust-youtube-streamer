@@ -41,6 +41,8 @@ impl fmt::Display for LiveApiError {
             Self::ReadinessTimeout { stage } => Self::display_timeout(formatter, stage),
             Self::WaitCancelled => Self::display_wait_cancelled(formatter),
             Self::DestinationMissing { field } => Self::display_destination(formatter, field),
+            Self::ChatDisabled => Self::display_chat_disabled(formatter),
+            Self::ChatEnded => Self::display_chat_ended(formatter),
         }
     }
 }
@@ -149,5 +151,16 @@ impl LiveApiError {
             formatter,
             "ingestion response missing required field '{field}'"
         )
+    }
+
+    fn display_chat_disabled(formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            formatter,
+            "live chat is disabled for this broadcast; enable chat and reuse its id"
+        )
+    }
+
+    fn display_chat_ended(formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(formatter, "the live chat has ended")
     }
 }

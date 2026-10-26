@@ -74,7 +74,15 @@
 //! Standing rule for all of this module's tests: no network, no Google
 //! contact, no real credentials — every boundary is a fake or a
 //! `127.0.0.1` loopback server (fixtures only).
+//!
+//! Phase-06 chat layer (TODO Task 2, plan `.kilo/plans/20261025-phase06-task2-
+//! live-chat-client-mapping.md`; record D-1..D-4/D-7): the chat seam, concrete
+//! transport, O6 resolution, mapping, dedup and models + 2 `LiveApiError` chat
+//! classes; youtube stays chat-free (`crate::chat` is Task 3's); zero new deps.
 
+// Wired by Task 3's chat worker (record §4); retire when consumption lands.
+#[allow(dead_code)]
+mod api_chat_transport;
 mod api_request;
 mod api_transport;
 mod authorization;
@@ -86,7 +94,19 @@ mod error;
 mod file_credential_store;
 mod google_authorization_verifier;
 mod google_live_api_transport;
+// Implemented against the concrete transport; same Task-3 retirement.
+#[allow(dead_code)]
+mod google_live_chat_transport;
 mod google_token_endpoint;
+// Wired by Task 3's chat worker (record §4); retire when consumption lands.
+#[allow(dead_code)]
+mod live_chat_dedup;
+#[allow(dead_code)]
+mod live_chat_mapping;
+#[allow(dead_code)]
+mod live_chat_models;
+#[allow(dead_code)]
+mod live_chat_resolution;
 mod live_error;
 mod live_ingestion;
 // Wired by the Phase-05 run runtime; the residual item is the
@@ -114,6 +134,9 @@ mod wait_cancellation;
 #[cfg(test)]
 mod live_test_fixtures;
 
+// Task-2 chat re-exports: Task-3's consumption surface (record §4) — compiler-named allow until it lands.
+#[allow(unused_imports)]
+pub(crate) use api_chat_transport::LiveChatTransport;
 pub(crate) use api_transport::LiveApiTransport;
 pub(crate) use authorization::{
     authorization_url, generate_pkce, generate_state, parse_authorization_callback,
@@ -130,6 +153,17 @@ pub(crate) use file_credential_store::FileCredentialStore;
 pub(crate) use google_authorization_verifier::GoogleAuthorizationVerifier;
 pub(crate) use google_live_api_transport::GoogleLiveApiTransport;
 pub(crate) use google_token_endpoint::GoogleTokenEndpoint;
+// Same Task-3 consumption staging as the `LiveChatTransport` re-export.
+#[allow(unused_imports)]
+pub(crate) use live_chat_dedup::ChatDedupWindow;
+#[allow(unused_imports)]
+pub(crate) use live_chat_mapping::{
+    map_page, parse_rfc3339_seconds, ChatPageOutcome, ChatTextMessage,
+};
+#[allow(unused_imports)]
+pub(crate) use live_chat_models::{chat_messages_path, ChatListCommand, LiveChatMessageList};
+#[allow(unused_imports)]
+pub(crate) use live_chat_resolution::resolve_live_chat_id;
 pub(crate) use live_error::LiveApiError;
 pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
 pub(crate) use live_models::LiveStream;

@@ -25,11 +25,14 @@ pub(crate) struct LiveBroadcastList {
 }
 
 /// One broadcast resource view (O2/O3/O5); documented fields only.
+/// `snippet` widened to `pub(crate)` by the Phase-06 compiler
+/// arbitration (plan §3.5): the sibling chat transport traverses
+/// `snippet.liveChatId`; visibility only, zero behavior change.
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct LiveBroadcast {
     pub(crate) id: Option<String>,
-    pub(super) snippet: Option<BroadcastSnippet>,
+    pub(crate) snippet: Option<BroadcastSnippet>,
     pub(crate) status: Option<BroadcastStatus>,
     pub(crate) content_details: Option<BroadcastContentDetails>,
 }
@@ -40,6 +43,9 @@ pub(crate) struct BroadcastSnippet {
     pub(super) scheduled_start_time: Option<String>,
     pub(super) title: Option<String>,
     pub(super) description: Option<String>,
+    /// Phase-06 O6 field (record D-2): the broadcast's live chat id, read
+    /// by the sibling chat resolution/transport through this view.
+    pub(crate) live_chat_id: Option<String>,
 }
 
 #[derive(Deserialize)]

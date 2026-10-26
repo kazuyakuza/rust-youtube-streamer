@@ -24,6 +24,9 @@ const UNSPECIFIED_REASON: &str = "unspecified";
 /// API resource-name spellings for the documented not-found reasons.
 const BROADCAST_RESOURCE: &str = "liveBroadcast";
 const STREAM_RESOURCE: &str = "liveStream";
+/// The chat-side not-found spelling (record D-7): shared with the O6
+/// resolution budget's typed absence via the `live_error` re-export.
+pub(crate) const LIVE_CHAT_RESOURCE: &str = "live chat";
 
 /// Pure canonical §1.5 mapping; exactly two arguments (status, reason).
 pub(crate) fn classify_api_error(status: u16, reason: Option<&str>) -> LiveApiError {
@@ -48,6 +51,9 @@ fn classify_forbidden(status: u16, reason: &str) -> LiveApiError {
         "liveStreamingNotEnabled" => LiveApiError::LiveStreamingNotEnabled,
         "livePermissionBlocked" => LiveApiError::ChannelLiveBlocked,
         "insufficientLivePermissions" => LiveApiError::InsufficientPermissions,
+        "liveChatDisabled" => LiveApiError::ChatDisabled,
+        "liveChatEnded" => LiveApiError::ChatEnded,
+        "forbidden" => LiveApiError::InsufficientPermissions,
         "liveBroadcastBindingNotAllowed"
         | "errorStreamInactive"
         | "invalidTransition"
@@ -74,6 +80,9 @@ fn classify_not_found(status: u16, reason: &str) -> LiveApiError {
         },
         "liveStreamNotFound" => LiveApiError::ApiNotFound {
             resource: STREAM_RESOURCE.to_string(),
+        },
+        "liveChatNotFound" => LiveApiError::ApiNotFound {
+            resource: LIVE_CHAT_RESOURCE.to_string(),
         },
         _ => LiveApiError::ApiRejected {
             status,

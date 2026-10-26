@@ -167,3 +167,26 @@ fn classifier_never_produces_wait_cancelled() {
         LiveApiError::WaitCancelled
     ));
 }
+
+#[test]
+fn chat_disabled_reason_maps_typed() {
+    let error = classify(403, "liveChatDisabled");
+    assert!(matches!(error, LiveApiError::ChatDisabled));
+}
+
+#[test]
+fn chat_ended_reason_maps_typed() {
+    let error = classify(403, "liveChatEnded");
+    assert!(matches!(error, LiveApiError::ChatEnded));
+}
+
+#[test]
+fn live_chat_not_found_reason_maps_resource_live_chat() {
+    assert_not_found(classify(404, "liveChatNotFound"), "live chat");
+}
+
+#[test]
+fn bare_forbidden_maps_insufficient_permissions() {
+    let error = classify(403, "forbidden");
+    assert!(matches!(error, LiveApiError::InsufficientPermissions));
+}

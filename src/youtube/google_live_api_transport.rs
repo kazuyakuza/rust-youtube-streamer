@@ -10,6 +10,8 @@
 //! The bodyless POST (O3 bind) transmits zero body bytes WITH Content-Length: 0 via
 //! send_bytes(&[]) (the HTTP 411 fix, loopback-pinned); GET forms stay on the no-body
 //! call() path.
+//! The engine (+ parse helper) is shared with the concrete chat transport
+//! (Phase 06); visibility only.
 //! Loopback-tested in the sibling tests; no test reaches Google.
 //!
 //! Grounding: OAuth 2.0 Bearer (never an API key; service accounts are
@@ -66,7 +68,7 @@ impl GoogleLiveApiTransport {
 
     /// The ONE request engine (spec-encapsulated, D-T2-4); routes every
     /// reply through the ONE status-first `respond` path (D-T2-5).
-    fn request(&self, spec: &LiveApiRequestSpec<'_>) -> Result<String, LiveApiError> {
+    pub(super) fn request(&self, spec: &LiveApiRequestSpec<'_>) -> Result<String, LiveApiError> {
         let url = format!("{}{}", self.base_url, spec.path_query);
         let authorization = format!("Bearer {}", self.access_token.secret());
         let pending = match spec.method {
@@ -161,7 +163,7 @@ impl LiveApiTransport for GoogleLiveApiTransport {
     }
 }
 
-fn parse_resource_body<T: serde::de::DeserializeOwned>(
+pub(super) fn parse_resource_body<T: serde::de::DeserializeOwned>(
     body: &str,
     field: &str,
 ) -> Result<T, LiveApiError> {

@@ -18,12 +18,20 @@
 //! (`google_live_api_transport`); the Display lines become live when
 //! Task 3's `run` path reports them.
 //!
+//! Phase-06 chat classes (record D-7, plan §3.2): the enum gains
+//! `ChatDisabled` (403 `liveChatDisabled`, terminal) and `ChatEnded`
+//! (403 `liveChatEnded`, the worker's GRACEFUL end signal), the
+//! classifier gains the `liveChatDisabled`/`liveChatEnded`/bare
+//! `forbidden` 403 arms plus the 404 `liveChatNotFound` arm resolving to
+//! `ApiNotFound { resource: "live chat" }`; every added line is
+//! secret-free and carries only the server `reason` string.
+//!
 //! Design plan:
 //! `.kilo/plans/20261013-phase05-task1-official-api-research-design.md`
 //! (§1.5, D-T1-4, F4); TODO `.agent/todos/20261013/20261013-todo-1.md`
 //! Task 1.
 
-pub(crate) use classify::classify_api_error;
+pub(crate) use classify::{classify_api_error, LIVE_CHAT_RESOURCE};
 
 mod classify;
 mod display;
@@ -71,6 +79,12 @@ pub(crate) enum LiveApiError {
     DestinationMissing {
         field: String,
     },
+    /// 403 liveChatDisabled (record D-7): chat is not enabled on the
+    /// broadcast — a terminal retrieval failure class.
+    ChatDisabled,
+    /// 403 liveChatEnded (record D-6/D-7): the chat is no longer live —
+    /// the worker's GRACEFUL end-of-chat signal, never a fatal.
+    ChatEnded,
 }
 
 #[cfg(test)]
