@@ -41,7 +41,7 @@ Every operation this service performs is a **YouTube Data API v3** operation:
 | --- | --- | --- |
 | `channels.list` (`part=id&mine=true`) — authorization probe | reusable credential service | Phase 04 (implemented) |
 | `liveBroadcasts` / `liveStreams` lifecycle | the production `run` command (Phase 05: [`docs/production-run.md`](production-run.md)) | Phase 05 (implemented) |
-| `liveChatMessages` / `liveChatMessages.streamList` | future live-chat integration | later phases |
+| `liveChatMessages` (`liveChatMessages.list` polling is the selected method) | the production `run` command's live-chat worker (Phase 06: implemented in code/tests; operator verification pending) | Phase 06 |
 
 Google's rule is explicit: *"Any application that calls Google APIs needs to enable those APIs in the API Console."* If the API is not enabled in the project that owns your OAuth client, the first API call fails.
 
@@ -137,7 +137,7 @@ Consequences for this project:
 
 - **`auth` and the startup probe are negligible** (~1 unit per authorization/verification).
 - **Broadcast/stream lifecycle is cheap** (~1 unit per lifecycle call).
-- **Live-chat reading is the quota driver.** `liveChatMessages.list` costs 5 units, so a continuous poll every 5 seconds would consume ≈17,000 units/day — over the default ceiling. The future chat phase must therefore pace polling within 10,000 units/day (≈2,000 list calls/day, i.e. no faster than roughly one call per 43 seconds) or use `streamList` (also 5 units per call, but far fewer calls), or request a quota extension.
+- **Live-chat reading is the quota driver.** `liveChatMessages.list` costs 5 units, so a continuous poll every 5 seconds would consume ≈17,000 units/day — over the default ceiling. The Phase 06 chat worker wired into `run` therefore paces polling by honoring the server-provided `pollingIntervalMillis` (a bounded default applies only when a response omits it); the detailed quota accounting for a real broadcast belongs to the pending Phase 06 completion report and operator documentation pass. A quota extension (free, manually reviewed) remains the only path above the default ceiling.
 - **More quota cannot be bought.** The only path above the default is the free, manually reviewed *YouTube API Services — Audit and Quota Extension* form; approval and timing are not guaranteed.
 - Exhausting the daily quota returns `403 quotaExceeded` until the reset.
 

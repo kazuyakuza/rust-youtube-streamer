@@ -23,9 +23,9 @@ One `run` invocation:
 - creates ONE new broadcast and ONE new live-stream resource from the validated `youtube.broadcast.*` configuration (title, description, privacy status) — there is no broadcast reuse and no multi-broadcast support;
 - binds the two resources together, waits for the stream to become ready, and acquires the RTMPS ingestion destination from the API response;
 - streams continuous rendered frames to YouTube Live over RTMPS through the configured external FFmpeg executable (`ffmpeg.executable`);
-- writes no local file in stream mode (the local MP4 behavior belongs to the `demo` command only).
+- writes no local recording in stream mode (the local MP4 behavior belongs to the `demo` command only); accepted incoming chat messages are appended to the configured chat log (`chat.log_file`).
 
-The streamed frame content contains NO chat text — Live Chat is Phase 06 (recorded on the TODO defect ruling); the frame loop is continuous and chat-free by design.
+The frame loop is continuous and chat-backed: the `run` command now polls the created broadcast's Live Chat and renders newly received ordinary messages (author and text) onto the frames; between messages — or while chat is idle or slow — the frames stay black. Detailed Live Chat behavior, diagnostics, failure recovery, and privacy documentation is pending (Phase 06 documentation pass).
 
 ## Prerequisites
 
@@ -49,7 +49,7 @@ The ten-stage startup (in operator-facing wording; stop flags are armed before a
 7. The broadcast is bound to the stream (`liveBroadcasts.bind`); the `boundStreamId` in the response is asserted.
 8. A bounded readiness wait polls until the stream is ready — up to 180 seconds at a 5-second interval; the wait is cancellable by Ctrl+C.
 9. The RTMPS ingestion destination is acquired from the API response; it is kept secret and never printed.
-10. FFmpeg starts with the RTMPS-target argument set (FLV muxer, 2-second-target GOP derived from the configured FPS, no local output file). After FFmpeg has started, a post-start confirmation wait polls until YouTube reports `streamStatus == active` — up to 120 seconds at a 5-second interval, on a thread parallel with the frame loop (documented refinement of the startup sequence), then the continuous chat-free frame loop runs.
+10. FFmpeg starts with the RTMPS-target argument set (FLV muxer, 2-second-target GOP derived from the configured FPS, no local output file). After FFmpeg has started, a post-start confirmation wait polls until YouTube reports `streamStatus == active` — up to 120 seconds at a 5-second interval, on a thread parallel with the frame loop (documented refinement of the startup sequence), then the continuous chat-backed frame loop runs (a bounded live-chat worker feeds incoming messages into it; the worker's startup/shutdown ordering details are part of the pending Phase 06 documentation pass).
 
 Nothing is marked live until the API reports the stream active while FFmpeg is running: the broadcast is not started (`enableAutoStart`) until ingestion has begun, and the application does not declare success before the confirmation gate observes `streamStatus == active`.
 
@@ -73,7 +73,7 @@ Ordering: the row-6 events fire only on the confirmation-gate timeout shutdown p
 
 Standing secret guarantees: OAuth tokens, refresh tokens, client secrets, stream keys, full RTMPS URLs, and authorization codes NEVER appear in logs, error lines, or diagnostics. FFmpeg's own stderr echo of the output URL is replaced with `[redacted]` in captured diagnostics, and the stream key/RTMPS URL is never embedded in command logs, error text, or debug output.
 
-Inspecting the logs: the `run` command writes no log file — every operational line is a `tracing` event on stderr. Run the executable in a terminal to read the lines live, or redirect stderr to a file for later inspection (the secret guarantees above keep captured lines safe to store). Verbosity follows the exact, case-sensitive `RUST_LOG` environment variable (default `info`); e.g. `RUST_LOG=debug rust-youtube-streamer-service run`. Full filter semantics: [README's Logging (RUST_LOG) guide](../README.md#logging-rust_log).
+Inspecting the logs: the `run` command writes no operational log file — every operational line is a `tracing` event on stderr. (The one file it appends is the chat log at `chat.log_file`: each accepted Live Chat message is recorded there — see [`docs/configuration.md`](configuration.md); chat-log privacy and handling are covered by the pending Phase 06 documentation pass.) Run the executable in a terminal to read the lines live, or redirect stderr to a file for later inspection (the secret guarantees above keep captured lines safe to store). Verbosity follows the exact, case-sensitive `RUST_LOG` environment variable (default `info`); e.g. `RUST_LOG=debug rust-youtube-streamer-service run`. Full filter semantics: [README's Logging (RUST_LOG) guide](../README.md#logging-rust_log).
 
 Identifying FFmpeg failures: every FFmpeg-origin failure ends the run with exit 1 and one `error:` line naming the stage:
 
@@ -247,8 +247,10 @@ do not chase encoder/network causes for it.
     watch page (`run` prints the non-secret watch URL) instead of chasing this specific flag.
   - The separate audio-bitrate warning ("audio bitrate (0) lower than the recommended 128 Kbps")
     was CLEARED by the v0.11.1 MP3-CBR remedy above.
-  - This video-content warning is expected to persist until real content arrives (Phase 06 chat
-    text adds real — though still modest — content bits).
+  - This video-content warning is expected to persist while frames stay black (between
+    messages); the Phase 06 chat text now wired into `run` adds real — though still modest —
+    content bits when messages arrive (operator Stream-Health confirmation with chat content
+    is pending).
 - The v0.11.1 CBR/MP3 remedy note and the Ingest Probe Procedure above remain fully valid for
   CONNECTION-level issues (publish-succeeded-but-inactive/"No data" shapes and the probe
   discrimination path); this note covers only the content-level Stream-Health flag.
@@ -264,7 +266,7 @@ The canonical safe test plan (D-T4-8). It is performed by the human operator aga
 3. Prereq check: valid `config/config.json` (all six sections), FFmpeg installed and `ffmpeg.executable` correct, credentials authorized via the documented `auth` run.
 4. Start: run the executable: `rust-youtube-streamer-service run`.
 5. Expected startup output (order only, no secrets): config/authorization progress; one `broadcast prepared for streaming` line carrying the broadcast_id; the FFmpeg-started line; the `stream confirmed active on YouTube` line; the `public watch link for the live stream` line carrying the public watch URL (the watch page of the noted broadcast_id, non-secret; an unlisted broadcast is watchable by anyone holding the link). NOTE the exact broadcast_id shown — it identifies the resources in later steps.
-6. Actual video arrival: open YouTube Studio → the broadcast enters live; verify real frames appear (continuous rendered video; the Phase 05 stream has NO chat text — expected, chat is Phase 06). Confirm at least ~1–2 minutes of continuous video. Verify the broadcast is on the EXPECTED channel: one OAuth grant binds to one channel identity chosen at consent, and the application neither selects, surfaces, nor verifies which channel ([`docs/authentication.md`](authentication.md)) — if the broadcast appeared on a different channel, Ctrl+C-stop, re-run `auth` to select the intended channel, and repeat from step 4.
+6. Actual video arrival: open YouTube Studio → the broadcast enters live; verify real frames appear (continuous rendered video; with the Phase 06 chat worker wired into `run`, incoming ordinary chat messages render as author/text when present — the chat-bearing manual verification steps are part of the pending Phase 06 documentation pass). Confirm at least ~1–2 minutes of continuous video. Verify the broadcast is on the EXPECTED channel: one OAuth grant binds to one channel identity chosen at consent, and the application neither selects, surfaces, nor verifies which channel ([`docs/authentication.md`](authentication.md)) — if the broadcast appeared on a different channel, Ctrl+C-stop, re-run `auth` to select the intended channel, and repeat from step 4.
 7. Ctrl+C shutdown: after confirming video, press Ctrl+C. Expected: frame loop stops; the stdout line `streaming stopped; the broadcast auto-completes on YouTube after ingestion ends`; process exit code 0.
 8. Post-shutdown broadcast status: wait about 1–2 minutes (the `enableAutoStop` auto-complete window), then open YouTube Studio → confirm the broadcast identified in step 5 shows a completed/ended status (`complete`); record the observed transition moment. (This autoStop fact comes from the official Life-of-a-Broadcast documentation cited in the Phase-05 Task-1 plan — any deviation observed live is recorded honestly, never reconciled by editing the code.)
 9. On any startup failure: capture the single redacted `error:` line, verify no token/key text appears in it, and use the failure/recovery tables (this document's "Broadcast/Stream Fate" section, [`docs/authentication.md`](authentication.md)) — again keeping secrets private.
@@ -272,7 +274,6 @@ The canonical safe test plan (D-T4-8). It is performed by the human operator aga
 
 ## Out of Scope
 
-- Live Chat retrieval, message ingestion, chat logging, or chat rendering into the video (Phase 06).
 - Broadcast reuse, multi-broadcast support, or a web dashboard.
 - Automated resource deletion or lifecycle transitions.
 - Audio production or mixing (the MVP renders frames only; the v0.11.0 config-gated silent `anullsrc` audio track is an ingest-signal carrier shipped as the brief-section-10.4 explicit design change, not produced content).
