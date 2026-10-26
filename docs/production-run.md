@@ -141,11 +141,11 @@ Common ingestion/API failures (each surfaces as the single redacted `error:` lin
 - Scopes: the already-granted `https://www.googleapis.com/auth/youtube.force-ssl` is documented-sufficient for BOTH chat calls the worker makes — `liveChatMessages.list` (message polling) and the `liveBroadcasts.list` chat-id lookup (official scope bindings; Task-1 research record §1.4, `.kilo/plans/20261025-phase06-task1-live-chat-research-design.md`). Re-running `auth` is NOT required for chat: there has been no scope change since Phase 04, so the existing credentials keep working.
 - The standing Google Cloud and channel prerequisites apply unchanged: the Google Cloud project with the YouTube Data API v3 enabled, a Desktop-app OAuth client, and live-streaming access on the channel — see [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md).
 - Live chat is enabled by default on live broadcasts and stays available while the event is active (official `liveChatMessage`/`video` resource semantics; Task-1 record §1.1).
-- There is NO new configuration field for chat: polling pacing is SERVER-PROVIDED ONLY (the API's `pollingIntervalMillis` response field) — nothing to configure, and no operator override exists.
+- There is NO new configuration field for chat: polling pacing is SERVER-DIRECTED (the API's `pollingIntervalMillis` response field; a bounded 10 s default applies only when a response omits it) — nothing to configure, and no operator override exists.
 
 ### Expected Behavior
 
-- Retrieval method: the worker POLLINGS `liveChatMessages.list` (GET `https://www.googleapis.com/youtube/v3/liveChat/messages`) honoring the server's `pollingIntervalMillis` and the `nextPageToken` continuation. The server-streaming `liveChatMessages.streamList` alternative was evaluated and REJECTED: it requires a gRPC server-streaming client — an async/gRPC dependency stack this synchronous service deliberately does not carry — and both methods cost the same 5 quota units per call, so polling buys nothing extra in quota (Task-1 record §2, decision D-1).
+- Retrieval method: the worker POLLS `liveChatMessages.list` (GET `https://www.googleapis.com/youtube/v3/liveChat/messages`) honoring the server's `pollingIntervalMillis` and the `nextPageToken` continuation. The server-streaming `liveChatMessages.streamList` alternative was evaluated and REJECTED: it requires a gRPC server-streaming client — an async/gRPC dependency stack this synchronous service deliberately does not carry — and both methods cost the same 5 quota units per call, so polling buys nothing extra in quota (Task-1 record §2, decision D-1).
 - Worker timeline (operator terms): the worker thread starts ONLY after the confirmation gate observes `streamStatus == active`. Its FIRST act resolves the broadcast's `snippet.liveChatId` via `liveBroadcasts.list(part=snippet)` with a bounded budget (6 attempts × 5 s = 30 s); absence after the budget is a fatal typed error. The worker's first successful page is the BASELINE: ALL of its items are discarded (they are history — never queued, never logged), so messages sent before the stream went live do not appear. On later pages, ordinary text messages (author + text) are accepted at most one per frame, appended to the chat log, and rendered. Replayed message IDs are dropped (bounded dedup window). An empty page just advances the token — emptiness NEVER infers the chat ended. While chat is idle, slow, or between messages the frames continue (black when no visible text).
 - Message/event policy: ONLY `textMessageEvent` messages render. Super Chats, Super Stickers, membership/sponsor/gifting events, milestone chats, polls, bans, tombstones, and any unrecognized future event type are SKIPPED — never displayed, never logged.
 
@@ -157,7 +157,7 @@ The three chat events in the "What the Logs Look Like" table above (rows 6–8) 
 - `live chat retrieval stopped by YouTube quota: <detail>` — quota exhaustion.
 - `live chat transport failed after repeated attempts: <detail>` — the bounded transient retry budget exhausted.
 
-The `detail` is the redacted Display of the underlying typed YouTube error (e.g. the `liveChatDisabled`/`liveChatEnded`/`liveChatNotFound` reasons) — never a raw response body.
+The `detail` is the redacted Display of the underlying typed YouTube error (e.g. the `liveChatDisabled`/`liveChatNotFound` reasons) — never a raw response body.
 
 ### Failure Recovery
 
