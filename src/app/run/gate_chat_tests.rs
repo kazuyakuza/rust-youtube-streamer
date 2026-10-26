@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::app::pipeline::StopFlag;
 use crate::app::run::broadcast::public_watch_url;
 use crate::app::run::chat_worker::runtime_chat_fakes::{
-    chat_page, worker_plan, ScriptedRunChatTransport, LIVE_CHAT_ID_FIXTURE,
+    chat_page, worker_plan, ScriptedRunChatTransport,
 };
 use crate::app::run::gate::{spawn_startup_gate, GateFinish, GatePlan};
 use crate::app::run::runtime_test_fixtures::{
@@ -17,6 +17,7 @@ use crate::app::run::runtime_test_fixtures::{
 use crate::youtube::WaitCanceller;
 
 use super::chat_channel;
+use super::chat_worker_tests::{lookup_found, OFFLINE_AT};
 
 const FIXTURE_STREAM_ID: &str = "stream-id-fixture";
 
@@ -36,13 +37,8 @@ fn confirmed_gate_spawns_and_joins_the_chat_worker() {
     let gate_transport = Arc::new(ScriptedTransport::default());
     gate_transport.script_gate_lookup(Ok(Some(stream_with_status("active"))));
     let chat_fake = Arc::new(ScriptedRunChatTransport::default());
-    chat_fake.script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
-    chat_fake.script_list(Ok(chat_page(
-        vec![],
-        None,
-        None,
-        Some("2026-10-26T02:00:00Z"),
-    )));
+    lookup_found(&chat_fake);
+    chat_fake.script_list(Ok(chat_page(vec![], None, None, Some(OFFLINE_AT))));
     let channel = chat_channel();
     let mut plan = gate_plan(gate_transport, WaitCanceller::new());
     plan.chat_worker = Some(worker_plan(chat_fake.clone(), &channel));

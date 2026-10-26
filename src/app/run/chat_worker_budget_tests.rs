@@ -8,19 +8,16 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use crate::app::run::chat_worker::runtime_chat_fakes::{
-    chat_page, text_message_item, worker_plan, ScriptedRunChatTransport, LIVE_CHAT_ID_FIXTURE,
+    chat_page, run_worker, text_message_item, worker_plan, ScriptedRunChatTransport,
 };
 use crate::youtube::LiveApiError;
 
+use super::chat_worker_tests::{drain, lookup_found, terminal_of, OFFLINE_AT};
 use super::{chat_channel, run_chat_worker, spawn_chat_worker, CHAT_BACKOFF_MAX_MS};
 use crate::app::run::chat_worker_delivery::backoff_delay_ms;
 
 const STALLED_LIST_MILLIS: u64 = 250;
 const JOIN_WALL_BOUND_SECONDS: u64 = 5;
-
-fn lookup_found(fake: &ScriptedRunChatTransport) {
-    fake.script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
-}
 
 fn network_failure(attempt: u32) -> LiveApiError {
     LiveApiError::Network {
@@ -35,15 +32,9 @@ fn worker_transient_failures_exhaust_the_budget_into_a_transport_terminal() {
     for attempt in 1..=10 {
         fake.script_list(Err(network_failure(attempt)));
     }
-    let channel = chat_channel();
-    run_chat_worker(worker_plan(fake, &channel));
+    let channel = run_worker(fake);
 
-    let failure = channel
-        .terminal
-        .lock()
-        .expect("cell mutex")
-        .take()
-        .expect("the budget exhausts into a terminal");
+    let failure = terminal_of(&channel).expect("the budget exhausts into a terminal");
     assert!(matches!(
         failure,
         crate::app::pipeline::ChatRetrievalError::Transport { ref detail }
@@ -61,16 +52,16 @@ fn worker_transient_failures_recover_within_the_budget() {
         vec![text_message_item("m1", "recovered", "back online", None)],
         None,
         None,
-        Some("2026-10-26T02:00:00Z"),
+        Some(OFFLINE_AT),
     )));
-    let channel = chat_channel();
-    run_chat_worker(worker_plan(fake, &channel));
+    let channel = run_worker(fake);
 
-    let terminal = channel.terminal.lock().expect("cell mutex").take();
-    assert!(terminal.is_none(), "recovery inside the budget is clean");
-    let received: Vec<String> = drain(&channel.receiver);
     assert!(
-        received.is_empty(),
+        terminal_of(&channel).is_none(),
+        "recovery inside the budget is clean"
+    );
+    assert!(
+        drain(&channel.receiver).is_empty(),
         "the recovery page is the baseline page: discarded by design"
     );
 }
@@ -117,8 +108,7 @@ fn worker_stop_during_delivery_drops_pending_messages_without_blocking() {
         drain(&channel.receiver).is_empty(),
         "the stop flag drops the pending page without blocking"
     );
-    let terminal = channel.terminal.lock().expect("cell mutex").take();
-    assert!(terminal.is_none());
+    assert!(terminal_of(&channel).is_none());
 }
 
 #[test]
@@ -142,12 +132,4 @@ fn worker_blocked_list_call_cannot_prevent_bounded_shutdown() {
         elapsed <= Duration::from_secs(JOIN_WALL_BOUND_SECONDS),
         "a stalled in-flight call cannot hang shutdown: {elapsed:?}"
     );
-}
-
-fn drain(receiver: &std::sync::mpsc::Receiver<crate::chat::ChatMessage>) -> Vec<String> {
-    let mut rendered = Vec::new();
-    while let Ok(message) = receiver.try_recv() {
-        rendered.push(message.to_string());
-    }
-    rendered
 }

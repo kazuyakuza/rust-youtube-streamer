@@ -6,13 +6,12 @@
 use std::sync::Arc;
 
 use crate::app::run::chat_worker::runtime_chat_fakes::{
-    chat_page, text_message_item, worker_plan, ScriptedRunChatTransport,
+    chat_page, run_worker, text_message_item, ScriptedRunChatTransport,
 };
 use crate::chat::ChatMessage;
 use crate::youtube::parse_rfc3339_seconds;
 
 use super::chat_worker_tests::{drain, lookup_found, terminal_of, OFFLINE_AT, PUBLISHED_AT};
-use super::{chat_channel, run_chat_worker};
 
 #[test]
 fn worker_delivers_mapped_messages_in_page_order_with_metadata() {
@@ -29,8 +28,7 @@ fn worker_delivers_mapped_messages_in_page_order_with_metadata() {
         None,
     )));
     fake.script_list(Ok(chat_page(vec![], None, None, Some(OFFLINE_AT))));
-    let channel = chat_channel();
-    run_chat_worker(worker_plan(fake, &channel));
+    let channel = run_worker(fake);
 
     let received = drain(&channel.receiver);
     assert_eq!(received.len(), 2, "both live messages arrive in order");
@@ -62,8 +60,7 @@ fn worker_discards_the_entire_baseline_history_page() {
         None,
         Some(OFFLINE_AT),
     )));
-    let channel = chat_channel();
-    run_chat_worker(worker_plan(fake, &channel));
+    let channel = run_worker(fake);
 
     let received = drain(&channel.receiver);
     assert_eq!(received.len(), 1, "the baseline page is discarded whole");
@@ -94,8 +91,7 @@ fn worker_dedup_drops_replayed_ids_across_pages() {
         None,
         Some(OFFLINE_AT),
     )));
-    let channel = chat_channel();
-    run_chat_worker(worker_plan(fake, &channel));
+    let channel = run_worker(fake);
 
     let received = drain(&channel.receiver);
     let rendered: Vec<String> = received.iter().map(ChatMessage::to_string).collect();
@@ -109,8 +105,7 @@ fn worker_empty_page_advances_the_token_without_inference() {
     lookup_found(&fake);
     fake.script_list(Ok(chat_page(vec![], Some("token-1-fixture"), None, None)));
     fake.script_list(Ok(chat_page(vec![], None, None, Some(OFFLINE_AT))));
-    let channel = chat_channel();
-    run_chat_worker(worker_plan(Arc::clone(&fake), &channel));
+    let channel = run_worker(Arc::clone(&fake));
 
     let commands = fake.commands();
     assert_eq!(commands.len(), 2, "both list calls happened");

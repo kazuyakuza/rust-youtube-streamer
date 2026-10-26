@@ -165,3 +165,11 @@ pub(crate) fn worker_plan(
         stop_flag: StopFlag::new(),
     }
 }
+
+/// Runs the chat worker to completion against the scripted fake and
+/// returns the channel bundle for the caller's drain/terminal asserts.
+pub(crate) fn run_worker(fake: std::sync::Arc<ScriptedRunChatTransport>) -> super::ChatChannel {
+    let channel = super::chat_channel();
+    super::run_chat_worker(worker_plan(fake, &channel));
+    channel
+}
