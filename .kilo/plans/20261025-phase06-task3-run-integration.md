@@ -12,6 +12,13 @@
 > 1. §3.4/§5.1 item 5 — the retrieval-failure test does NOT append to `src/app/pipeline/runner_tests.rs` (194 lines; +28 would breach the 200-line cap): it lands in the NEW sibling roster `src/app/pipeline/runner_retrieval_tests.rs`, registered `#[cfg(test)] #[path]` from `runner.rs` (repo-standard split precedent). Test name/body unchanged.
 > 2. §4.10 — `src/app/run/mod.rs` (185 lines) projects > 200 with the full wiring delta: the plan's own contingency GOVERNS — keep mod.rs deltas minimal (2 `mod` decls + the single `build_chat_stage` call + doc line) and place the wiring body in `chat_worker.rs`'s `build_chat_stage`; if mod.rs still exceeds 200 after that, STOP with exact counts (do NOT improvise).
 > 3. §5.2 roster A — if `src/app/run/chat_worker_tests.rs` exceeds 200 lines with the 10-test roster, split it test-only into `chat_worker_tests.rs` + NEW sibling `chat_worker_flow_tests.rs` (all exact test names preserved; report the split in the 4.2 summary).
+>
+> **AMENDMENT 2 (2026-10-26, caller rulings at the mid-(c) STOP; binding):**
+> 4. §4.3 (`src/app/run/chat_worker.rs`, 335 post-rustfmt lines, plan-prescribed content cannot honestly fit ≤200): SPLIT into TWO production siblings, registrations (`chat_worker_tests`, `chat_worker_budget_tests`, `gate_chat_tests` decls) STAY in `chat_worker.rs`:
+>    - `chat_worker.rs` keeps: the module doc, imports, the 8 constants + 3 info constants, `ChatWorkerPlan`/channel bundle/`chat_channel`/`spawn_chat_worker`/`build_chat_stage`, the session struct + `run_chat_worker` + poll loop, the 22-line cfg-split resolution pair.
+>    - NEW sibling `chat_worker_delivery.rs` holds: `deliver`/`into_chat_message`/`send_stop_aware`, the bounded sleeps/backoff helpers, `record_terminal`, the cfg-split sleep helper. Visibility `pub(super)` per the established sibling pattern.
+>    - Both files must land ≤ 200 lines; report final counts.
+> 5. Confirmed incidental implementations (caller-confirmed, record in the 4.2 summary): (i) `handle_page` delivers accepted messages of a non-baseline page BEFORE the `chat_ended` early-return — roster A test 2 (`receiver yields ONLY the live item` from an ended-marked page) mandates delivery-before-end; (ii) roster A test 1 scripts an initial baseline page before its 2-item live page (baseline-on-first-successful-page policy); pinned assertions unchanged.
 
 ## 0. Scope of this task (TODO Task 3 bullets → plan sections)
 
