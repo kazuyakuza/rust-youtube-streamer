@@ -44,13 +44,14 @@ fn all_error_variants() -> Vec<LiveApiError> {
         LiveApiError::DestinationMissing {
             field: "rtmpsIngestionAddress".to_string(),
         },
+        LiveApiError::WaitCancelled,
         LiveApiError::ChatDisabled,
         LiveApiError::ChatEnded,
     ]
 }
 
 /// The pinned stable Display line for each variant of `all_error_variants`.
-fn expected_display_lines() -> [&'static str; 16] {
+fn expected_display_lines() -> [&'static str; 17] {
     [
         "invalid metadata field 'snippet.title'; fix broadcast config and retry",
         "live streaming is not enabled; see youtube.com/features",
@@ -66,6 +67,7 @@ fn expected_display_lines() -> [&'static str; 16] {
         "malformed YouTube API response (field 'status.lifeCycleStatus')",
         "YouTube readiness wait timed out (stage 'readiness')",
         "ingestion response missing required field 'rtmpsIngestionAddress'",
+        "the YouTube readiness wait was cancelled by the stop request",
         "live chat is disabled for this broadcast; enable chat and reuse its id",
         "the live chat has ended",
     ]
@@ -78,7 +80,7 @@ fn every_variant_display_stable_and_secret_free() {
         .map(ToString::to_string)
         .collect();
     let expected = expected_display_lines();
-    assert_eq!(rendered.len(), 16, "every variant pins exactly one line");
+    assert_eq!(rendered.len(), 17, "every variant pins exactly one line");
     for (index, (actual, wanted)) in rendered.iter().zip(&expected).enumerate() {
         assert_eq!(actual, wanted, "variant #{index} Display line drifted");
         assert!(!actual.contains("rtmps://"), "no RTMPS URL in: {actual}");

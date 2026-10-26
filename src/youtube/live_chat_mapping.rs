@@ -56,13 +56,7 @@ fn map_record(record: &LiveChatMessageRecord) -> Option<ChatTextMessage> {
     if !is_text_message(snippet) {
         return None;
     }
-    if !has_message_text(snippet) {
-        return None;
-    }
-    let text = snippet
-        .text_message_details
-        .as_ref()
-        .and_then(|details| details.message_text.clone())?;
+    let text = non_blank_message_text(snippet)?;
     let author = resolve_author(record)?;
     Some(ChatTextMessage {
         author,
@@ -79,15 +73,13 @@ fn is_text_message(snippet: &LiveChatMessageSnippet) -> bool {
     snippet.message_type.as_deref() == Some(TEXT_MESSAGE_TYPE)
 }
 
-/// Blank/missing text is a malformed payload — skipped, never ordinary chat.
-fn has_message_text(snippet: &LiveChatMessageSnippet) -> bool {
-    let Some(details) = snippet.text_message_details.as_ref() else {
-        return false;
-    };
-    let Some(text) = details.message_text.as_ref() else {
-        return false;
-    };
-    !text.trim().is_empty()
+/// Blank/missing text is a malformed payload — skipped, never ordinary chat;
+/// the accepted text is preserved verbatim (untrimmed).
+fn non_blank_message_text(snippet: &LiveChatMessageSnippet) -> Option<String> {
+    snippet
+        .text_message_details
+        .as_ref()
+        .and_then(|details| non_blank_text(&details.message_text))
 }
 
 /// D-4 step 3: `displayName` else `channelId` else skip (no stable id).

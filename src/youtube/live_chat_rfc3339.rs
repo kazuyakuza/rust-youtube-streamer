@@ -86,13 +86,17 @@ fn in_range(value: u32, maximum: u32) -> Option<u32> {
 
 /// Calendar validation (month/day ranges, leap February) → epoch days.
 fn validated_epoch_days(year: u32, month: u32, day: u32) -> Option<i64> {
-    if !(1..=12).contains(&month) {
+    if !is_valid_month(month) {
         return None;
     }
-    if day < 1 || day > days_in_month(year, month) {
+    if !(1..=days_in_month(year, month)).contains(&day) {
         return None;
     }
     Some(days_from_civil(year, month, day))
+}
+
+fn is_valid_month(month: u32) -> bool {
+    (1..=12).contains(&month)
 }
 
 fn days_in_month(year: u32, month: u32) -> u32 {
@@ -126,10 +130,14 @@ fn leap_days_before_year(year: u32) -> i64 {
 
 fn month_start_day(year: u32, month: u32) -> i64 {
     let mut start = MONTH_START_DAYS[(month - 1) as usize];
-    if month > 2 && is_leap_year(year) {
+    if february_offset_applies(month, year) {
         start += 1;
     }
     start
+}
+
+fn february_offset_applies(month: u32, year: u32) -> bool {
+    month > 2 && is_leap_year(year)
 }
 
 fn epoch_seconds(days: i64, hour: u32, minute: u32, second: u32) -> Option<u64> {
