@@ -11,6 +11,11 @@
 //! stop flags. Joining costs at most one confirmation poll interval plus
 //! any in-flight request (D-T2-16(a) carried: NO request-level timeout).
 //!
+//! Worker duty (record D-T3-A): on `GateFinish::Confirmed` the thread
+//! spawns the chat worker from `GatePlan::chat_worker` and records its
+//! `JoinHandle`; `finish()` joins the gate thread FIRST, then the worker
+//! (§2.3 refinement). `None` spawns nothing.
+//!
 //! On success the thread also emits the watch-link info event (D-T2W-1).
 //!
 //! D-T3-12 (recorded, voided behavior): post-start the runtime polls O4
@@ -29,6 +34,8 @@ use crate::youtube::{
     wait_until_stream_active, LiveApiError, LiveApiTransport, StreamObservationRequest,
     WaitCanceller,
 };
+
+use super::chat_worker::{spawn_chat_worker, ChatWorkerPlan};
 
 #[path = "gate_diagnostics.rs"]
 mod gate_diagnostics;
@@ -50,6 +57,7 @@ pub(super) struct GatePlan {
     pub(super) stream_id: String,
     pub(super) watch_url: String,
     pub(super) stop_flag: StopFlag,
+    pub(super) chat_worker: Option<ChatWorkerPlan>,
 }
 
 /// The recorded outcome of the confirmation gate (the primary-error
@@ -65,6 +73,7 @@ pub(super) enum GateFinish {
 /// once by the thread, read once after the join.
 struct GateState {
     outcome: Option<GateFinish>,
+    chat_worker: Option<JoinHandle<()>>,
 }
 
 /// A spawned confirmation gate awaiting its join.
@@ -74,18 +83,25 @@ pub(super) struct SpawnedGate {
 }
 
 pub(super) fn spawn_startup_gate(plan: GatePlan) -> SpawnedGate {
-    let state = Arc::new(Mutex::new(GateState { outcome: None }));
+    let state = Arc::new(Mutex::new(GateState {
+        outcome: None,
+        chat_worker: None,
+    }));
     let thread_state = Arc::clone(&state);
     let handle = thread::spawn(move || run_confirmation(plan, &thread_state));
     SpawnedGate { handle, state }
 }
 
 impl SpawnedGate {
-    /// Joins the confirmation thread, then reads the recorded outcome. A
-    /// join failure or a thread that recorded nothing (a panic before the
-    /// write) both map to `Panicked` — never a panic here.
+    /// Joins the confirmation thread, then the recorded chat worker, then
+    /// reads the recorded outcome. A join failure or a thread that
+    /// recorded nothing (a panic before the write) both map to
+    /// `Panicked` — never a panic here. The worker join runs even when
+    /// the gate thread itself panicked.
     pub(super) fn finish(self) -> GateFinish {
-        if self.handle.join().is_err() {
+        let gate_panicked = self.handle.join().is_err();
+        join_recorded_chat_worker(&self.state);
+        if gate_panicked {
             return GateFinish::Panicked;
         }
         match self.state.lock() {
@@ -141,6 +157,8 @@ fn run_confirmation(plan: GatePlan, state: &Mutex<GateState>) {
         Ok(()) => {
             info!("stream confirmed active on YouTube");
             info!(watch_url = %plan.watch_url, "{}", WATCH_LINK_MESSAGE);
+            let chat_worker = plan.chat_worker.map(spawn_chat_worker);
+            record_chat_worker(state, chat_worker);
             GateFinish::Confirmed
         }
         Err(LiveApiError::WaitCancelled) => GateFinish::Cancelled,
@@ -152,6 +170,22 @@ fn run_confirmation(plan: GatePlan, state: &Mutex<GateState>) {
     };
     if let Ok(mut recorded) = state.lock() {
         recorded.outcome = Some(outcome);
+    }
+}
+
+fn record_chat_worker(state: &Mutex<GateState>, chat_worker: Option<JoinHandle<()>>) {
+    if let Ok(mut recorded) = state.lock() {
+        recorded.chat_worker = chat_worker;
+    }
+}
+
+fn join_recorded_chat_worker(state: &Arc<Mutex<GateState>>) {
+    let worker = state
+        .lock()
+        .ok()
+        .and_then(|mut recorded| recorded.chat_worker.take());
+    if let Some(worker) = worker {
+        let _ = worker.join();
     }
 }
 

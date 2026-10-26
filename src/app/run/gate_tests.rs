@@ -24,6 +24,7 @@ fn gate_plan(transport: Arc<ScriptedTransport>, cancellation: WaitCanceller) -> 
         stream_id: FIXTURE_STREAM_ID.to_string(),
         watch_url: public_watch_url(BROADCAST_ID_FIXTURE),
         stop_flag: StopFlag::new(),
+        chat_worker: None,
     }
 }
 

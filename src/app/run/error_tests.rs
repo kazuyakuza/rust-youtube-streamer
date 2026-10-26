@@ -8,7 +8,7 @@
 
 use std::io;
 
-use crate::app::pipeline::{FramePipelineError, InterruptHandlerError};
+use crate::app::pipeline::{ChatRetrievalError, FramePipelineError, InterruptHandlerError};
 use crate::app::run::error::RunError;
 use crate::app::run::gate::GateFinish;
 use crate::app::run::streaming::primary_shutdown_outcome;
@@ -30,6 +30,9 @@ fn all_run_errors() -> Vec<RunError> {
         RunError::Broadcast(LiveApiError::LiveStreamingNotEnabled),
         RunError::Pipeline(pipeline_failure()),
         RunError::GateThreadStopped,
+        RunError::ChatRetrieval(ChatRetrievalError::Transport {
+            detail: "fixture".to_string(),
+        }),
     ]
 }
 
@@ -114,4 +117,34 @@ fn primary_shutdown_outcome_matrix_is_deterministic() {
     ));
     assert!(primary_shutdown_outcome(Ok(()), GateFinish::Confirmed).is_ok());
     assert!(primary_shutdown_outcome(Ok(()), GateFinish::Cancelled).is_ok());
+}
+
+#[test]
+fn chat_retrieval_failure_maps_to_the_chat_funnel_without_masking_the_gate() {
+    let rendered = RunError::ChatRetrieval(ChatRetrievalError::Transport {
+        detail: "fixture".to_string(),
+    })
+    .to_string();
+    assert_eq!(
+        rendered,
+        "live chat transport failed after repeated attempts: fixture"
+    );
+
+    let chat_retrieval = || {
+        FramePipelineError::ChatRetrieval(ChatRetrievalError::Transport {
+            detail: "fixture".to_string(),
+        })
+    };
+    let gate_outranks =
+        primary_shutdown_outcome(Err(chat_retrieval()), GateFinish::Fatal(gate_fatal()));
+    assert!(
+        matches!(gate_outranks, Err(RunError::Broadcast(_))),
+        "gate-Fatal outranks the chat failure (D-9 pin)"
+    );
+
+    let chat_is_primary = primary_shutdown_outcome(Err(chat_retrieval()), GateFinish::Confirmed);
+    let error = chat_is_primary.expect_err("the chat failure is primary when the gate is healthy");
+    assert!(matches!(error, RunError::ChatRetrieval(_)));
+    assert_eq!(error.exit_code(), 1);
+    assert!(!error.is_stop_request_cancellation());
 }

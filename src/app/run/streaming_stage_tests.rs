@@ -10,8 +10,9 @@ use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
 use crate::app::pipeline::{prepared_stream_pipeline, StopFlag, StreamParts};
+use crate::app::run::chat_worker::chat_channel;
 use crate::app::run::runtime_test_fixtures::DESTINATION_URL_FIXTURE;
-use crate::app::run::source::ChatFreeSource;
+use crate::app::run::source::ChatSource;
 use crate::config::valid_config;
 use crate::streaming::{CompletedOutput, RtmpsDestination};
 
@@ -40,11 +41,15 @@ fn stream_pipeline_passes_the_destination_to_the_ffmpeg_argv() {
         .into_owned();
     let stop_flag = StopFlag::new();
     stop_flag.request_stop();
+    // The run is pre-stopped: the source is constructed from the bounded
+    // channel bundle but never polled in this zero-frame run.
+    let channel = chat_channel();
+    let source = ChatSource::new(channel.receiver, channel.terminal);
 
     let pipeline = prepared_stream_pipeline(
         &config,
         StreamParts {
-            source: Box::new(ChatFreeSource),
+            source: Box::new(source),
             stop_flag,
             destination: RtmpsDestination::new(DESTINATION_URL_FIXTURE.to_string()),
         },

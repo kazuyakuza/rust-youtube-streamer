@@ -8,7 +8,7 @@ use crate::app::pipeline::clock::{FrameClock, SystemFrameClock};
 use crate::app::pipeline::error::FramePipelineError;
 use crate::app::pipeline::interrupt::StopFlag;
 use crate::app::pipeline::pacing::{PacingSchedule, PipelinePacing};
-use crate::app::pipeline::source::MessageSource;
+use crate::app::pipeline::{source::MessageSource, source_error::pipeline_source_failure};
 use crate::chat::{ChatStore, ChatStoreSettings};
 use crate::config::model::AppConfig;
 use crate::renderer::{Frame, RenderInput, Renderer, RendererSettings, TextRenderer};
@@ -93,11 +93,11 @@ impl<S: FrameSink> FramePipeline<S> {
     /// Message seam call point (S5): top of every iteration, before render;
     /// at most one message per frame so arrival never outruns the pacing.
     fn accept_next_message(&mut self) -> Result<(), FramePipelineError> {
-        if let Some(message) = self
+        let due = self
             .source
             .next_message()
-            .map_err(FramePipelineError::Chat)?
-        {
+            .map_err(pipeline_source_failure)?;
+        if let Some(message) = due {
             self.chat_store
                 .accept(message)
                 .map_err(FramePipelineError::Chat)?;
@@ -197,3 +197,7 @@ fn build_renderer(config: &AppConfig) -> Result<Box<dyn Renderer>, FramePipeline
     let renderer = TextRenderer::new(settings).map_err(FramePipelineError::Render)?;
     Ok(Box::new(renderer))
 }
+
+#[cfg(test)]
+#[path = "runner_retrieval_tests.rs"]
+mod runner_retrieval_tests;

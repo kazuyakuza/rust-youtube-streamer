@@ -7,8 +7,8 @@ use std::sync::Arc;
 use crate::app::pipeline::StopFlag;
 use crate::config::AppConfig;
 use crate::youtube::{
-    AccessToken, AuthorizationVerifier, CredentialStore, LiveApiTransport, TokenEndpointTransport,
-    WaitCanceller,
+    AccessToken, AuthorizationVerifier, CredentialStore, LiveApiTransport, LiveChatTransport,
+    TokenEndpointTransport, WaitCanceller,
 };
 
 /// The Ctrl+C pair handed to the startup (one handler, both flags).
@@ -31,9 +31,19 @@ pub(super) struct ServiceStops<'a> {
 /// transport satisfies it directly — no Mutex wrapper was needed).
 pub(super) type BroadcastTransport = Arc<dyn LiveApiTransport + Send + Sync>;
 
-/// Tests substitute the fake here; production builds the concrete ureq
-/// transport from the verified access token.
-pub(super) type TransportFactory<'a> = Box<dyn FnOnce(AccessToken) -> BroadcastTransport + 'a>;
+/// The chat-side shared transport handle (same Send+Sync wrapper form).
+pub(super) type ChatTransport = Arc<dyn LiveChatTransport + Send + Sync>;
+
+/// The transport factory's result: BOTH handles coerce from the ONE
+/// concrete `Arc<GoogleLiveApiTransport>` (one token, one instance).
+pub(super) struct BroadcastTransports {
+    pub(super) live: BroadcastTransport,
+    pub(super) chat: ChatTransport,
+}
+
+/// Tests substitute the fakes here; production builds the concrete ureq
+/// transport from the verified access token (both handles from one Arc).
+pub(super) type TransportFactory<'a> = Box<dyn FnOnce(AccessToken) -> BroadcastTransports + 'a>;
 
 /// The whole startup after the Ctrl+C pair install, parameterized for
 /// offline testing (≤2-args rule via parameter object).

@@ -8,8 +8,8 @@
 //! finalize the sink exactly once.
 
 use crate::app::demo::schedule::DemoTimeline;
-use crate::app::pipeline::{MessageSource, StopFlag};
-use crate::chat::{ChatError, ChatMessage};
+use crate::app::pipeline::{ChatSourceError, MessageSource, StopFlag};
+use crate::chat::ChatMessage;
 
 pub(crate) struct DemoMessageSource {
     timeline: DemoTimeline,
@@ -31,7 +31,7 @@ impl DemoMessageSource {
 }
 
 impl MessageSource for DemoMessageSource {
-    fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatError> {
+    fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatSourceError> {
         let frame_index = self.current_frame_index;
         let is_end = frame_index >= self.timeline.final_frame_index();
         self.current_frame_index += 1;

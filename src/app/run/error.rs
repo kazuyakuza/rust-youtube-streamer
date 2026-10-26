@@ -9,7 +9,7 @@
 use std::fmt;
 
 use crate::app::error::STARTUP_FAILURE_EXIT;
-use crate::app::pipeline::{FramePipelineError, InterruptHandlerError};
+use crate::app::pipeline::{ChatRetrievalError, FramePipelineError, InterruptHandlerError};
 use crate::youtube::{
     ClientConfigError, CredentialServiceError, LiveApiError, TokenEndpointError, REQUIRED_SCOPE,
 };
@@ -27,6 +27,9 @@ pub(super) enum RunError {
     Broadcast(LiveApiError),
     Pipeline(FramePipelineError),
     GateThreadStopped,
+    /// The typed chat-retrieval funnel class (record D-8/D-9): the
+    /// production source's terminal cell, surfaced as ONE redacted line.
+    ChatRetrieval(ChatRetrievalError),
 }
 
 impl RunError {
@@ -57,6 +60,7 @@ impl fmt::Display for RunError {
             RunError::Broadcast(error) => write!(formatter, "{error}"),
             RunError::Pipeline(error) => write!(formatter, "{error}"),
             RunError::GateThreadStopped => format_gate_thread_stopped(formatter),
+            RunError::ChatRetrieval(error) => write!(formatter, "{error}"),
         }
     }
 }

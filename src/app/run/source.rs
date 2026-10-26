@@ -1,17 +1,50 @@
-//! The chat-free message source of the Phase-05 production run path
-//! (plan D-T3-2 stage 9): the frame loop stays continuous and independent
-//! of chat activity — it yields no message, ever. The chat-source seam
-//! (`app::pipeline::source`) stays BYTE-unchanged for Phase 06, which
-//! replaces this with a real YouTube chat listener; no chat source is
-//! constructed anywhere in Phase 05 (user ruling, global plan §1.3).
+//! The production chat-backed message source (Phase 06 Task 3; record
+//! D-5/D-8/D-9): it owns the bounded channel's receiver + the worker's
+//! shared terminal cell and drains NON-blocking (`try_recv`), so the
+//! frame loop NEVER waits on chat: `Empty` → `Ok(None)` (frames keep
+//! flowing through idle/slow/reconnecting chat), a queued message →
+//! `Some(message)` (one per frame), `Disconnected` → consult the cell —
+//! a stored retrieval error surfaces ONCE (`take`), then `Ok(None)`
+//! forever; an empty cell (graceful `ChatEnded`/`offlineAt` end, or the
+//! pre-spawn/post-shutdown states) yields `Ok(None)` forever.
 
-use crate::app::pipeline::MessageSource;
-use crate::chat::{ChatError, ChatMessage};
+use std::sync::mpsc::{Receiver, TryRecvError};
+use std::sync::{Arc, Mutex};
 
-pub(super) struct ChatFreeSource;
+use crate::app::pipeline::{ChatRetrievalError, ChatSourceError, MessageSource};
+use crate::chat::ChatMessage;
 
-impl MessageSource for ChatFreeSource {
-    fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatError> {
-        Ok(None)
+pub(super) struct ChatSource {
+    receiver: Receiver<ChatMessage>,
+    terminal: Arc<Mutex<Option<ChatRetrievalError>>>,
+}
+
+impl ChatSource {
+    pub(super) fn new(
+        receiver: Receiver<ChatMessage>,
+        terminal: Arc<Mutex<Option<ChatRetrievalError>>>,
+    ) -> Self {
+        Self { receiver, terminal }
+    }
+
+    fn take_terminal_failure(&self) -> Option<ChatRetrievalError> {
+        self.terminal.lock().ok().and_then(|mut cell| cell.take())
     }
 }
+
+impl MessageSource for ChatSource {
+    fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatSourceError> {
+        match self.receiver.try_recv() {
+            Ok(message) => Ok(Some(message)),
+            Err(TryRecvError::Empty) => Ok(None),
+            Err(TryRecvError::Disconnected) => match self.take_terminal_failure() {
+                Some(error) => Err(ChatSourceError::Retrieval(error)),
+                None => Ok(None),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "chat_source_tests.rs"]
+mod chat_source_tests;

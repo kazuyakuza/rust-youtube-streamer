@@ -67,7 +67,7 @@
 //! consuming phase; every item-level allow retired with its consumer.
 //! The only remaining `#[allow(dead_code)]` items anywhere in `src/` are
 //! the pre-existing Phase-03/04 reservations (`AuthError::CallbackAbandoned`,
-//! `ChatMessage::with_timestamp`, `ChatStore::is_empty`,
+//! `ChatStore::is_empty`,
 //! `REVOCATION_ENDPOINT`, `Authorized.state`,
 //! `AuthorizationError::ProviderDeclined`).
 //!
@@ -79,9 +79,12 @@
 //! live-chat-client-mapping.md`; record D-1..D-4/D-7): the chat seam, concrete
 //! transport, O6 resolution, mapping, dedup and models + 2 `LiveApiError` chat
 //! classes; youtube stays chat-free (`crate::chat` is Task 3's); zero new deps.
+//! Task-3 consumption (Phase 06 Task 3): the run-mode chat worker in
+//! `app::run::chat_worker` roots the chain — it resolves the chat id,
+//! lists pages through `LiveChatTransport`, and maps carriers via
+//! `map_page` (the app side builds `ChatMessage`); the 2 pinned
+//! re-export stagings below stay by record C-1.
 
-// Wired by Task 3's chat worker (record §4); retire when consumption lands.
-#[allow(dead_code)]
 mod api_chat_transport;
 mod api_request;
 mod api_transport;
@@ -94,18 +97,11 @@ mod error;
 mod file_credential_store;
 mod google_authorization_verifier;
 mod google_live_api_transport;
-// Implemented against the concrete transport; same Task-3 retirement.
-#[allow(dead_code)]
 mod google_live_chat_transport;
 mod google_token_endpoint;
-// Wired by Task 3's chat worker (record §4); retire when consumption lands.
-#[allow(dead_code)]
 mod live_chat_dedup;
-#[allow(dead_code)]
 mod live_chat_mapping;
-#[allow(dead_code)]
 mod live_chat_models;
-#[allow(dead_code)]
 mod live_chat_resolution;
 mod live_error;
 mod live_ingestion;
@@ -134,8 +130,6 @@ mod wait_cancellation;
 #[cfg(test)]
 mod live_test_fixtures;
 
-// Task-2 chat re-exports: Task-3's consumption surface (record §4) — compiler-named allow until it lands.
-#[allow(unused_imports)]
 pub(crate) use api_chat_transport::LiveChatTransport;
 pub(crate) use api_transport::LiveApiTransport;
 pub(crate) use authorization::{
@@ -153,17 +147,22 @@ pub(crate) use file_credential_store::FileCredentialStore;
 pub(crate) use google_authorization_verifier::GoogleAuthorizationVerifier;
 pub(crate) use google_live_api_transport::GoogleLiveApiTransport;
 pub(crate) use google_token_endpoint::GoogleTokenEndpoint;
-// Same Task-3 consumption staging as the `LiveChatTransport` re-export.
-#[allow(unused_imports)]
 pub(crate) use live_chat_dedup::ChatDedupWindow;
+// Phase-06 Task 3: `ChatPageOutcome` is a pinned C-1 surface name the
+// worker only infers — clippy-named allow (plan §6(f)).
 #[allow(unused_imports)]
-pub(crate) use live_chat_mapping::{
-    map_page, parse_rfc3339_seconds, ChatPageOutcome, ChatTextMessage,
-};
-#[allow(unused_imports)]
-pub(crate) use live_chat_models::{chat_messages_path, ChatListCommand, LiveChatMessageList};
-#[allow(unused_imports)]
+pub(crate) use live_chat_mapping::{map_page, ChatPageOutcome, ChatTextMessage};
+pub(crate) use live_chat_models::{ChatListCommand, LiveChatMessageList};
 pub(crate) use live_chat_resolution::resolve_live_chat_id;
+// Pinned Task-3 consumption surface (record C-1); the mapping helper runs
+// inside youtube and stays unconsumed at the crate root.
+#[allow(unused_imports)]
+pub(crate) use live_chat_mapping::parse_rfc3339_seconds;
+// Same pinned-surface staging: the chat path builder runs inside youtube.
+#[allow(unused_imports)]
+pub(crate) use live_chat_models::chat_messages_path;
+#[cfg(test)]
+pub(crate) use live_chat_resolution::resolve_live_chat_id_with_interval;
 pub(crate) use live_error::LiveApiError;
 pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
 pub(crate) use live_models::LiveStream;

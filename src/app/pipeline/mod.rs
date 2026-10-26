@@ -14,6 +14,7 @@ mod interrupt;
 mod pacing;
 mod runner;
 mod source;
+mod source_error;
 
 pub(crate) use error::FramePipelineError;
 pub(crate) use interrupt::{
@@ -23,6 +24,7 @@ pub(crate) use runner::{
     prepared_pipeline, prepared_stream_pipeline, PipelineConstruction, StreamParts,
 };
 pub(crate) use source::MessageSource;
+pub(crate) use source_error::{ChatRetrievalError, ChatSourceError};
 
 #[cfg(test)]
 pub(crate) use pacing::PipelinePacing;

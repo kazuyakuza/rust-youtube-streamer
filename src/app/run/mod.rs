@@ -2,18 +2,21 @@
 //! 10-stage startup (Ctrl+C pair → credentials/authorization → the
 //! run-side permission gate → transport → broadcast/stream resources →
 //! the ONE destination reveal → FFmpeg start → the thread-parallel
-//! post-start confirmation gate → the continuous chat-free frame loop →
+//! post-start confirmation gate → the continuous chat-backed frame loop →
 //! ordered shutdown), its exit funnel, and (in `seams`) the testability
 //! parameter objects. Resource fate (D-T3-6 rule 8): NEVER delete, NEVER transition — with
 //! `enableAutoStop=true` the broadcast auto-completes ~1 minute after
 //! ingestion ends; startup failures AFTER O1/O2 leave the created `ready`
 //! resources in place (repeat-run accumulation is the documented
 //! limitation; operators delete stale resources in YouTube Studio).
-//! Live Chat is OUT of Phase 05 (user ruling): the frame pipeline runs
-//! chat-free and the `MessageSource` seam stays byte-unchanged for
-//! Phase 06.
+//! Phase 06 wires the real chat worker at stage 7.5: the worker thread
+//! spawns at gate `Confirmed` and joins in `gate.finish()` (the §2.2/§2.3
+//! refinement notes live in `chat_worker`/`streaming`).
 
 mod broadcast;
+mod chat_failure;
+mod chat_worker;
+mod chat_worker_delivery;
 mod credentials;
 mod error;
 mod gate;
@@ -34,7 +37,7 @@ use broadcast::{prepare_broadcast, public_watch_url, StageRuntime};
 use credentials::{authorize_from_service, authorize_scope_evidence, establish_credentials};
 use error::RunError;
 use gate::{spawn_startup_gate, GatePlan};
-use seams::{RunStops, RuntimeStart, ServiceStops};
+use seams::{BroadcastTransports, RunStops, RuntimeStart, ServiceStops};
 use streaming::{PreparedStreaming, StreamingExecution, StreamingRunner};
 
 /// Exit code of a clean run stop (D-T3-8).
@@ -88,7 +91,11 @@ fn run_outcome(app_config: &AppConfig) -> Result<(), RunError> {
         stops,
         service,
         build_transport: Box::new(|access_token| {
-            Arc::new(GoogleLiveApiTransport::new(access_token))
+            let transport = Arc::new(GoogleLiveApiTransport::new(access_token));
+            BroadcastTransports {
+                live: transport.clone(),
+                chat: transport,
+            }
         }),
     };
     run_runtime(start, &PreparedStreaming)
@@ -127,9 +134,9 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
     };
     let verified = authorize_from_service(&service)?;
     authorize_scope_evidence(&verified)?;
-    let transport = (start.build_transport)(verified.access_token);
+    let transports = (start.build_transport)(verified.access_token);
     let stage = StageRuntime {
-        transport: transport.as_ref(),
+        transport: transports.live.as_ref(),
         cancellation: &start.stops.canceller,
     };
     let prepared = prepare_broadcast(start.config, &stage).map_err(RunError::Broadcast)?;
@@ -139,18 +146,26 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
     );
     let watch_url = public_watch_url(prepared.broadcast_id());
     let stream_id = prepared.stream_id().to_string();
+    let broadcast_id = prepared.broadcast_id().to_string();
     let destination = RtmpsDestination::new(prepared.into_ingestion().into_url());
+    let (source, chat_worker) = chat_worker::build_chat_stage(
+        transports.chat,
+        &broadcast_id,
+        start.stops.stop_flag.clone(),
+    );
     let gate = spawn_startup_gate(GatePlan {
-        transport: Arc::clone(&transport),
+        transport: transports.live,
         cancellation: start.stops.canceller.clone(),
         stream_id: stream_id.clone(),
         watch_url: watch_url.clone(),
         stop_flag: start.stops.stop_flag.clone(),
+        chat_worker: Some(chat_worker),
     });
     runner.run(
         start.config,
         StreamingExecution {
             stop_flag: start.stops.stop_flag,
+            source,
             canceller: start.stops.canceller,
             destination,
             stream_id,

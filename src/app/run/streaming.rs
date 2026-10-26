@@ -2,7 +2,9 @@
 //! runner seam, the execution bundle handed to it, the production
 //! [`PreparedStreaming`] implementation, and the pure primary-error
 //! selector. Shutdown order encoded here: the frame loop ends via the
-//! shared `StopFlag` (at most one frame interval of latency), a pipeline
+//! shared `StopFlag` (at most one frame interval of latency; the chat
+//! worker SHARES that flag and is flag-stopped concurrently, joined in
+//! `gate.finish()` after the sink EOF — the §2.3 refinement), a pipeline
 //! failure cancels the confirmation wait BEFORE the gate join, the gate
 //! join costs at most one confirmation poll interval plus any in-flight
 //! request (D-T2-16(a): no request-level timeout), and EXACTLY ONE primary
@@ -19,18 +21,18 @@ use crate::youtube::WaitCanceller;
 
 use super::error::RunError;
 use super::gate::{GateFinish, SpawnedGate};
-use super::source::ChatFreeSource;
+use super::source::ChatSource;
 
 /// The streaming-stage runner seam (D-T3-9): production starts FFmpeg
-/// toward the destination, runs the paced chat-free loop and completes
+/// toward the destination, runs the paced chat-backed loop and completes
 /// the ordered shutdown; tests inject a recording fake. `&self` (the
 /// plan's `self` variant cannot be called through `&dyn StreamingRunner`
 /// — object safety; the compiler-arbitrated adaptation keeps every other
 /// shape identical).
 pub(super) trait StreamingRunner: Send {
     /// Production: starts FFmpeg toward the destination, launches the
-    /// startup gate, runs the paced chat-free loop, completes the ordered
-    /// shutdown.
+    /// startup gate, runs the paced chat-backed loop, completes the
+    /// ordered shutdown.
     fn run(&self, app_config: &AppConfig, execution: StreamingExecution) -> Result<(), RunError>;
 }
 
@@ -38,8 +40,11 @@ pub(super) trait StreamingRunner: Send {
 /// (D-T3-9). `destination` carries the redacting `Debug`; there is no url
 /// accessor. `stream_id` and `watch_url` ride along as non-secret operator
 /// diagnostics for recorded-test capture (the gate owns its own copy).
+/// The pre-built production `source` rides the bundle (constructed in
+/// stage 7.5).
 pub(super) struct StreamingExecution {
     pub(super) stop_flag: StopFlag,
+    pub(super) source: ChatSource,
     pub(super) canceller: WaitCanceller,
     pub(super) destination: RtmpsDestination,
     pub(super) stream_id: String,
@@ -72,6 +77,7 @@ impl StreamingRunner for PreparedStreaming {
     fn run(&self, app_config: &AppConfig, execution: StreamingExecution) -> Result<(), RunError> {
         let StreamingExecution {
             stop_flag,
+            source,
             canceller,
             destination,
             // The bundle copies exist for recorded-test capture; the
@@ -83,7 +89,7 @@ impl StreamingRunner for PreparedStreaming {
         let pipeline = prepared_stream_pipeline(
             app_config,
             StreamParts {
-                source: Box::new(ChatFreeSource),
+                source: Box::new(source),
                 stop_flag: stop_flag.clone(),
                 destination,
             },
@@ -94,12 +100,23 @@ impl StreamingRunner for PreparedStreaming {
         log_stream_shutdown_evidence(&stream_outcome);
         // D-T3-6 rule 2: on a frame-pipeline FATAL the confirmation wait is
         // cancelled BEFORE the gate join, so a mid-interval wait ends on its
-        // next attempt check instead of running to its budget.
+        // next attempt check instead of running to its budget. The stop-flag
+        // flip (§2.3) ends the shared-flag chat worker during the sink EOF.
         if stream_outcome.is_err() {
+            stop_flag.request_stop();
             canceller.request_cancel();
         }
         let gate_finish = gate.finish();
         primary_shutdown_outcome(stream_outcome.map(|_completed| ()), gate_finish)
+    }
+}
+
+/// D-8/D-9 funnel: a chat-retrieval pipeline failure maps to the typed
+/// chat variant; every other pipeline failure keeps the existing variant.
+pub(super) fn pipeline_error(error: FramePipelineError) -> RunError {
+    match error {
+        FramePipelineError::ChatRetrieval(retrieval) => RunError::ChatRetrieval(retrieval),
+        other => RunError::Pipeline(other),
     }
 }
 
@@ -112,7 +129,7 @@ pub(super) fn primary_shutdown_outcome(
 ) -> Result<(), RunError> {
     match (stream_outcome, gate_finish) {
         (_, GateFinish::Fatal(error)) => Err(RunError::Broadcast(error)),
-        (Err(error), _) => Err(RunError::Pipeline(error)),
+        (Err(error), _) => Err(pipeline_error(error)),
         (Ok(()), GateFinish::Panicked) => Err(RunError::GateThreadStopped),
         (Ok(()), GateFinish::Confirmed | GateFinish::Cancelled) => Ok(()),
     }

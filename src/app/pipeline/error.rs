@@ -10,6 +10,8 @@ use crate::chat::ChatError;
 use crate::renderer::RenderError;
 use crate::streaming::StreamingError;
 
+use super::source_error::ChatRetrievalError;
+
 /// Fatal frame-pipeline failure, one variant per stage (chat message,
 /// rendering, setup geometry defense, sink output).
 #[derive(Debug)]
@@ -29,6 +31,9 @@ pub(crate) enum FramePipelineError {
     /// Streaming failures (spawn, frame write incl. broken pipe, wait,
     /// exit status, output finalization) reuse `StreamingError` as-is.
     Sink(StreamingError),
+    /// A typed chat-retrieval failure surfaced by the production source
+    /// (record D-8); distinct from the chat-store `Chat` class.
+    ChatRetrieval(ChatRetrievalError),
 }
 
 impl fmt::Display for FramePipelineError {
@@ -49,6 +54,9 @@ impl fmt::Display for FramePipelineError {
                 "rendered frame holds {actual} bytes but the pipeline requires exactly {expected} (width*height*3)"
             ),
             FramePipelineError::Sink(error) => write!(formatter, "frame output failed: {error}"),
+            FramePipelineError::ChatRetrieval(error) => {
+                write!(formatter, "chat retrieval failed: {error}")
+            }
         }
     }
 }
@@ -61,6 +69,7 @@ impl Error for FramePipelineError {
             FramePipelineError::FrameByteOverrun { .. } => None,
             FramePipelineError::FrameSizeMismatch { .. } => None,
             FramePipelineError::Sink(error) => Some(error),
+            FramePipelineError::ChatRetrieval(error) => Some(error),
         }
     }
 }

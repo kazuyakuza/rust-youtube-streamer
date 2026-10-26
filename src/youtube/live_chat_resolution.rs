@@ -32,7 +32,9 @@ pub(crate) fn resolve_live_chat_id(
 /// Signature = 3 args — the sanctioned readiness-constructor exception
 /// family (record D-T3-15); no canceller parameter (Task 3 owns stop
 /// wiring; the run-level flag handling is Task 3's stage 11).
-fn resolve_live_chat_id_with_interval(
+/// `pub(crate)` for the Phase-06 chat worker's cfg-split test path
+/// (re-injects the interval; production keeps the 5 000 ms default).
+pub(crate) fn resolve_live_chat_id_with_interval(
     transport: &dyn LiveChatTransport,
     broadcast_id: &str,
     interval_ms: u64,
