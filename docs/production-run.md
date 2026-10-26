@@ -10,6 +10,7 @@ Operator guide for the production `run` command: what one invocation does, what 
 - [What the Logs Look Like (Without Secrets)](#what-the-logs-look-like-without-secrets)
 - [Shutdown Behavior](#shutdown-behavior)
 - [Broadcast/Stream Fate (Policy and Honest Limitations)](#broadcaststream-fate-policy-and-honest-limitations)
+- [Live Chat (Behavior, Diagnostics, Recovery, Privacy, Quota)](#live-chat-behavior-diagnostics-recovery-privacy-quota)
 - [Ingest Probe Procedure (Operator-Run)](#ingest-probe-procedure-operator-run)
 - [Known Stream-Health Limitation (Pure-Black MVP Content)](#known-stream-health-limitation-pure-black-mvp-content)
 - [Manual Verification Procedure (Operator-Run)](#manual-verification-procedure-operator-run)
@@ -25,7 +26,7 @@ One `run` invocation:
 - streams continuous rendered frames to YouTube Live over RTMPS through the configured external FFmpeg executable (`ffmpeg.executable`);
 - writes no local recording in stream mode (the local MP4 behavior belongs to the `demo` command only); accepted incoming chat messages are appended to the configured chat log (`chat.log_file`).
 
-The frame loop is continuous and chat-backed: the `run` command now polls the created broadcast's Live Chat and renders newly received ordinary messages (author and text) onto the frames; between messages — or while chat is idle or slow — the frames stay black. Detailed Live Chat behavior, diagnostics, failure recovery, and privacy documentation is pending (Phase 06 documentation pass).
+The frame loop is continuous and chat-backed: the `run` command polls the created broadcast's Live Chat and renders newly received ordinary messages (author and text) onto the frames; between messages — or while chat is idle or slow — the frames stay black. Detailed Live Chat behavior, diagnostics, failure recovery, privacy, and quota documentation lives in the "Live Chat (Behavior, Diagnostics, Recovery, Privacy, Quota)" section below.
 
 ## Prerequisites
 
@@ -49,7 +50,7 @@ The ten-stage startup (in operator-facing wording; stop flags are armed before a
 7. The broadcast is bound to the stream (`liveBroadcasts.bind`); the `boundStreamId` in the response is asserted.
 8. A bounded readiness wait polls until the stream is ready — up to 180 seconds at a 5-second interval; the wait is cancellable by Ctrl+C.
 9. The RTMPS ingestion destination is acquired from the API response; it is kept secret and never printed.
-10. FFmpeg starts with the RTMPS-target argument set (FLV muxer, 2-second-target GOP derived from the configured FPS, no local output file). After FFmpeg has started, a post-start confirmation wait polls until YouTube reports `streamStatus == active` — up to 120 seconds at a 5-second interval, on a thread parallel with the frame loop (documented refinement of the startup sequence), then the continuous chat-backed frame loop runs (a bounded live-chat worker feeds incoming messages into it; the worker's startup/shutdown ordering details are part of the pending Phase 06 documentation pass).
+10. FFmpeg starts with the RTMPS-target argument set (FLV muxer, 2-second-target GOP derived from the configured FPS, no local output file). After FFmpeg has started, a post-start confirmation wait polls until YouTube reports `streamStatus == active` — up to 120 seconds at a 5-second interval, on a thread parallel with the frame loop (documented refinement of the startup sequence), then the continuous chat-backed frame loop runs (stage 7.5: the chat worker thread starts ONLY after the gate confirms `streamStatus == active`, first resolves the broadcast's live chat id with a bounded 30-second budget, then polls on the server-instructed interval; on Ctrl+C the worker stops FIRST, before FFmpeg's stdin is closed, and the join is bounded — ≤ ~1 s wake, ≤ ~30 s during the one-shot chat-id resolution window).
 
 Nothing is marked live until the API reports the stream active while FFmpeg is running: the broadcast is not started (`enableAutoStart`) until ingestion has begun, and the application does not declare success before the confirmation gate observes `streamStatus == active`.
 
@@ -64,16 +65,19 @@ The human-visible lines/events appear in this order (via `tracing` on stderr; st
 | 3 | `FFmpeg started toward the configured streaming destination` | after the spawn succeeded |
 | 4 | `stream confirmed active on YouTube` | after the post-start confirmation gate observes `streamStatus == active` |
 | 5 | `public watch link for the live stream` | carries the non-secret `watch_url` field — the watch URL built from the broadcast id, `https://www.youtube.com/watch?v=<broadcast_id>` (an unlisted broadcast is watchable by anyone holding the link; unlisted is not private) |
-| 6 | (gate-timeout only) `confirmation gate timed out; last observed streamStatus` | info; the `stream_status` field is the raw documented `status.streamStatus` label from the ONE tolerated final lookup at failure time (not a per-attempt history) — appears instead of rows 4–5 when the post-start confirmation gate exhausts its budget |
-| 6 | (gate-timeout, status unobservable) `confirmation gate timed out; the stream status could not be observed` | info; the tolerated final lookup yielded no label (the lookup itself failed, no stream was found, or the resource carries no label) |
-| 7 | (end of run, clean exit) `FFmpeg streaming process exited cleanly (exit status 0)` | info; the `exit_code` field; the same event carries `captured diagnostics follow: <redacted stderr tail>`, or `captured diagnostics follow: none captured` when the tail is empty |
-| 7 | (end of run, exit failure) `FFmpeg streaming process exited with a failure status` | **warn**; the `exit_code` field (`None` = signal death); the redacted tail follows in the same event — NEVER a second `error:` line (the single-`error:`-line contract holds) |
+| 6 | `live chat id resolved` | info; fires after the confirmation gate confirmed `streamStatus == active`; carries the non-secret `live_chat_id` field (an operator diagnostic of the same class as `broadcast_id`) |
+| 7 | `live chat baseline established; the history page was discarded` | info; fires once at the worker's first successful poll; carries `discarded_messages` (the count of history items dropped — messages sent before the stream went live never appear) |
+| 8 | `live chat ended; the stream continues without new chat messages` | info; the graceful end-of-chat signal; the video keeps flowing until Ctrl+C |
+| 9 | (gate-timeout only) `confirmation gate timed out; last observed streamStatus` | info; the `stream_status` field is the raw documented `status.streamStatus` label from the ONE tolerated final lookup at failure time (not a per-attempt history) — appears instead of rows 4–5 when the post-start confirmation gate exhausts its budget (the chat rows 6–8 never fire on this path — the worker is never spawned without a confirmed stream) |
+| 9 | (gate-timeout, status unobservable) `confirmation gate timed out; the stream status could not be observed` | info; the tolerated final lookup yielded no label (the lookup itself failed, no stream was found, or the resource carries no label) |
+| 10 | (end of run, clean exit) `FFmpeg streaming process exited cleanly (exit status 0)` | info; the `exit_code` field; the same event carries `captured diagnostics follow: <redacted stderr tail>`, or `captured diagnostics follow: none captured` when the tail is empty |
+| 10 | (end of run, exit failure) `FFmpeg streaming process exited with a failure status` | **warn**; the `exit_code` field (`None` = signal death); the redacted tail follows in the same event — NEVER a second `error:` line (the single-`error:`-line contract holds) |
 
-Ordering: the row-6 events fire only on the confirmation-gate timeout shutdown path, where the gate thread times out BEFORE the frame loop ends — the stop it requests ends the loop, so the row-7 exit evidence follows and both precede the single final `error:` line. Row 7 fires at the end of every run's frame loop: a normal Ctrl+C stop shows the clean-exit info line before the stdout stop line.
+Ordering: the row-9 events fire only on the confirmation-gate timeout shutdown path, where the gate thread times out BEFORE the frame loop ends — the stop it requests ends the loop, so the row-10 exit evidence follows and both precede the single final `error:` line. Row 10 fires at the end of every run's frame loop: a normal Ctrl+C stop shows the clean-exit info line before the stdout stop line. The chat rows 6–8 appear only on the confirmed-stream path (row 6 after row 5; row 7 at the worker's first successful poll; row 8 only if/when chat ends gracefully before Ctrl+C).
 
 Standing secret guarantees: OAuth tokens, refresh tokens, client secrets, stream keys, full RTMPS URLs, and authorization codes NEVER appear in logs, error lines, or diagnostics. FFmpeg's own stderr echo of the output URL is replaced with `[redacted]` in captured diagnostics, and the stream key/RTMPS URL is never embedded in command logs, error text, or debug output.
 
-Inspecting the logs: the `run` command writes no operational log file — every operational line is a `tracing` event on stderr. (The one file it appends is the chat log at `chat.log_file`: each accepted Live Chat message is recorded there — see [`docs/configuration.md`](configuration.md); chat-log privacy and handling are covered by the pending Phase 06 documentation pass.) Run the executable in a terminal to read the lines live, or redirect stderr to a file for later inspection (the secret guarantees above keep captured lines safe to store). Verbosity follows the exact, case-sensitive `RUST_LOG` environment variable (default `info`); e.g. `RUST_LOG=debug rust-youtube-streamer-service run`. Full filter semantics: [README's Logging (RUST_LOG) guide](../README.md#logging-rust_log).
+Inspecting the logs: the `run` command writes no operational log file — every operational line is a `tracing` event on stderr. (The one file it appends is the chat log at `chat.log_file`: each accepted Live Chat message is recorded there — see [`docs/configuration.md`](configuration.md); chat-log privacy and handling are covered by the "Privacy" subsection of the Live Chat section below.) Run the executable in a terminal to read the lines live, or redirect stderr to a file for later inspection (the secret guarantees above keep captured lines safe to store). Verbosity follows the exact, case-sensitive `RUST_LOG` environment variable (default `info`); e.g. `RUST_LOG=debug rust-youtube-streamer-service run`. Full filter semantics: [README's Logging (RUST_LOG) guide](../README.md#logging-rust_log).
 
 Identifying FFmpeg failures: every FFmpeg-origin failure ends the run with exit 1 and one `error:` line naming the stage:
 
@@ -118,17 +122,74 @@ Common ingestion/API failures (each surfaces as the single redacted `error:` lin
 - Authorization/scope — `access token rejected mid-run; run auth again`, `authorization lacks live permissions; run auth again`, or the scope-gate failure naming the required scope: re-authorize with `auth` ([`docs/authentication.md`](authentication.md) recovery table).
 - Length Required (HTTP 411) — `YouTube rejected request (HTTP 411, reason 'unspecified')`: surfaced before this fix when the bind request lacked a Content-Length header; FIXED in v0.9.1 (the transport sends `Content-Length: 0` on the bodyless bind POST; pinned by loopback tests). If it re-appears identically, capture the log line and report; delete the leftover `ready` broadcast/stream pair in YouTube Studio (the failed run leaves both — see the Broadcast/Stream Fate section above) before re-running.
 - Quota and rate limits — `YouTube quota or rate limit (reason '...'); retry later`, including `userBroadcastsExceedLimit` once accumulated stale resources hit the limit: delete stale broadcasts/streams in YouTube Studio and retry later; quota model: [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md).
-- Readiness timeouts — `YouTube readiness wait timed out (stage 'readiness')`, or the post-start confirmation timing out (stage `ingestion-confirmation`): both waits are bounded (180 s / 120 s at 5 s intervals); verify channel eligibility and API enablement, clean up leftover `ready` resources in YouTube Studio, then re-run. On an `ingestion-confirmation` timeout the run also logs the diagnostics evidence lines (table row 6 above); operator diagnosis procedure:
+- Readiness timeouts — `YouTube readiness wait timed out (stage 'readiness')`, or the post-start confirmation timing out (stage `ingestion-confirmation`): both waits are bounded (180 s / 120 s at 5 s intervals); verify channel eligibility and API enablement, clean up leftover `ready` resources in YouTube Studio, then re-run. On an `ingestion-confirmation` timeout the run also logs the diagnostics evidence lines (table row 9 above); operator diagnosis procedure:
 
   1. `confirmation gate timed out; last observed streamStatus stream_status="ready"` — YouTube never registered the ingest: the encode side is healthy (see item 4), so investigate the YouTube side — check Studio (made-for-kids channel setting — a per-stream declaration is available: `youtube.broadcast.made_for_kids` in `config/config.json` (docs/configuration.md); stream routing, channel live access, `docs/google-cloud-prerequisites.md` eligibility) and delete the orphaned `ready` broadcast + liveStream pair (the "Broadcast/Stream Fate" section above) before re-running.
   2. `…last observed streamStatus` naming another label (`inactive`, `error`, `created`) — treat it per the documented `liveStreams` status semantics; the `error` label points at the stream's own diagnostics; for the publish-succeeded-but-inactive/`No data` shape (FFmpeg exited cleanly with the full frame budget), run the Ingest Probe Procedure below before re-running.
   3. `…the stream status could not be observed` — the tolerated final lookup itself failed (network/API): resolve connectivity, delete stale Studio resources, then re-run.
-  4. The FFmpeg exit lines (table row 7 above) close the encode-side question: a clean exit (exit status 0) with a progress-line stderr tail means FFmpeg encoded and streamed frames for the full budget; a `warn` failure-status line names a broken-piped/encode process — its tail's last lines name the underlying cause, with the RTMPS URL pre-redacted.
+  4. The FFmpeg exit lines (table row 10 above) close the encode-side question: a clean exit (exit status 0) with a progress-line stderr tail means FFmpeg encoded and streamed frames for the full budget; a `warn` failure-status line names a broken-piped/encode process — its tail's last lines name the underlying cause, with the RTMPS URL pre-redacted.
   5. Studio cleanup reminder: each failed run leaves an orphaned `ready` pair per the fate policy — delete before re-running, or the account eventually hits `userBroadcastsExceedLimit`.
   6. Honest limits: the mid-loop broken-pipe shape (`writing a frame to the FFmpeg process failed: broken pipe …`) still cannot print the stderr tail (the drain threads are never joined on that path) — the single `error:` line remains the evidence surface there; and the logged streamStatus is the FINAL tolerated lookup's label at failure time, not a per-attempt history.
 
 - Broadcast-state conflicts — `broadcast state forbids this operation (reason '...')`: typically stale resources from earlier failing runs; clean them up in YouTube Studio and re-run.
 - Transient backend/network — `YouTube backend temporarily unavailable (reason '...')` or `unable to reach the YouTube API: ...`: resolve connectivity, then re-run.
+
+## Live Chat (Behavior, Diagnostics, Recovery, Privacy, Quota)
+
+### Prerequisites
+
+- Scopes: the already-granted `https://www.googleapis.com/auth/youtube.force-ssl` is documented-sufficient for BOTH chat calls the worker makes — `liveChatMessages.list` (message polling) and the `liveBroadcasts.list` chat-id lookup (official scope bindings; Task-1 research record §1.4, `.kilo/plans/20261025-phase06-task1-live-chat-research-design.md`). Re-running `auth` is NOT required for chat: there has been no scope change since Phase 04, so the existing credentials keep working.
+- The standing Google Cloud and channel prerequisites apply unchanged: the Google Cloud project with the YouTube Data API v3 enabled, a Desktop-app OAuth client, and live-streaming access on the channel — see [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md).
+- Live chat is enabled by default on live broadcasts and stays available while the event is active (official `liveChatMessage`/`video` resource semantics; Task-1 record §1.1).
+- There is NO new configuration field for chat: polling pacing is SERVER-PROVIDED ONLY (the API's `pollingIntervalMillis` response field) — nothing to configure, and no operator override exists.
+
+### Expected Behavior
+
+- Retrieval method: the worker POLLINGS `liveChatMessages.list` (GET `https://www.googleapis.com/youtube/v3/liveChat/messages`) honoring the server's `pollingIntervalMillis` and the `nextPageToken` continuation. The server-streaming `liveChatMessages.streamList` alternative was evaluated and REJECTED: it requires a gRPC server-streaming client — an async/gRPC dependency stack this synchronous service deliberately does not carry — and both methods cost the same 5 quota units per call, so polling buys nothing extra in quota (Task-1 record §2, decision D-1).
+- Worker timeline (operator terms): the worker thread starts ONLY after the confirmation gate observes `streamStatus == active`. Its FIRST act resolves the broadcast's `snippet.liveChatId` via `liveBroadcasts.list(part=snippet)` with a bounded budget (6 attempts × 5 s = 30 s); absence after the budget is a fatal typed error. The worker's first successful page is the BASELINE: ALL of its items are discarded (they are history — never queued, never logged), so messages sent before the stream went live do not appear. On later pages, ordinary text messages (author + text) are accepted at most one per frame, appended to the chat log, and rendered. Replayed message IDs are dropped (bounded dedup window). An empty page just advances the token — emptiness NEVER infers the chat ended. While chat is idle, slow, or between messages the frames continue (black when no visible text).
+- Message/event policy: ONLY `textMessageEvent` messages render. Super Chats, Super Stickers, membership/sponsor/gifting events, milestone chats, polls, bans, tombstones, and any unrecognized future event type are SKIPPED — never displayed, never logged.
+
+### Diagnostics
+
+The three chat events in the "What the Logs Look Like" table above (rows 6–8) are the success-path signals. Failures surface as typed errors through the single redacted `error:` line with exit 1:
+
+- `live chat is unavailable: <detail>` — chat disabled / not found / insufficient permissions, or the chat-id resolution budget exhausted.
+- `live chat retrieval stopped by YouTube quota: <detail>` — quota exhaustion.
+- `live chat transport failed after repeated attempts: <detail>` — the bounded transient retry budget exhausted.
+
+The `detail` is the redacted Display of the underlying typed YouTube error (e.g. the `liveChatDisabled`/`liveChatEnded`/`liveChatNotFound` reasons) — never a raw response body.
+
+### Failure Recovery
+
+| Situation | Documented symptom | Outcome | Recovery |
+| --- | --- | --- | --- |
+| Broadcast ended / chat closed | `chatEndedEvent`, `offlineAt`, or `403 liveChatEnded` | GRACEFUL: one info line, the worker stops, video keeps flowing until Ctrl+C | none needed |
+| Chat disabled on the broadcast | `403 liveChatDisabled` | fatal (exit 1) | confirm chat is enabled on the broadcast, then re-run |
+| Wrong/expired chat id | `404 liveChatNotFound` | fatal (exit 1) | re-run `run` (each run resolves its own broadcast's chat id) |
+| Permissions revoked mid-run | `403 forbidden` / 401-class | fatal (exit 1) | re-run `auth` ([`docs/authentication.md`](authentication.md) recovery table) |
+| Quota exhausted | `quotaExceeded` / `dailyLimitExceeded` | fatal (exit 1) | wait for the midnight PT reset, or apply for Google's quota-extension form (see the Quota subsection) |
+| Transient network/backend/malformed/`rateLimitExceeded` failures | classified transient errors | bounded retry — backoff = max(server interval, 1 s) × 2^(attempt−1), capped at 60 s; at most 10 consecutive failures — then a fatal transport error | resolve connectivity/backend cause, then re-run |
+
+Honest boundedness facts: a Ctrl+C stops the chat worker FIRST (before FFmpeg's stdin EOF); the join is bounded (≤ ~1 s wake; ≤ ~30 s worst case during the one-shot chat-id resolution window, where the worker sleeps in raw 5 s slices); and up to 64 queued-but-undelivered messages can be lost at shutdown — they are never logged, so the chat log and the video never diverge.
+
+### Privacy
+
+- NEVER logged anywhere (stderr events, error lines, or diagnostics): message text, author names/display names, individual users' message IDs, access tokens, authorization headers, raw response bodies, stream keys, RTMPS URLs.
+- The ONLY place message content (author + text) is recorded is the chat log file itself (`chat.log_file`, default `logs/chat.log`, gitignored under the `logs/*` rule) — that is its documented purpose.
+- The `live_chat_id` tracing field on the resolution line is a NON-secret operator diagnostic (same class as `broadcast_id`).
+
+### Quota (What Chat Polling Costs)
+
+Chat polls cost 5 units per call; the one-time chat-id resolution lookup costs 1 unit; the default project quota is 10,000 units/day, reset at midnight Pacific Time.
+
+| Chat poll interval (server) | Units/hour | Continuous-session hours before the 10,000/day default is exhausted |
+|---|---|---|
+| 5,000 ms | 3,600 | ≈ 2.8 h |
+| 10,000 ms | 1,800 | ≈ 5.5 h |
+| 13,000 ms | ≈ 1,385 | ≈ 7.2 h |
+| 20,000 ms | 900 | ≈ 11.1 h |
+
+Operator guidance: a one-off operator session of a few hours fits comfortably; a multi-hour unattended service can exhaust the $0 default — mid-stream exhaustion is typed-fatal (exit 1 with the honest error). The remedies are Google's documented quota-extension form or shorter sessions.
 
 ## Ingest Probe Procedure (Operator-Run)
 
@@ -266,7 +327,7 @@ The canonical safe test plan (D-T4-8). It is performed by the human operator aga
 3. Prereq check: valid `config/config.json` (all six sections), FFmpeg installed and `ffmpeg.executable` correct, credentials authorized via the documented `auth` run.
 4. Start: run the executable: `rust-youtube-streamer-service run`.
 5. Expected startup output (order only, no secrets): config/authorization progress; one `broadcast prepared for streaming` line carrying the broadcast_id; the FFmpeg-started line; the `stream confirmed active on YouTube` line; the `public watch link for the live stream` line carrying the public watch URL (the watch page of the noted broadcast_id, non-secret; an unlisted broadcast is watchable by anyone holding the link). NOTE the exact broadcast_id shown — it identifies the resources in later steps.
-6. Actual video arrival: open YouTube Studio → the broadcast enters live; verify real frames appear (continuous rendered video; with the Phase 06 chat worker wired into `run`, incoming ordinary chat messages render as author/text when present — the chat-bearing manual verification steps are part of the pending Phase 06 documentation pass). Confirm at least ~1–2 minutes of continuous video. Verify the broadcast is on the EXPECTED channel: one OAuth grant binds to one channel identity chosen at consent, and the application neither selects, surfaces, nor verifies which channel ([`docs/authentication.md`](authentication.md)) — if the broadcast appeared on a different channel, Ctrl+C-stop, re-run `auth` to select the intended channel, and repeat from step 4.
+6. Actual video arrival and live chat: open YouTube Studio → the broadcast enters live; verify real frames appear (continuous rendered video). Note: re-running `auth` is NOT required for chat (no scope change; `youtube.force-ssl` already covers the chat calls — run `auth` only per the existing recovery paths). Confirm video starts BEFORE any messages arrive (the stream opens black). Then, from a SEPARATE account, send ordinary text messages AFTER the stream is confirmed active; expect them to render as author/text on the watch page within the server's poll interval (allow up to ~30 s for one poll cycle + render). Confirm the same messages appear in the chat log (`logs/chat.log`, or the configured `chat.log_file`). Test an empty-chat period: frames continue, nothing is duplicated, and no history is replayed. Note that messages sent before the stream went live are history-discarded by design (the worker's first page is a baseline, never displayed). Confirm at least ~1–2 minutes of continuous video. Verify the broadcast is on the EXPECTED channel: one OAuth grant binds to one channel identity chosen at consent, and the application neither selects, surfaces, nor verifies which channel ([`docs/authentication.md`](authentication.md)) — if the broadcast appeared on a different channel, Ctrl+C-stop, re-run `auth` to select the intended channel, and repeat from step 4.
 7. Ctrl+C shutdown: after confirming video, press Ctrl+C. Expected: frame loop stops; the stdout line `streaming stopped; the broadcast auto-completes on YouTube after ingestion ends`; process exit code 0.
 8. Post-shutdown broadcast status: wait about 1–2 minutes (the `enableAutoStop` auto-complete window), then open YouTube Studio → confirm the broadcast identified in step 5 shows a completed/ended status (`complete`); record the observed transition moment. (This autoStop fact comes from the official Life-of-a-Broadcast documentation cited in the Phase-05 Task-1 plan — any deviation observed live is recorded honestly, never reconciled by editing the code.)
 9. On any startup failure: capture the single redacted `error:` line, verify no token/key text appears in it, and use the failure/recovery tables (this document's "Broadcast/Stream Fate" section, [`docs/authentication.md`](authentication.md)) — again keeping secrets private.
