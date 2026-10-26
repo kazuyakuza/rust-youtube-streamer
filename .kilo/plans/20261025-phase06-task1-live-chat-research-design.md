@@ -72,7 +72,7 @@ Out of scope for Task 1 (per global plan / caller): no `src` edits beyond what t
 
 ### 1.5 Message types, author details, publishedAt, text suitability (S1, S10)
 
-- `snippet.type` documented values (S1; proto enum in S4 gives the same set — the REST doc's list item for polls is written `pollDetails`, the proto enum says `POLL_EVENT`; treat the canonical value as `pollEvent` and match on the documented REST string in code-with-fallback, D-4):
+- `snippet.type` documented values (S1; proto enum in S4 gives the same set — The REST doc's `snippet.type` value for polls is `pollEvent` (the details object is named `pollDetails`); the proto enum says `POLL_EVENT`. Treat the canonical value as `pollEvent` and match on the documented REST string in code-with-fallback, D-4):
   `textMessageEvent`, `tombstone`, `chatEndedEvent`, `sponsorOnlyModeStartedEvent`, `sponsorOnlyModeEndedEvent`, `newSponsorEvent`, `memberMilestoneChatEvent`, `superChatEvent`, `superStickerEvent`, `userBannedEvent`, `membershipGiftingEvent`, `giftMembershipReceivedEvent`, `pollEvent`, `giftEvent`, plus the legacy/deprecated `fanFundingEvent` details block.
 - Value-bearing text per type (S1): only `textMessageEvent` carries an ordinary message (`snippet.textMessageDetails.messageText`). Super Chat (`superChatDetails.userComment`/`amountDisplayString`), Super Sticker, Member Milestone (`userComment`), New Sponsor (no comment field), gifting, gifts (jewels), bans, polls — ALL are events of the paid/membership/moderation family that brief §8.2 explicitly requires the MVP to ignore.
 - `snippet.displayMessage` is documented as "Contains a string that is displayed to users" and is "not present if the message type is `chatEndedEvent` or `tombstone`" — a generic rendered string, NOT the user's ordinary-text contract; this design does NOT use it (D-4: the accepted type's own `textMessageDetails.messageText` is the source of truth).
@@ -152,6 +152,7 @@ Poll loop (worker thread), per full cycle:
 2. `list` call (D-3). Classify:
    - 2xx → reset consecutive-failure counter; process per D-4/D-5; set `polling_interval = response.pollingIntervalMillis if present, else last-known, else DEFAULT_CHAT_POLL_INTERVAL_MS` (default constant **10_000 ms** — used only when the server sends no value; NEVER shorter than server guidance; never an operator override); `offlineAt` present → graceful terminal; sleep `polling_interval` in **1_000 ms stop-slices** (constant `CHAT_SLEEP_SLICE_MS = 1_000`) then continue.
    - Transient (`Network`, 5xx/`BackendUnavailable`, `MalformedResponse`, `rateLimitExceeded`, `quotaExceeded`-in-transient-cases is NOT transient — see terminal) → increment consecutive counter; sleep backoff = max(server interval, 1 s) × 2^(attempt−1) **capped at 60_000 ms** (constants `CHAT_BACKOFF_MAX_MS = 60_000`); continue while consecutive < **10** (`CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES = 10`).
+   - `LiveApiError::ChatEnded` (from `403 liveChatEnded`) → graceful terminal: worker exits cleanly without writing to the shared terminal cell; source yields `Ok(None)` forever. Do not treat as transient and do not treat as fatal.
    - Terminal (any of): `403 liveChatDisabled`, `404 liveChatNotFound`, `403 forbidden`, 401-class authorization rejection, quota-exhaustion reasons (`quotaExceeded`/`dailyLimitExceeded`) → write the typed failure into the shared cell (D-8) and break.
 3. Budget exhausted (10 consecutive transient) → shared cell = `Transport { detail }` → break.
 
@@ -164,6 +165,8 @@ Graceful vs fatal (S2's error table drives it):
 ### D-7 — Typed error mapping (chat side)
 
 - `src/youtube/live_error/` EXTENDED: `classify_api_error` gains the chat-reason arms — `liveChatDisabled` → NEW variant `LiveApiError::ChatDisabled` (15 → 16 variants), `liveChatEnded` → NEW variant `LiveApiError::ChatEnded`, `liveChatNotFound` → existing `ApiNotFound { resource: "live chat" }`, bare `forbidden` → existing `InsufficientPermissions` (verify the current mapping in classify.rs and only ADD where required); hand-written Display lines added for the two new variants (secret-free, no bodies).
+
+  This variant is consumed by the poll loop as a graceful end-of-chat signal (D-6), not as a fatal retrieval error.
 - The chat transport returns `Result<…, LiveApiError>` for BOTH wire calls (O6 lookup and O7 list), so the app funnels a single typed source.
 
 ### D-8 — `MessageSource` seam decision: minimal WIDENING of the trait's error type. No streaming-mechanism/concurrency semantics enter the trait.
@@ -197,7 +200,7 @@ Units/day burned by compliant polling = **5 units × (86,400,000 ms ÷ `pollingI
 | 13,000 ms | ≈ 1,385 | ≈ 7.2 h |
 | 20,000 ms | 900 | ≈ 11.1 h |
 
-Operator implications (encoded for Task-4 docs): a ONE-OFF operator session of a few hours fits comfortably; a multi-hour unattended service can exhaust the $0 default — mid-stream exhaustion is typed-fatal (exit 1 with the honest error), the remedy paths are Google's documented quota-extension form (S8 link) or accepting shorter sessions; logs_MESSAGE-budget note: readiness/confirmation polls (Phase-05, 1 unit each) are negligible (≈ 72 units per failed startup window at 5 s over 180+120 s).
+Operator implications (encoded for Task-4 docs): a ONE-OFF operator session of a few hours fits comfortably; a multi-hour unattended service can exhaust the $0 default — mid-stream exhaustion is typed-fatal (exit 1 with the honest error), the remedy paths are Google's documented quota-extension form (S8 link) or accepting shorter sessions. Note: readiness/confirmation polls (Phase-05, 1 unit each) are negligible (≈ 72 units per failed startup window at 5 s over 180+120 s).
 
 ### D-11 — Dependencies: ZERO new. `Cargo.toml` changes: version line ONLY.
 
