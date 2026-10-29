@@ -559,9 +559,10 @@ NOT done by Task 4 (owners): the live E2E and ALL live-Google claims = OPERATOR 
 ### L.1 Plan/commit records (observed)
 
 - Commit 1 `f12027a` `chore: track the phase07 task4 verification docs plan` (this plan only).
-- Commit 2 `7ab6eee` `feat: pin the chat-worker burst retention at the full channel` (2 files: `src/app/run/chat_worker.rs` +186/−0 net hunk, NEW `src/app/run/chat_worker_burst_tests.rs`, 80 insertions).
+- Commit 2 `7ab6eee` `feat: pin the chat-worker burst retention at the full channel` (2 files, 80 insertions: `src/app/run/chat_worker.rs` +4 (the registration block), NEW `src/app/run/chat_worker_burst_tests.rs` +76).
 - Commit 3 `1e16c3f` `docs: document the stream-backed live chat retrieval for operators` (3 files, +35/−31).
-- Commit 4 (metadata + reports + this §L) follows the doc set in §F.
+- Commit 4 `1c72eed` `docs: record phase 07 project metadata and completion report` (6 files, +315/−24: the metadata set + the Phase-06 addendum + the NEW completion report + this plan's §L).
+- A minimal follow-up corrective docs commit (this one) fixes the commit-2 insertion arithmetic in L.1 (recorded here for traceability; no other content changed).
 - Precondition verified: branch `feat/phase07-streamlist-retrieval`; HEAD at entry `ca9c55f`; the only pre-existing dirty path was this plan file (committed as commit 1). No push performed.
 
 ### L.2 §A.7 landing (observed)
