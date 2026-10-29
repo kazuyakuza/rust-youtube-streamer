@@ -844,7 +844,7 @@ Mechanical fix-ups (no design change):
 
 | Command | Result |
 |---|---|
-| `cargo test --locked chat_worker` | 22 passed / 0 failed (11 flow+worker, 6 budget+E.5, 2 gate_chat included by path) |
+| `cargo test --locked chat_worker` | 22 passed / 0 failed (12 worker+flow, 8 budget incl. the E.5 latency pin, 2 gate_chat included by path) |
 | `cargo test --locked chat_source` | 6 passed |
 | `cargo test --locked chat_failure` | 2 passed |
 | `cargo test --locked runtime` | 5 passed |
@@ -873,7 +873,7 @@ Mechanical fix-ups (no design change):
 |---|---|
 | `list_messages` | 0 |
 | `chat_messages_path` | 0 |
-| `LiveChatMessageList` | 25 hits — ALL the Task-2 KEEP proto names `LiveChatMessageListRequest`/`LiveChatMessageListResponse` (substring); the retired list model itself is gone |
+| `LiveChatMessageList` | 27 hits — ALL the Task-2 KEEP proto names `LiveChatMessageListRequest`/`LiveChatMessageListResponse` (substring); the retired list model itself is gone |
 | `ChatListCommand` | 0 |
 | `map_page` | 0 |
 | `ChatPageOutcome` | 0 |
