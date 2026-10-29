@@ -353,9 +353,39 @@ Replacement-for-D-10: `docs/production-run.md` (Task 4) states the documented 5-
 
 ---
 
-## 14. Task-1 Addendum: observed toolchain probe verdicts (written by 4.2 §13.4; TO BE FILLED)
+## 14. Task-1 Addendum: observed toolchain probe verdicts (written by 4.2 §13.4)
 
-*(pending the 4.2 probe run — the implementer records here: command list executed, exit codes, exact resolved versions pinning, any `cargo update -p --precise` actions taken, both target verdicts, and the STOP ledger state: fired / not fired.)*
+Probe executed 2026-10-29 in-container (`docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust …`, pinned `rust:1.82` image, host Linux target + `x86_64-pc-windows-gnu`). TEMPORARY probe state only: the §P7-2 dependency lines went into `Cargo.toml`, the lockfile was re-resolved, and both were restored with `git checkout -- Cargo.toml Cargo.lock` afterwards — NO probe artifact is committed (only this record).
+
+### 14.1 Commands and exit codes (in execution order)
+
+| # | Command | Exit | Observation |
+|---|---|---|---|
+| 1 | `cargo update` | 0 | "Locking 75 packages to latest compatible versions"; resolved tokio **1.54.1**, tonic **0.13.1**, prost **0.13.5**, plus collateral bumps (ab_glyph 0.2.32, icu* 2.4.0, idna_adapter 1.2.2, indexmap 2.14.2, hyper-util 0.1.21, zeroize 1.9.1, tokio-util 0.7.20, rustix 1.1.6, …) |
+| 2 | `cargo update -p tokio --precise 1.53.1` | 0 | "Downgrading tokio v1.54.1 -> v1.53.1" (the §13.4(d) REQUIRED pin) |
+| 3 | lockfile grep (tokio/tonic/prost) | 0 | `tokio 1.53.1`, `tonic 0.13.1`, `prost 0.13.5` — exactly the §P7-2 prediction |
+| 4 | Probe 1 attempt 1: `cargo check` | **101** | `failed to parse manifest … idna_adapter-1.2.2/Cargo.toml — feature \`edition2024\` is required` (Cargo 1.82 cannot parse it) |
+| 5 | `cargo update -p idna_adapter --precise 1.2.0` | 0 | also downgraded the whole icu family 2.4.0 → 1.5.x automatically (`icu_collections`/`icu_normalizer`/`icu_properties`/`icu_provider` 1.5.0/1.5.1, litemap 0.7.5, tinystr 0.7.6, yoke 0.7.5, zerovec 0.10.4) |
+| 6 | Probe 1 attempt 2: `cargo check` | **101** | `failed to parse manifest … indexmap-2.14.2/Cargo.toml — feature \`edition2024\` is required` |
+| 7 | `cargo update -p indexmap --precise 2.12.1` | 0 | hashbrown 0.17.1 → 0.16.1 |
+| 8 | Probe 1 attempt 3: `cargo check` | **101** | `failed to parse manifest … hyper-util-0.1.21/Cargo.toml — feature \`edition2024\` is required` |
+| 9 | `cargo update -p hyper-util --precise 0.1.17` | 0 | newest cascade-free release above 0.1.4's tonic floor |
+| 10 | Probe 1 attempt 4: `cargo check` | **101** | `failed to parse manifest … zeroize-1.9.1/Cargo.toml — feature \`edition2024\` is required` |
+| 11 | `cargo update -p zeroize --precise 1.8.1` | 0 | the previous (pre-probe) lockfile version |
+| 12 | Probe 1 attempt 5: `cargo check` | **101** | `rustc 1.82.0 is not supported by the following package: tokio-util@0.7.20 requires rustc 1.85` (a `rust_version` deck, not an edition parse error) |
+| 13 | `cargo update -p tokio-util --precise 0.7.19` | 0 | 0.7.19 declares `rust_version` **1.71** / edition 2021 (crates.io version object, accessed 2026-10-29); 0.7.20 raised it to 1.85 |
+| 14 | Probe 1 attempt 6: `cargo check` (host Linux) | **0** | `Finished \`dev\` profile [unoptimized + debuginfo] target(s) in 49.04s`; tonic 0.13.1 built with `channel, prost, codegen, tls-ring, tls-webpki-roots` |
+| 15 | Probe 2: `cargo check --target x86_64-pc-windows-gnu` | **0** | `Finished \`dev\` profile [unoptimized + debuginfo] target(s)`; ring 0.17.14 / rustls 0.23.46 / tokio-rustls 0.26.6 compile for Windows-GNU exactly as the existing ureq TLS stack does |
+
+Pin iterations consumed: **5** (`idna_adapter`, `indexmap`, `hyper-util`, `zeroize`, `tokio-util`) + the REQUIRED `tokio` pin — within the §13.4(g) bound of 6.
+
+### 14.2 Verdict
+
+- **PROBE 1 (host Linux target): PASS** (exit 0). **PROBE 2 (`x86_64-pc-windows-gnu`): PASS** (exit 0).
+- Versions resolved and probed: tokio **1.53.1**, tonic **0.13.1**, prost **0.13.5**, tokio-util **0.7.19**, hyper-util **0.1.17**, hyper 1.12.0, h2 0.4.20, tokio-rustls 0.26.6, tokio-stream 0.1.19, tower 0.5.3, rustls 0.23.46, ring 0.17.14, webpki-roots 1.0.11 (+ 0.26.11 via tokio-rustls), indexmap 2.12.1, hashbrown 0.16.1, idna_adapter 1.2.0, zeroize 1.8.1.
+- **Observed constraint for Task 2/3 (evidence, not a plan change):** a fresh unconstrained `cargo update` on 2026-10-29 resolves several transitive crates to releases requiring Rust ≥ 1.85 / `edition2024` (`idna_adapter` 1.2.2, `indexmap` 2.14.2, `hyper-util` 0.1.21, `zeroize` 1.9.1, `tokio-util` 0.7.20). Under the pinned `rust:1.82` image the §P7-2 matrix therefore requires those five `--precise` pins in addition to the tokio 1.53.1 pin; the real feature commit must carry them in the tracked lockfile or the gate breaks. `tonic 0.13.1` / `prost 0.13.5` needed NO pin (the resolver selected them).
+- **STOP ledger: NOT FIRED.** STOP (i) did not fire (both probes compile under the pinned image with the pins above); STOP (ii) remains non-applicable per §4. No image pin was bumped and the Dockerfile is untouched.
+- Tree restored: `git checkout -- Cargo.toml Cargo.lock`; `git status --porcelain` → EMPTY (no probe artifact survives).
 
 ---
 
