@@ -819,17 +819,90 @@ NOT done (owners):
 
 ---
 
-## §L — Addendum: OBSERVED records (written by the 4.2 implementer; structure now, content only after execution)
+## §L — Addendum: OBSERVED records (written by the 4.2 implementer)
 
-### L.1 Preconditions (§F.1) — branch/tree observations.
-### L.2 Code-landing order + any fmt/clippy mechanical fix-ups (allowed class: import-path/rename fixes only; each recorded).
-### L.3 Targeted roster results (§F.4 commands; observed pass/fail counts).
-### L.4 FULL GATE (log path; the OBSERVED test total; any failure and its resolution).
-### L.5 windows-gnu check verdict.
-### L.6 Hygiene/retirement greps (each §C.9 pattern + §F.8 counts with observed values).
-### L.7 File inventory (actual created/modified/deleted counts vs §G).
-### L.8 Staging-retirement completion statement (the L.8 ledger closure: all 9 attributes observed gone; the brace used by the worker's imports).
-### L.9 Deviations/STOP evidence (none expected; caller-facing options if any).
+### L.1 Preconditions (§F.1) — branch/tree observations
+
+- `git status --porcelain` was EMPTY apart from the untracked plan file `.kilo/plans/20261029-phase07-task3-integration-switch.md` (tracked by commit `0266eff`).
+- Branch: `feat/phase07-streamlist-retrieval`; `git log --oneline -3` = `b2f7b08` → `4229e36` → `35adefa` (the Task-2 close lineage named by the plan). Baseline close `75788ae` present; prior gate log `logs/checks/20261029T180112Z.log` (507 passed) read as the baseline.
+- Commits landed: `0266eff` (plan tracking), `dc3312a` (the rewire/retirement), plus the addendum commit recorded at the end of this section.
+
+### L.2 Code-landing order + fmt/clippy mechanical fix-ups (each recorded)
+
+Order executed exactly `§F.3`: (a) youtube retirement (`C.1`–`C.3`, `C.6`, the `C.7` youtube rows, then `C.5`); `cargo fmt` between batches; (b) run-side (`mod.rs`/`seams.rs`, then `chat_worker.rs`, `chat_stream_worker.rs`, `chat_stream_delivery.rs`, deletion of `chat_worker_delivery.rs`); (c) the rosters (`runtime_chat_fakes.rs`, the four worker/gate rosters, `runtime_tests.rs` test 1, `chat_failure_tests.rs`, `stream_run_fixtures.rs`, `live_chat_rfc3339_tests.rs`).
+
+Mechanical fix-ups (no design change):
+1. Cross-file `impl StreamWorker` halves required `pub(super)` on the §B.5 struct fields/methods and on `STREAM_CLEAN_CLOSE_DETAIL` (the §B.1 split makes the sibling module the caller).
+2. §B.7 `process_batch` order corrected to the §A.3 ruling + §E.2 pins: a history-pending batch is discarded FIRST (its token retained, the flag cleared); the literal §B.7 snippet cleared the flag before the discard check and would have delivered a token-bearing baseline batch (contradicting §E.2-1/E.2-2/E.2-5; the retired `handle_page` order is preserved).
+3. `stream_run_fixtures.rs`: the stop-flip hook takes an `Fn()` closure (`flip_stop_on_open_from(from_call, stop)`) — `src/youtube` cannot name the app-private `StopFlag`; and the plan-required 250 ms real stall is a one-shot `stall_next_batch_for(millis)` hook because §E.3-6/E.5 demand a real `next_batch` sleep.
+4. `live_chat_resolution_tests.rs`: the `scripted()` helper dropped the deleted `list_results` field (one-line consequence of the §C.7 fixture shrink; the roster's assertions are byte-unchanged).
+5. `stream_test_fixtures.rs` registers/re-exports the new `stream_run_fixtures` module (the §C.7 registration point); `live_chat_rfc3339.rs` registers the moved `live_chat_rfc3339_tests` roster (the §C.7 registration point); the crate-root test block re-exports `RunChatStreamLedger`/`ScriptedRunStreamTransport` so the app rosters can name them (test-only, existing fixture-re-export precedent).
+6. `runtime_tests.rs` tests 2–5 needed only the `ChatFakes` construction line (type shift); their assertions are unchanged.
+7. Doc trims under the §B.10 class to hold the 200-line cap: `mod.rs` module doc + `install_stop_pair` doc, the `runtime_tests`/`chat_worker_budget_tests`/`chat_worker_flow_tests` module docs, `stream_test_fixtures` module doc. `chat_worker.rs` landed at 183 lines (the §B.1 estimate was ≤160; the hard 200-line cap is met and no other file exceeds 200).
+
+### L.3 Targeted roster results (§F.4 — observed, all green)
+
+| Command | Result |
+|---|---|
+| `cargo test --locked chat_worker` | 22 passed / 0 failed (11 flow+worker, 6 budget+E.5, 2 gate_chat included by path) |
+| `cargo test --locked chat_source` | 6 passed |
+| `cargo test --locked chat_failure` | 2 passed |
+| `cargo test --locked runtime` | 5 passed |
+| `cargo test --locked gate_chat` | 2 passed |
+| `cargo test --locked live_chat` | 27 passed |
+| `cargo test --locked stream` | 124 passed |
+| `cargo test --locked grpc_status` | 12 passed |
+| `cargo test --locked demo` | 17 passed |
+| `cargo test --locked streaming_stage` | 1 passed |
+
+### L.4 FULL GATE (observed)
+
+- Command: `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh` → exit 0.
+- Governing log: `logs/checks/20261029T192248Z.log` (final tree); four `PASS` lines (fmt-check/check/test/clippy) and `ALL CHECKS PASSED`.
+- **OBSERVED total: 493 passed / 0 failed** (the earlier identical run on the same code, `logs/checks/20261029T191939Z.log`, also 493/0; final-tree run governs).
+- Arithmetic sanity note: the plan's ≈495 estimate assumed the wire roster keeps 3 pins and the budget roster 7; the explicit itemizations bind — `live_chat_wire_checks_tests` keeps 2 (four O7 pins deleted, two named keeps) and `chat_worker_budget_tests` carries 8 (E.3's seven + the E.5 latency pin). Observed governs.
+- Clippy `-D warnings` standalone: exit 0.
+
+### L.5 windows-gnu check verdict
+
+`docker compose … run --rm rust cargo check --locked --target x86_64-pc-windows-gnu` → exit 0 (`Finished dev profile`), observed on the final tree. NO release builds performed (Task 4 owns them).
+
+### L.6 Hygiene/retirement greps (§C.9 + §F.8 — observed)
+
+| Pattern | Observed |
+|---|---|
+| `list_messages` | 0 |
+| `chat_messages_path` | 0 |
+| `LiveChatMessageList` | 25 hits — ALL the Task-2 KEEP proto names `LiveChatMessageListRequest`/`LiveChatMessageListResponse` (substring); the retired list model itself is gone |
+| `ChatListCommand` | 0 |
+| `map_page` | 0 |
+| `ChatPageOutcome` | 0 |
+| `polling_interval_millis` | 0 |
+| `DEFAULT_CHAT_POLL_INTERVAL` | 0 |
+| `Staged for the Task-3` | 0 |
+| `allow(` in `src/youtube` | 5 lines: `authorization.rs` ×2 (item reservations), `error.rs` ×1 (`ProviderDeclined`), `mod.rs` ×2 (V2 module stagings) — the standing set; ZERO staging, ZERO new |
+| `#[allow(clippy::manual_clamp)]` | 1 line, MOVED to `src/app/run/chat_stream_delivery.rs` (not added) |
+| `tonic::async_trait` in `src/app` | 0 (the run double lives in `src/youtube/stream_run_fixtures.rs`) |
+| `tokio::runtime` in `src` | exactly 2 sites: `src/app/run/chat_worker.rs` (`chat_runtime`) + `src/youtube/stream_test_fixtures.rs` (`stream_test_block_on`) |
+| secret sweep (`ya29\|AIza\|rtmps://`) | `ya29`/`AIza`: 0 anywhere in `src`; `rtmps://`: only pre-existing `example.test` fixtures (untouched files); this task's diff adds none |
+
+### L.7 File inventory (actual vs §G)
+
+Commit `dc3312a`: **29 files changed, 1224 insertions(+), 1286 deletions(−)**.
+- NEW (5): `src/app/run/chat_stream_worker.rs`, `src/app/run/chat_stream_delivery.rs`, `src/app/run/chat_failure_tests.rs`, `src/youtube/live_chat_rfc3339_tests.rs`, `src/youtube/stream_run_fixtures.rs` (matches §G's "4 new source/fixture + 1 new roster").
+- DELETED (3): `src/app/run/chat_worker_delivery.rs`, `src/youtube/live_chat_models_tests.rs`, `src/youtube/live_chat_mapping_tests.rs` (matches §G).
+- MODIFIED (21): the §G rewrite/edit rows (`chat_worker.rs`, the four worker/gate rosters, `runtime_chat_fakes.rs`, `runtime_tests.rs`, `mod.rs`, `seams.rs`, `api_chat_transport.rs`, `google_live_chat_transport.rs`, `live_chat_models.rs`, `live_chat_mapping.rs`, `live_chat_test_fixtures.rs`, `live_chat_wire_checks_tests.rs`, `youtube/mod.rs`, `live_error/mod.rs`, `chat_failure.rs`) plus the three plan-mandated consequential edits §G did not row-list: `live_chat_rfc3339.rs` (registers the moved roster), `live_chat_resolution_tests.rs` (fixture-shrink follow-through), `stream_test_fixtures.rs` (registers/re-exports the new fixture module). §G's "15 rewritten/edited" estimate is superseded by the observed 21 (the plan's own §C.6/§C.7 registration text requires the three extras).
+
+### L.8 Staging-retirement completion statement (the L.8 ledger closure)
+
+All NINE staged attributes are observed gone: the five module-level `#[allow(dead_code)]` + comment lines (`live_chat_stream_mapping`, `stream_client`, `stream_concrete`, `stream_proto`, `stream_transport`), the `live_error/mod.rs` `grpc_status` mod attribute + comment, the two item-level attributes (`ChatPrecondition`, `InvalidChatRequest`), and the Phase-07 re-export brace's `#[allow(unused_imports)]`. The brace is LIVE and consumed by the worker (`ChatStreamRequest`, `ChatStreamTransport`, `LiveChatStreamSession`, `YieldedChatStreamBatch`, `GoogleLiveChatStreamTransport`, `ChatTextMessage`); `Staged for the Task-3` greps zero; the `src/youtube` `allow(` inventory is the standing five only. Task-2's L.8 ledger is CLOSED.
+
+### L.9 Deviations/STOP evidence
+
+- No STOP occurred; no caller decision is required.
+- Documented deviations (all transcription-consistency fixes, none widening scope): §L.2 items 1–7.
+- Plan-arithmetic corrections (observed governs): wire roster 6→2 (not 3 — the four named O7 pins are deleted, the two named keeps extended as specified); budget roster 8 (E.3's seven enumerated + the E.5 latency pin); gate total 493 (not ≈495).
+- `LiveChatMessageList` §C.9 grep is not zero: the surviving Task-2 proto type names (`LiveChatMessageListRequest`/`LiveChatMessageListResponse`) contain the substring and are KEEP surfaces; the retired list model is zero.
 
 ---
 
