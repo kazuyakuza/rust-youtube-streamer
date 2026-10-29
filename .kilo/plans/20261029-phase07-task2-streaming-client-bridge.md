@@ -1036,9 +1036,124 @@ Expected 4.6 marks for Task 2 (exact):
 9. Write the §L addendum into this plan file (OBSERVED records) and commit it together with (8) or as its own `docs:` commit if landed after review.
 10. Report: exact file set, gate log path, observed test count delta, addendum pointer.
 
-## §L — Addendum: OBSERVED records (written by 4.2; empty at plan time)
+## §L — Addendum: OBSERVED records (written by 4.2; STOP state — see L.7)
 
-_(to be filled: S2 re-verification date + verdict; golden-pin verification incl. any corrected byte arrays; final lockfile pin map; gate count/log; deviations + caller decisions if any STOP fired.)_
+### L.1 S2 re-verification (step 3, 2026-10-29) — PASS
+
+Live fetch of `https://developers.google.com/youtube/data/live/streaming-live-chat` on
+2026-10-29 (page footer: "Last updated 2026-10-15 UTC"). Confirmed verbatim: `repeated
+string part = 100`; the full §A.9 number set (`live_chat_id=1`, `hl=2`,
+`profile_image_size=3`, `max_results=98`, `page_token=99`; response `kind=200`,
+`etag=201`, `offline_at=2`, `page_info=1004`, `next_page_token=100602`, `items=1007`,
+`active_poll_item=1008`; `LiveChatMessage` `id=101`, `snippet=2`, `author_details=3`;
+snippet `type=1`, `live_chat_id=201`, `author_channel_id=301`, `published_at=4`,
+`has_display_content=17`, `display_message=16`, oneof arms 19/22/27/28/29/30/31/32/33/34;
+author details 10101/102/103/104/4/5/6/7; `PageInfo` 1/2; the enum value table; the
+`giftEvent` ID-reuse note). Zero drift ⇒ the §C.1 transcription landed unchanged.
+
+### L.2 Dependency purchase (step 4) — OBSERVED (end state differs from the prescribed path)
+
+- The prescribed `cargo update` re-resolved the Task-1 §14.1 collateral set AND additionally
+  bumped the dev-dependency `tempfile 3.14.0 -> 3.27.0`, which pulls `getrandom 0.4.3`
+  (edition2024). `cargo check --tests` then fails at manifest parse under Cargo 1.82
+  (`feature 'edition2024' is required`) — §G's "unrelated churn" condition fired and the
+  §B.3 six-pin budget would have been exceeded (7th pin) to fix it.
+- Remedy (end-state goal per §B.3/§G, not path): the lockfile was restored to the pre-task
+  state (`git checkout dccacbc -- Cargo.toml Cargo.lock`), the three §B.2 lines re-applied,
+  and the lock re-resolved MINIMALLY (`cargo check --tests` adds only the tonic family),
+  then four `--precise` pins. Commit 2 was re-created in place (the first attempt was
+  unpushed and reset via `git reset --soft`); no unrelated version bump survives.
+- Final pin map (in-container, tracked lock): `tokio 1.53.1`, `tonic 0.13.1`,
+  `prost 0.13.5`, `indexmap 2.12.1`, `hyper-util 0.1.17`, `tokio-util 0.7.19`;
+  `idna_adapter 1.2.0` and `zeroize 1.8.1` needed NO pin (the minimal resolution kept the
+  pre-task versions), `hashbrown 0.16.1`, `tempfile 3.14.0`, `ab_glyph 0.2.28`,
+  `rustix 0.38.44`, `icu* 1.5.x`.
+- `Cargo.lock` diff = additions only (394 lines) + two `windows-sys` dependency-edge lines
+  on pre-existing packages (`errno` 0.61.2 -> 0.52.0, `nu-ansi-term` 0.61.2 -> 0.59.0)
+  forced by the added `windows-sys` versions; NO pre-existing package version changed.
+- Verdicts on the final tree: `cargo check` exit 0; `cargo check --target
+  x86_64-pc-windows-gnu` exit 0; `cargo fmt --check` exit 0. Commit 2 = `03e696f`.
+
+### L.3 Golden-byte pins (step 5/6) — OBSERVED corrections
+
+First roster run: 10 passed / 4 failed. Cause: **prost 0.13.5 encodes message fields in
+ASCENDING FIELD-NUMBER order, not declaration order** — plan anchors C/F/G assumed
+declaration order. Corrected arrays (OBSERVED, now in `stream_proto_tests.rs`):
+
+- C = `28 01 BA 06 03 42 6F 62` (owner flag first, then display_name)
+- F = `12 0C 08 01 9A 01 07 0A 05 68 65 6C 6C 6F 1A 06 BA 06 03 42 6F 62 AA 06 05 6D 73 67 2D 31`
+- G = `FA 3E 1E <F> D2 8F 31 0D 74 6F 6B 65 6E 2D 66 69 78 74 75 72 65`
+
+Anchors A/B/D/E/H matched the plan exactly. Also observed: the plan's A/B byte-count
+annotations are wrong (A = 48 bytes not 54; B = 64 not 72); the arrays themselves matched.
+After correction: 14/14 pass, including the round-trip and both tolerance pins; no
+assertion was loosened.
+
+### L.4 Mechanical fix-ups (allowed class; each recorded)
+
+- `stream_client`: `STREAM_CONNECT_TIMEOUT_REASON` / `STREAM_CONNECT_FAILURE_REASON`
+  widened `const` -> `pub(super) const` (§C.4 imports them from the sibling).
+- Endpoint pin: `endpoint.uri().to_string()` renders the canonical URI WITH a trailing
+  slash (`https://youtube.googleapis.com/`); the assertion compares
+  `trim_end_matches('/')` to the unchanged constant (the constant is separately pinned by
+  the host/path test).
+- `bearer_token_metadata` gained a 3-line `is_ascii()` guard so the planned
+  `AuthorizationRejected` failure arm actually fires: `http`'s `HeaderValue` accepts
+  obs-text bytes, so `MetadataValue::try_from` does NOT reject `"Bearer non-ascii-token-Θ"`.
+  Roster name/count/intent preserved.
+- `ScriptedChatStreamSession::next_batch` uses `.pop_front().flatten()` (the scripted queue
+  stores `Option<Result<..>>`; the plan's sketch omitted the flatten).
+- `ScriptedChatStreamSession` is imported directly from `stream_test_fixtures` in the
+  transport roster (it is not in the §C.8 brace name list).
+
+### L.5 File set (deviation from the "15 files" count)
+
+The §C.5-mandated one-token widening (`non_blank_text`: `fn` -> `pub(super) fn` in
+`src/youtube/live_chat_mapping.rs`) makes the task set **4 modified + 12 new = 16 files**;
+the plan's "3 modified + 12 new" count predates that requirement. No other file is touched
+(`src/app/`, `demo`, docs, scripts: zero edits).
+
+### L.6 Targeted rosters (step 6) — ALL GREEN
+
+`stream_proto` 14 pass, `stream_mapping` 12 pass, `grpc_status` 12 pass, `stream_client`
+6 pass, `stream_transport` 5 pass ⇒ **49 new tests, 0 failed**. Zero-sleep audit (grep
+`sleep|Instant|park` in the five new roster files) ⇒ zero matches. No test dials Google.
+
+### L.7 STOP — dead-code lint vs. the plan's allow budget (step 7 blocked)
+
+**Evidence (verbatim verdict):** `cargo clippy --locked -- -D warnings` exits 101 with
+`error: could not compile 'rust-youtube-streamer-service' (bin) due to 39 previous errors`
+— 39 `dead_code` findings naming the ENTIRE Task-2 staged surface: `live_chat_stream_mapping`
+(7 items), the 2 new `LiveApiError` variants, `live_error/grpc_status` (6 consts + 2 fns),
+`stream_client` (3 public consts + 2 reason consts + 2 items + `TonicChatStreamSession`),
+`stream_concrete` (struct + `new` + 2 error fns), `stream_proto` (`CHAT_STREAM_PARTS`,
+`stream_list_request`), `stream_transport` (2 structs + 2 traits). `cargo check` (both
+targets) compiles with the same 39 WARNINGS and exit 0.
+
+**Cause:** Task 2 lands the surface but Task 3's consumer does not exist yet, so every item
+is dead in the production bin. §C.8's premise ("everything stays consumed"; the single
+`#[allow(unused_imports)]` brace covers the staging) is false: `unused_imports` allows do
+not affect `dead_code`, and a re-export does not count as a use for the dead-code pass
+(verified experimentally: adding `GoogleLiveChatStreamTransport` to the brace changed
+nothing; it made the transport items report as dead as well).
+
+**Options (STOP — caller decides; no code-only fix preserves the §F.8 allow budget):**
+
+1. AUTHORIZE the project's established staging shape: `#[allow(dead_code)]` on the module
+   declarations `stream_client`, `stream_concrete`, `stream_proto`,
+   `live_chat_stream_mapping`, `live_error` (covers `grpc_status` + the 2 variants) and
+   `stream_transport`, each comment naming Task 3 as the consumer/retirer (the exact
+   `live_lifecycle`/`live_models` precedent). Effect: gate green; hygiene allow count
+   becomes existing + 6 instead of existing + 1; Task 3 retires all six.
+2. Move the Task-3 consumer forward (worker rewire now) — Task-3 scope; forbidden here.
+3. Accept the red clippy gate — not viable (the gate must be green).
+4. One blunt staging attribute `#[allow(dead_code)] mod youtube;` at the crate root —
+   keeps the count at +1 but silences dead-code detection for the whole subtree.
+
+**Tree state at this STOP:** commit 1 `dccacbc` (plan tracked), commit 2 `03e696f`
+(dependencies + pins). The 16 code files are verified (`cargo fmt --check` 0, both `cargo
+check` targets 0, 49/49 new tests green) but **UNCOMMITTED** (step 8 not executed; steps
+9–10 pending the decision). No push, no branch change.
 
 ---
 
