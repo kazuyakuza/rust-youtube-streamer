@@ -123,7 +123,7 @@ Hygiene/secret audit (host; observed values):
 | `git check-ignore -v dist/windows/rust-youtube-streamer-service.exe` | `.gitignore:34:dist/` |
 | `git check-ignore -v logs/chat.log` | `.gitignore:18:logs/*` |
 | `git check-ignore -v videos/` | `.gitignore:56:videos/` |
-| `git grep -nE "ya29\|AIza" -- src docs README.md .agent` | 15 pre-existing lines, all historical audit-prose mentions in `.agent` (unchanged count vs HEAD: 7 + 2 + 5 + 1); ZERO in `src`/`docs`/`README.md`; zero new |
+| `git grep -nE "ya29\|AIza" -- src docs README.md .agent` | 16 hits in `.agent`: 15 pre-existing historical audit-prose mentions (unchanged count vs HEAD: `context.md` 7, Phase-04 report 2, Phase-05 report 5, Phase-06 report 1) plus 1 self-referential hit from this audit row's own quoted grep pattern; ZERO in `src`/`docs`/`README.md`; zero new token literals. |
 | `git grep -n "key=" -- src docs README.md` | 5 pre-existing lines: 3 doc-comment "never an API key" mentions (`google_live_api_transport.rs`, `live_chat_models.rs`, `live_chat_wire_checks_tests.rs`) + 2 test negative assertions (`live_chat_wire_checks_tests.rs`, `stream_client_tests.rs`); zero new |
 | `git grep -n "rtmps://" -- src docs` | only `.example.test` fixtures, doc-context mentions (the Ingest Probe procedure, `pipe_drain.rs` comment) and secret-absence assertions; zero new |
 | `git grep -n "allow(" -- src` | exactly 8 `#[allow(dead_code)]` attribute lines + 1 `#[allow(clippy::manual_clamp)]` at `chat_stream_delivery.rs`; no comment-only hit observed; zero new |

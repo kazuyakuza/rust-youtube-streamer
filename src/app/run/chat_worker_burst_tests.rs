@@ -13,6 +13,23 @@ use crate::youtube::{response_offline, response_plain, text_item, yielded};
 use super::chat_channel;
 use super::chat_worker_tests::{drain, lookup_found, terminal_of};
 
+/// Blocking-drains the receiver until `total` messages are taken — the
+/// capacity-release mechanism the retain-retry spins against (zero sleeps).
+fn drain_to_total(
+    receiver: &std::sync::mpsc::Receiver<ChatMessage>,
+    total: usize,
+) -> Vec<ChatMessage> {
+    let mut drained = Vec::new();
+    while drained.len() < total {
+        drained.push(
+            receiver
+                .recv()
+                .expect("the pinned burst drains message by message"),
+        );
+    }
+    drained
+}
+
 #[test]
 fn worker_full_channel_retains_the_burst_without_loss_or_reorder() {
     let fakes = ChatFakes::new();
@@ -36,16 +53,7 @@ fn worker_full_channel_retains_the_burst_without_loss_or_reorder() {
     let plan = worker_plan(&fakes, &channel);
     let handle = spawn_chat_worker(plan);
 
-    let total = CHAT_CHANNEL_CAPACITY + 2;
-    let mut drained: Vec<ChatMessage> = Vec::new();
-    while drained.len() < total {
-        drained.push(
-            channel
-                .receiver
-                .recv()
-                .expect("the pinned burst drains message by message"),
-        );
-    }
+    let drained = drain_to_total(&channel.receiver, CHAT_CHANNEL_CAPACITY + 2);
     handle.join().expect("the worker thread joins");
 
     for (index, message) in drained.iter().enumerate().take(CHAT_CHANNEL_CAPACITY) {
