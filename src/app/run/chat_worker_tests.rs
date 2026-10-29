@@ -8,7 +8,7 @@ use crate::app::run::chat_worker::runtime_chat_fakes::{
     run_worker, ChatFakes, LIVE_CHAT_ID_FIXTURE,
 };
 use crate::chat::ChatMessage;
-use crate::youtube::{response_offline, response_with_token, yielded, LiveApiError};
+use crate::youtube::{response_with_token, yielded, LiveApiError};
 
 use super::{ChatChannel, CHAT_BASELINE_MESSAGE, CHAT_ENDED_MESSAGE, CHAT_ID_RESOLVED_MESSAGE};
 
@@ -34,9 +34,7 @@ pub(super) fn terminal_of(channel: &ChatChannel) -> Option<ChatRetrievalError> {
 fn worker_offline_ended_batch_disconnects_without_terminal_error() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    fakes.script_graceful_end_session();
     let channel = run_worker(&fakes);
 
     assert!(terminal_of(&channel).is_none(), "offlineAt is graceful");

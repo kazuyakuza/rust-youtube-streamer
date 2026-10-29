@@ -8,9 +8,7 @@ use std::sync::Arc;
 
 use crate::app::pipeline::StopFlag;
 use crate::config::valid_config;
-use crate::youtube::{
-    response_offline, yielded, LiveApiError, ScriptedRunStreamTransport, WaitCanceller,
-};
+use crate::youtube::{LiveApiError, ScriptedRunStreamTransport, WaitCanceller};
 
 use super::broadcast::public_watch_url;
 use super::chat_worker::runtime_chat_fakes::{ChatFakes, LIVE_CHAT_ID_FIXTURE};
@@ -67,8 +65,7 @@ fn run_runtime_orchestrates_credentials_then_resources_then_streaming() {
     let chat = ChatFakes::new();
     chat.lookup
         .script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
-    chat.stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    chat.script_graceful_end_session();
     let runner = RecordingStreamingRunner::scripted(RunnerScript::ReportOk);
 
     run_with_scripted(ScriptedRun {

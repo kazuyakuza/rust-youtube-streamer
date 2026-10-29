@@ -6,8 +6,7 @@
 use crate::app::run::chat_worker::runtime_chat_fakes::{run_worker, ChatFakes};
 use crate::chat::ChatMessage;
 use crate::youtube::{
-    response_offline, response_plain, response_with_token, text_item, yielded, LiveApiError,
-    RESUME_TOKEN_FIXTURE,
+    response_offline, response_plain, text_item, yielded, LiveApiError, RESUME_TOKEN_FIXTURE,
 };
 
 use super::chat_worker_tests::{drain, lookup_found, terminal_of};
@@ -18,12 +17,7 @@ const PINNED_PUBLISHED_EPOCH: u64 = 1_792_931_445;
 fn worker_delivers_live_batches_in_api_order_with_metadata() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![text_item("h-1")],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
+    fakes.script_history_batch_session();
     fakes.stream_ledger.script_session(vec![
         Some(Ok(yielded(&response_plain(vec![
             text_item("m1"),
@@ -46,12 +40,7 @@ fn worker_delivers_live_batches_in_api_order_with_metadata() {
 fn worker_discards_the_entire_history_batch_before_the_first_token() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![text_item("h-1")],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
+    fakes.script_history_batch_session();
     fakes
         .stream_ledger
         .script_session(vec![Some(Ok(yielded(&response_offline(vec![text_item(
@@ -72,12 +61,7 @@ fn worker_discards_the_entire_history_batch_before_the_first_token() {
 fn worker_dedup_drops_replayed_ids_across_sessions() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
+    fakes.script_token_batch_session();
     fakes
         .stream_ledger
         .script_session(vec![Some(Ok(yielded(&response_plain(vec![text_item(
@@ -110,15 +94,8 @@ fn worker_dedup_drops_replayed_ids_across_sessions() {
 fn worker_token_progresses_verbatim_without_inference() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    fakes.script_token_batch_session();
+    fakes.script_graceful_end_session();
     let channel = run_worker(&fakes);
 
     let opened = fakes.stream_ledger.opened_requests();
@@ -140,15 +117,8 @@ fn worker_failed_connect_before_the_first_batch_reestablishes_tokenless_then_dis
         .script_open_failure(LiveApiError::Network {
             reason: "network-fixture-1".to_string(),
         });
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![text_item("h-1")],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    fakes.script_history_batch_session();
+    fakes.script_graceful_end_session();
     let channel = run_worker(&fakes);
 
     let opened = fakes.stream_ledger.opened_requests();
@@ -170,12 +140,7 @@ fn worker_failed_connect_before_the_first_batch_reestablishes_tokenless_then_dis
 fn worker_malformed_batch_is_discarded_and_never_ordinary_chat() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
+    fakes.script_token_batch_session();
     fakes
         .stream_ledger
         .script_session(vec![Some(Err(LiveApiError::MalformedResponse {

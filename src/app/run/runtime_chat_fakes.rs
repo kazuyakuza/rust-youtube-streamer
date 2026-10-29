@@ -11,7 +11,8 @@ use std::sync::{Arc, Mutex};
 
 use crate::app::pipeline::StopFlag;
 use crate::youtube::{
-    LiveApiError, LiveChatTransport, RunChatStreamLedger, ScriptedRunStreamTransport,
+    response_offline, response_with_token, text_item, yielded, LiveApiError, LiveChatTransport,
+    RunChatStreamLedger, ScriptedRunStreamTransport, RESUME_TOKEN_FIXTURE,
 };
 
 type ChatLookup = Result<Option<String>, LiveApiError>;
@@ -71,6 +72,32 @@ impl ChatFakes {
 
     pub(crate) fn operations(&self) -> Vec<&'static str> {
         self.lookup.operations()
+    }
+
+    /// Queues the §E terminator session: one offline-ended empty batch, then the clean close.
+    pub(crate) fn script_graceful_end_session(&self) {
+        self.stream_ledger
+            .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    }
+
+    /// Queues a session delivering one empty batch carrying the resume token;
+    /// the token clears the pending history and opens the live window (§A.3).
+    pub(crate) fn script_token_batch_session(&self) {
+        self.stream_ledger
+            .script_session(vec![Some(Ok(yielded(&response_with_token(
+                vec![],
+                RESUME_TOKEN_FIXTURE,
+            ))))]);
+    }
+
+    /// Queues a session delivering the token-bearing one-message history batch —
+    /// the batch the §A.3 baseline rule discards whole while history is pending.
+    pub(crate) fn script_history_batch_session(&self) {
+        self.stream_ledger
+            .script_session(vec![Some(Ok(yielded(&response_with_token(
+                vec![text_item("h-1")],
+                RESUME_TOKEN_FIXTURE,
+            ))))]);
     }
 }
 

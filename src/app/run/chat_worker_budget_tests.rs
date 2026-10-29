@@ -56,9 +56,7 @@ fn worker_transient_failures_recover_within_the_budget() {
     lookup_found(&fakes);
     fakes.stream_ledger.script_open_failure(network_failure(1));
     fakes.stream_ledger.script_open_failure(network_failure(2));
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    fakes.script_graceful_end_session();
     let channel = run_worker(&fakes);
 
     assert!(
@@ -103,12 +101,7 @@ fn worker_stop_flag_ends_the_loop_before_any_transport_open() {
 fn worker_stop_during_delivery_drops_pending_messages_without_blocking() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
+    fakes.script_token_batch_session();
     fakes
         .stream_ledger
         .script_session(vec![Some(Ok(yielded(&response_plain(vec![text_item(
@@ -156,9 +149,7 @@ fn worker_stalled_stream_cannot_prevent_a_bounded_join() {
 fn worker_never_reestablishes_after_a_graceful_end() {
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    fakes.script_graceful_end_session();
     let channel = run_worker(&fakes);
 
     assert!(terminal_of(&channel).is_none());

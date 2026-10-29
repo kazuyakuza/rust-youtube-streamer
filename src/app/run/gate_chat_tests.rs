@@ -12,7 +12,7 @@ use crate::app::run::gate::{spawn_startup_gate, GateFinish, GatePlan};
 use crate::app::run::runtime_test_fixtures::{
     stream_with_status, ScriptedTransport, BROADCAST_ID_FIXTURE,
 };
-use crate::youtube::{response_offline, yielded, WaitCanceller};
+use crate::youtube::WaitCanceller;
 
 use super::chat_channel;
 use super::chat_worker_tests::lookup_found;
@@ -36,9 +36,7 @@ fn confirmed_gate_spawns_and_joins_the_chat_worker() {
     gate_transport.script_gate_lookup(Ok(Some(stream_with_status("active"))));
     let fakes = ChatFakes::new();
     lookup_found(&fakes);
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    fakes.script_graceful_end_session();
     let channel = chat_channel();
     let mut plan = gate_plan(gate_transport, WaitCanceller::new());
     plan.chat_worker = Some(worker_plan(&fakes, &channel));
