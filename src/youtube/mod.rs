@@ -10,80 +10,44 @@
 //!   scheduling code; the dependency direction is one-way into this module.
 //! - The transport layer is synchronous (no async runtime); the
 //!   [`transport::TokenEndpointTransport`] trait is the mockable seam that
-//!   keeps tests offline.
+//!   keeps tests offline. The Phase-07 stream seam is the sanctioned
+//!   exception: it sits behind [`stream_transport::ChatStreamTransport`]
+//!   and its async runtime is confined to Task 3's worker thread.
 //! - Typed failures surface through the enums in [`error`] with
 //!   hand-written `Display` implementations and no panics.
 //!
-//! Guidance for future agents:
-//! - Access path: submodules are private; re-exports are added here only
-//!   when the first external consumer appears.
-//! - Mockable seams: [`transport::TokenEndpointTransport`],
-//!   [`credentials::CredentialStore`] and [`verify::AuthorizationVerifier`];
-//!   the credential-service scenarios fake ALL three seams offline
-//!   (`credential_service_tests` plus the `_refresh`/`_verification`
-//!   scenario siblings); the concrete verifier is tested with the real
-//!   ureq stack against loopback fake servers
-//!   (`google_authorization_verifier_tests`) and its pure status+body
-//!   mapping in `google_authorization_verifier_classify_tests`. No test
-//!   ever reaches Google.
-//! - Landed vs deferred: the concrete credential store is implemented
-//!   (`file_credential_store` for the atomic file IO and 0600 permission
-//!   handling, `persisted_credentials` for the on-disk JSON schema); its
-//!   atomicity, POSIX 0600, Windows ACL/rename and redaction limits are
-//!   documented in those two module docs, and the `oauth.*` path defaults
-//!   in `config/config.example.json`. The concrete YouTube verification
-//!   request is landed in `google_authorization_verifier` (the minimal
-//!   channels.list(mine=true) probe for the force-ssl scope) and the
-//!   reusable load/refresh/verify pipeline in `credential_service`
-//!   (verify-first refresh decision, typed failure classes).
-//! - The researched Google OAuth facts (endpoints, loopback redirect,
-//!   PKCE S256, refresh semantics, the force-ssl scope decision) are
-//!   recorded in `.kilo/plans/20261012-phase04-task1-oauth-design.md` §1;
-//!   the verify-first refresh decision, the channels.list(mine=true)
-//!   probe evidence and the status→error mapping table are in
-//!   `.kilo/plans/20261012-phase04-task4-credential-service.md`.
+//! Mockable seams: [`transport::TokenEndpointTransport`],
+//! [`credentials::CredentialStore`], [`verify::AuthorizationVerifier`],
+//! [`api_transport::LiveApiTransport`],
+//! [`api_chat_transport::LiveChatTransport`], and the Phase-07
+//! [`stream_transport::ChatStreamTransport`] /
+//! [`stream_transport::LiveChatStreamSession`] pair. Every boundary is a
+//! fake or a `127.0.0.1` loopback server; the tonic TLS handshake is the
+//! sole offline gap (operator manual E2E).
 //!
-//! Phase-05 live runtime (TODO Tasks 2–3, plan
-//! `.kilo/plans/20261013-phase05-task2-broadcast-ingestion-lifecycle.md`
-//! plus Amendments 1–2 and
-//! `.kilo/plans/20261013-phase05-task3-run-orchestration.md`): the five
-//! Task-1 staged design modules (`live_models`, `live_lifecycle`,
-//! `live_error`, `scheduled_start_time`, `api_transport`) are consumed by
-//! the concrete backend (`google_live_api_transport` + its `api_request`
-//! wire sibling), the orchestrator (`live_ingestion`), the readiness and
-//! confirmation waits (`readiness_wait`), the destination wrapper
-//! (`rtmps_ingestion`) and the cancellation seam (`wait_cancellation`);
-//! their whole-module staging allows were deleted in the Task-2
-//! retirement act. The Task-3 run wiring has now landed: the remaining
-//! module-level staging allows (`api_request`, `credential_service`,
-//! `google_authorization_verifier`, `google_live_api_transport`,
-//! `live_ingestion`, `readiness_wait`, `rtmps_ingestion`,
-//! `wait_cancellation`, and the D-T2-14-transcribed `live_lifecycle` /
-//! `live_models` pair) were deleted there and the production re-exports
-//! below added. Residual staging (V2 contract, compiler-arbitrated at the
-//! Task-3 checkpoint): whichever of `live_models` / `live_lifecycle`
-//! still exposes documented-but-unread resource fields / the pending-state
-//! predicate carries a module-level allow whose comment names the future
-//! consuming phase; every item-level allow retired with its consumer.
-//! The only remaining `#[allow(dead_code)]` items anywhere in `src/` are
-//! the pre-existing Phase-03/04 reservations (`AuthError::CallbackAbandoned`,
-//! `ChatStore::is_empty`,
-//! `REVOCATION_ENDPOINT`, `Authorized.state`,
-//! `AuthorizationError::ProviderDeclined`).
+//! Phase-05 run wiring: the staged design modules (`live_models`,
+//! `live_lifecycle`, `live_error`, `scheduled_start_time`, `api_transport`)
+//! are consumed by the concrete backend (`google_live_api_transport` plus
+//! its `api_request` wire sibling), the orchestrator (`live_ingestion`),
+//! the readiness and confirmation waits (`readiness_wait`), the destination
+//! wrapper (`rtmps_ingestion`) and the cancellation seam
+//! (`wait_cancellation`); the run-mode re-exports below name their
+//! consumers.
+//!
+//! Phase-06 chat layer (record D-1..D-4/D-7, plan
+//! `.kilo/plans/20261025-phase06-task2-live-chat-client-mapping.md`): the
+//! chat seam, concrete transport, O6 resolution, mapping, dedup and models
+//! plus 2 `LiveApiError` chat classes; youtube stays chat-free (`crate::chat`
+//! belongs to the app side).
+//!
+//! Phase-07 streaming layer (Task 2, plan
+//! `.kilo/plans/20261029-phase07-task2-streaming-client-bridge.md`): the
+//! streamList gRPC seam + prost wire models + Bearer-only client + grpc-status
+//! mapper; the resumable loop and the confined runtime thread are Task 3's.
 //!
 //! Standing rule for all of this module's tests: no network, no Google
 //! contact, no real credentials — every boundary is a fake or a
 //! `127.0.0.1` loopback server (fixtures only).
-//!
-//! Phase-06 chat layer (TODO Task 2, plan `.kilo/plans/20261025-phase06-task2-
-//! live-chat-client-mapping.md`; record D-1..D-4/D-7): the chat seam, concrete
-//! transport, O6 resolution, mapping, dedup and models + 2 `LiveApiError` chat
-//! classes; youtube stays chat-free (`crate::chat` is Task 3's); zero new deps.
-//! Task-3 consumption (Phase 06 Task 3): the run-mode chat worker in
-//! `app::run::chat_worker` roots the chain — it resolves the chat id,
-//! lists pages through `LiveChatTransport`, and maps carriers via
-//! `map_page` (the app side builds `ChatMessage`); the 2 pinned
-//! re-export stagings below stay by record C-1.
 
 mod api_chat_transport;
 mod api_request;
@@ -103,6 +67,9 @@ mod live_chat_dedup;
 mod live_chat_mapping;
 mod live_chat_models;
 mod live_chat_resolution;
+// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+#[allow(dead_code)]
+mod live_chat_stream_mapping;
 mod live_error;
 mod live_ingestion;
 // Wired by the Phase-05 run runtime; the residual item is the
@@ -119,6 +86,18 @@ mod persisted_credentials;
 mod readiness_wait;
 mod rtmps_ingestion;
 mod scheduled_start_time;
+// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+#[allow(dead_code)]
+mod stream_client;
+// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+#[allow(dead_code)]
+mod stream_concrete;
+// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+#[allow(dead_code)]
+mod stream_proto;
+// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+#[allow(dead_code)]
+mod stream_transport;
 mod token;
 mod transport;
 mod verify;
@@ -129,6 +108,11 @@ mod wait_cancellation;
 // production and never reaching Google.
 #[cfg(test)]
 mod live_test_fixtures;
+
+// Shared offline stream fixtures for the Phase-07 rosters (Task 2) and the
+// Task-3 worker rosters; never built in production.
+#[cfg(test)]
+mod stream_test_fixtures;
 
 pub(crate) use api_chat_transport::LiveChatTransport;
 pub(crate) use api_transport::LiveApiTransport;
@@ -164,9 +148,17 @@ pub(crate) use live_chat_models::chat_messages_path;
 #[cfg(test)]
 pub(crate) use live_chat_resolution::resolve_live_chat_id_with_interval;
 pub(crate) use live_error::LiveApiError;
+// Phase-07 pinned Task-3 consumption surface (record P7-12; plan
+// `.kilo/plans/20261029-phase07-task2-streaming-client-bridge.md` §C): the
+// worker consumes the stream seam; clippy-named staging until the worker
+// rewires.
 pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
 pub(crate) use live_models::LiveStream;
 pub(crate) use readiness_wait::{wait_until_stream_active, StreamObservationRequest};
+#[allow(unused_imports)]
+pub(crate) use stream_transport::{
+    ChatStreamRequest, ChatStreamTransport, LiveChatStreamSession, YieldedChatStreamBatch,
+};
 // Test-only crate export for the confirmation-gate zero-sleep timeout
 // tests (production uses the D-T2-9 budget; no signature changes).
 #[cfg(test)]
@@ -197,3 +189,11 @@ pub(crate) use error::VerificationError;
 pub(crate) use transport::TokenExchangeResult;
 #[cfg(test)]
 pub(crate) use verify::VerifiedAuthorization;
+// Test-only stream fixture re-exports: the Phase-07 rosters build carriers
+// and scripted sessions through these names; production never uses them.
+#[cfg(test)]
+pub(crate) use stream_test_fixtures::{
+    ended_item, response_offline, response_plain, response_with_token, stream_test_block_on,
+    text_item, tombstone_item, yielded, ScriptedChatStreamTransport, ScriptedSessionSpec,
+    ACCESS_TOKEN_FIXTURE, LIVE_CHAT_ID_FIXTURE, PUBLISHED_AT_FIXTURE, RESUME_TOKEN_FIXTURE,
+};

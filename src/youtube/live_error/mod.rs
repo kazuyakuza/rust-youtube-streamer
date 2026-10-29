@@ -32,9 +32,13 @@
 //! Task 1.
 
 pub(crate) use classify::{classify_api_error, LIVE_CHAT_RESOURCE};
+pub(crate) use grpc_status::classify_stream_status;
 
 mod classify;
 mod display;
+// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+#[allow(dead_code)]
+mod grpc_status;
 
 /// Failures of the documented YouTube Live operations (O1–O5) and the
 /// readiness waits around them.
@@ -85,6 +89,22 @@ pub(crate) enum LiveApiError {
     /// 403 liveChatEnded (record D-6/D-7): the chat is no longer live —
     /// the worker's GRACEFUL end-of-chat signal, never a fatal.
     ChatEnded,
+    /// gRPC FAILED_PRECONDITION (record §A.4): the chat is DISABLED or
+    /// ENDED — the officially documented code-level ambiguity carried in
+    /// `detail`; the establishment vs mid-session worker branch (Task 3)
+    /// decides fatal vs graceful.
+    // Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+    #[allow(dead_code)]
+    ChatPrecondition {
+        detail: String,
+    },
+    /// gRPC INVALID_ARGUMENT (record §A.4): a request-shape failure —
+    /// terminal (never retried; brief §12.2 posture).
+    // Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
+    #[allow(dead_code)]
+    InvalidChatRequest {
+        detail: String,
+    },
 }
 
 #[cfg(test)]

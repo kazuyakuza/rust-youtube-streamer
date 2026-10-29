@@ -88,7 +88,7 @@ fn resolve_author(record: &LiveChatMessageRecord) -> Option<String> {
     non_blank_text(&author.display_name).or_else(|| non_blank_text(&author.channel_id))
 }
 
-fn non_blank_text(value: &Option<String>) -> Option<String> {
+pub(super) fn non_blank_text(value: &Option<String>) -> Option<String> {
     let text = value.as_ref()?;
     if text.trim().is_empty() {
         return None;

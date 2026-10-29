@@ -43,6 +43,10 @@ impl fmt::Display for LiveApiError {
             Self::DestinationMissing { field } => Self::display_destination(formatter, field),
             Self::ChatDisabled => Self::display_chat_disabled(formatter),
             Self::ChatEnded => Self::display_chat_ended(formatter),
+            Self::ChatPrecondition { detail } => Self::display_chat_precondition(formatter, detail),
+            Self::InvalidChatRequest { detail } => {
+                Self::display_invalid_chat_request(formatter, detail)
+            }
         }
     }
 }
@@ -162,5 +166,22 @@ impl LiveApiError {
 
     fn display_chat_ended(formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "the live chat has ended")
+    }
+
+    fn display_chat_precondition(formatter: &mut fmt::Formatter<'_>, detail: &str) -> fmt::Result {
+        write!(
+            formatter,
+            "live chat precondition failed (reason '{detail}')"
+        )
+    }
+
+    fn display_invalid_chat_request(
+        formatter: &mut fmt::Formatter<'_>,
+        detail: &str,
+    ) -> fmt::Result {
+        write!(
+            formatter,
+            "invalid stream chat request parameters (reason '{detail}')"
+        )
     }
 }
