@@ -1119,6 +1119,17 @@ the plan's "3 modified + 12 new" count predates that requirement. No other file 
 6 pass, `stream_transport` 5 pass ⇒ **49 new tests, 0 failed**. Zero-sleep audit (grep
 `sleep|Instant|park` in the five new roster files) ⇒ zero matches. No test dials Google.
 
+Full-suite evidence (same tree, `cargo test --locked`): **507 passed / 0 failed**
+(458 baseline + 49 new), so the regression ledger (§G) holds for every existing roster.
+
+Hygiene matrix (§F.8) observed: one production `impl ChatStreamTransport` =
+`stream_concrete.rs` (the fake lives in `#[cfg(test)] stream_test_fixtures`); `allow(`
+count in `src/youtube` = 9 = the 8 existing + the ONE new staged brace; `tonic::async_trait`
+in `src/app` = 0; secret grep (`ya29|AIza|rtmps://`) across the new files = 0;
+`x-goog-api-key` = 0. `key=` = 1 hit — the plan-mandated negative assertion
+`assert!(!rendered.contains("key="))` in `stream_client_tests.rs` (not an API-key form).
+All 12 new files ≤ 200 lines (largest: `stream_test_fixtures.rs` 198).
+
 ### L.7 STOP — dead-code lint vs. the plan's allow budget (step 7 blocked)
 
 **Evidence (verbatim verdict):** `cargo clippy --locked -- -D warnings` exits 101 with
