@@ -1124,13 +1124,14 @@ Full-suite evidence (same tree, `cargo test --locked`): **507 passed / 0 failed*
 
 Hygiene matrix (§F.8) observed: one production `impl ChatStreamTransport` =
 `stream_concrete.rs` (the fake lives in `#[cfg(test)] stream_test_fixtures`); `allow(`
-count in `src/youtube` = 9 = the 8 existing + the ONE new staged brace; `tonic::async_trait`
+count in `src/youtube` = **17** = the 8 existing + 9 new (8 staging attributes per the
+L.8 caller ruling + the ONE planned staged re-export brace); `tonic::async_trait`
 in `src/app` = 0; secret grep (`ya29|AIza|rtmps://`) across the new files = 0;
 `x-goog-api-key` = 0. `key=` = 1 hit — the plan-mandated negative assertion
 `assert!(!rendered.contains("key="))` in `stream_client_tests.rs` (not an API-key form).
 All 12 new files ≤ 200 lines (largest: `stream_test_fixtures.rs` 198).
 
-### L.7 STOP — dead-code lint vs. the plan's allow budget (step 7 blocked)
+### L.7 STOP — dead-code lint vs. the plan's allow budget (step 7 blocked) — RESOLVED by the caller ruling recorded in L.8
 
 **Evidence (verbatim verdict):** `cargo clippy --locked -- -D warnings` exits 101 with
 `error: could not compile 'rust-youtube-streamer-service' (bin) due to 39 previous errors`
@@ -1165,6 +1166,46 @@ nothing; it made the transport items report as dead as well).
 (dependencies + pins). The 16 code files are verified (`cargo fmt --check` 0, both `cargo
 check` targets 0, 49/49 new tests green) but **UNCOMMITTED** (step 8 not executed; steps
 9–10 pending the decision). No push, no branch change.
+
+### L.8 CALLER RULING (2026-10-29) — dead-code staging authorized (option 1, refined)
+
+Ruling, verbatim obligations:
+
+- Apply `#[allow(dead_code)]` staging EXACTLY as follows (every attribute carries a
+  ONE-LINE consumer comment naming Task 3):
+  1. Module-level on the FIVE new top-level module declarations in `src/youtube/mod.rs`:
+     `stream_proto`, `stream_transport`, `stream_client`, `stream_concrete`,
+     `live_chat_stream_mapping`.
+  2. Module-level on `mod grpc_status;` inside `src/youtube/live_error/mod.rs`.
+  3. Item-level on the TWO new `LiveApiError` variants (`ChatPrecondition`,
+     `InvalidChatRequest`) inside `src/youtube/live_error/mod.rs` (the
+     `AuthError::CallbackAbandoned` item-level precedent) — they stay dead even under the
+     module stagings because `live_error` itself is not module-staged.
+  4. Comment text (one line, module decls and variants):
+     `// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.`
+- Rationale: Task 2 legally lands the surface before its consumer; the lint names these
+  exact declarations (compiler-named); Task 3's rewire makes every one live and RETIRES
+  all of them (they are on the Task-3 retirement ledger).
+- **Retirement ledger statement: all staging attributes retire at the Task-3 rewire.**
+
+OBSERVED: the enumerated list is 5 + 1 + 2 = **8 staging attributes** (the ruling's prose
+says "seven"; the arithmetic is 8 and 8 were applied). `allow(` line count in
+`src/youtube` is therefore **17** = 8 existing + 8 staging + 1 planned re-export brace.
+
+Post-ruling verdicts (same tree, 2026-10-29):
+
+- `cargo fmt --check` → exit 0.
+- `cargo clippy --locked -- -D warnings` → **exit 0, zero warnings**.
+- Targeted rosters re-run: `cargo test --locked stream_` → 79 passed / 0 failed (includes
+  the 4 stream rosters: 14 + 12 + 6 + 5); `cargo test --locked grpc_status` → 12 passed.
+- **FULL GATE** `sh scripts/dev-checks.sh` → **exit 0**, four PASS lines, `ALL CHECKS
+  PASSED`; OBSERVED total **507 passed / 0 failed** (458 baseline + 49 new). Log:
+  `logs/checks/20261029T180112Z.log` (gitignored by the `logs/*` rule; not committed).
+- `cargo check --target x86_64-pc-windows-gnu` → **exit 0**.
+- Code commit (step 8) = `75788ae` (16 files: 4 modified + 12 new).
+
+Task-2 is now complete at the 4.2 boundary: no worker edits, no retirement deletions, no
+docs/ updates, no builds, no push, no branch change.
 
 ---
 
