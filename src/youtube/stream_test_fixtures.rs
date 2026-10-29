@@ -1,10 +1,7 @@
-//! Shared offline stream fixtures (the `live_chat_test_fixtures` precedent,
-//! record D-14 style): the scripted ChatStream-transport fake with per-
-//! session `VecDeque` scripting, the response/carrier builders, and the
-//! tiny current-thread test runtime helper (the TODO's sanctioned
-//! test-constructed runtime — zero sleeps; fakes return immediately).
-//! Never built in production; fixture strings are `*-fixture` shaped only;
-//! no test reaches Google.
+//! Shared offline stream fixtures (the `live_chat_test_fixtures` precedent):
+//! the scripted ChatStream fake, the response/carrier builders, and the tiny
+//! current-thread test runtime helper (zero sleeps; fakes return immediately).
+//! Never built in production; no test reaches Google.
 
 use std::collections::VecDeque;
 use std::future::Future;
@@ -196,3 +193,8 @@ pub(crate) fn response_offline(items: Vec<LiveChatMessage>) -> LiveChatMessageLi
 pub(crate) fn yielded(response: &LiveChatMessageListResponse) -> YieldedChatStreamBatch {
     map_stream_batch(response)
 }
+
+#[path = "stream_run_fixtures.rs"]
+mod stream_run_fixtures;
+
+pub(crate) use self::stream_run_fixtures::{RunChatStreamLedger, ScriptedRunStreamTransport};

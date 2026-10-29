@@ -7,8 +7,8 @@ use std::sync::Arc;
 use crate::app::pipeline::StopFlag;
 use crate::config::AppConfig;
 use crate::youtube::{
-    AccessToken, AuthorizationVerifier, CredentialStore, LiveApiTransport, LiveChatTransport,
-    TokenEndpointTransport, WaitCanceller,
+    AccessToken, AuthorizationVerifier, ChatStreamTransport, CredentialStore, LiveApiTransport,
+    LiveChatTransport, TokenEndpointTransport, WaitCanceller,
 };
 
 /// The Ctrl+C pair handed to the startup (one handler, both flags).
@@ -34,11 +34,26 @@ pub(super) type BroadcastTransport = Arc<dyn LiveApiTransport + Send + Sync>;
 /// The chat-side shared transport handle (same Send+Sync wrapper form).
 pub(super) type ChatTransport = Arc<dyn LiveChatTransport + Send + Sync>;
 
-/// The transport factory's result: BOTH handles coerce from the ONE
-/// concrete `Arc<GoogleLiveApiTransport>` (one token, one instance).
+/// The chat stream side (Phase-07): the run factory hands the chat worker a
+/// boxed `ChatStreamTransport`; the trait's `Send` superbound makes the box
+/// thread-movable into the confined worker thread, and `open(&mut self)` is
+/// the landed A.6 signature — the worker owns the value outright.
+pub(super) type ChatStreamHandle = Box<dyn ChatStreamTransport>;
+
+/// The chat stage constructor's sources (≤2-args param-object rule): the O6
+/// lookup seam (unchanged) plus the Phase-07 stream seam.
+pub(super) struct ChatStageSources {
+    pub(super) lookup: ChatTransport,
+    pub(super) stream: ChatStreamHandle,
+}
+
+/// The transport factory's result: BOTH REST handles coerce from the ONE
+/// concrete `Arc<GoogleLiveApiTransport>` (one token, one instance) and the
+/// stream handle is built from a token clone (Phase-07).
 pub(super) struct BroadcastTransports {
     pub(super) live: BroadcastTransport,
     pub(super) chat: ChatTransport,
+    pub(super) stream: ChatStreamHandle,
 }
 
 /// Tests substitute the fakes here; production builds the concrete ureq

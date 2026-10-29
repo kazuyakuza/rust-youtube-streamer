@@ -67,8 +67,6 @@ mod live_chat_dedup;
 mod live_chat_mapping;
 mod live_chat_models;
 mod live_chat_resolution;
-// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
-#[allow(dead_code)]
 mod live_chat_stream_mapping;
 mod live_error;
 mod live_ingestion;
@@ -86,17 +84,9 @@ mod persisted_credentials;
 mod readiness_wait;
 mod rtmps_ingestion;
 mod scheduled_start_time;
-// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
-#[allow(dead_code)]
 mod stream_client;
-// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
-#[allow(dead_code)]
 mod stream_concrete;
-// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
-#[allow(dead_code)]
 mod stream_proto;
-// Staged for the Task-3 streamList worker rewire (Phase-07); retire when the rewire consumes this surface.
-#[allow(dead_code)]
 mod stream_transport;
 mod token;
 mod transport;
@@ -132,30 +122,18 @@ pub(crate) use google_authorization_verifier::GoogleAuthorizationVerifier;
 pub(crate) use google_live_api_transport::GoogleLiveApiTransport;
 pub(crate) use google_token_endpoint::GoogleTokenEndpoint;
 pub(crate) use live_chat_dedup::ChatDedupWindow;
-// Phase-06 Task 3: `ChatPageOutcome` is a pinned C-1 surface name the
-// worker only infers — clippy-named allow (plan §6(f)).
-#[allow(unused_imports)]
-pub(crate) use live_chat_mapping::{map_page, ChatPageOutcome, ChatTextMessage};
-pub(crate) use live_chat_models::{ChatListCommand, LiveChatMessageList};
 pub(crate) use live_chat_resolution::resolve_live_chat_id;
-// Pinned Task-3 consumption surface (record C-1); the mapping helper runs
-// inside youtube and stays unconsumed at the crate root.
-#[allow(unused_imports)]
-pub(crate) use live_chat_mapping::parse_rfc3339_seconds;
-// Same pinned-surface staging: the chat path builder runs inside youtube.
-#[allow(unused_imports)]
-pub(crate) use live_chat_models::chat_messages_path;
 #[cfg(test)]
 pub(crate) use live_chat_resolution::resolve_live_chat_id_with_interval;
 pub(crate) use live_error::LiveApiError;
 pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
 pub(crate) use live_models::LiveStream;
 pub(crate) use readiness_wait::{wait_until_stream_active, StreamObservationRequest};
-// Phase-07 pinned Task-3 consumption surface (record P7-12; plan
-// `.kilo/plans/20261029-phase07-task2-streaming-client-bridge.md` §C): the
-// worker consumes the stream seam; clippy-named staging until the worker
-// rewires.
-#[allow(unused_imports)]
+// Phase-07 landed surface (Task-3 rewire; record P7-12): the run chat
+// worker consumes the stream seam, the concrete transport, and the
+// mapped carrier.
+pub(crate) use live_chat_mapping::ChatTextMessage;
+pub(crate) use stream_concrete::GoogleLiveChatStreamTransport;
 pub(crate) use stream_transport::{
     ChatStreamRequest, ChatStreamTransport, LiveChatStreamSession, YieldedChatStreamBatch,
 };
@@ -194,6 +172,7 @@ pub(crate) use verify::VerifiedAuthorization;
 #[cfg(test)]
 pub(crate) use stream_test_fixtures::{
     ended_item, response_offline, response_plain, response_with_token, stream_test_block_on,
-    text_item, tombstone_item, yielded, ScriptedChatStreamTransport, ScriptedSessionSpec,
-    ACCESS_TOKEN_FIXTURE, LIVE_CHAT_ID_FIXTURE, PUBLISHED_AT_FIXTURE, RESUME_TOKEN_FIXTURE,
+    text_item, tombstone_item, yielded, RunChatStreamLedger, ScriptedChatStreamTransport,
+    ScriptedRunStreamTransport, ScriptedSessionSpec, ACCESS_TOKEN_FIXTURE, LIVE_CHAT_ID_FIXTURE,
+    PUBLISHED_AT_FIXTURE, RESUME_TOKEN_FIXTURE,
 };

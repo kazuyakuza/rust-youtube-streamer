@@ -1,21 +1,19 @@
 //! Orchestration tests (plan §8 TD): `run_runtime` produces the §5
 //! artifact-of-startup sequence exactly, the permission gate blocks ALL
 //! resource creation, broadcast failures never reach streaming, and the
-//! shutdown order matches production. NOTE (documented drift risk, plan
-//! §8 TD-5): the recorded runner MIRRORS `PreparedStreaming::run`'s
-//! shutdown sequence — update it here if the production ordering ever
-//! changes.
+//! shutdown order matches production. The recorded runner MIRRORS
+//! `PreparedStreaming::run`'s shutdown sequence — keep it in sync.
 
 use std::sync::Arc;
 
 use crate::app::pipeline::StopFlag;
 use crate::config::valid_config;
-use crate::youtube::{LiveApiError, WaitCanceller};
+use crate::youtube::{
+    response_offline, yielded, LiveApiError, ScriptedRunStreamTransport, WaitCanceller,
+};
 
 use super::broadcast::public_watch_url;
-use super::chat_worker::runtime_chat_fakes::{
-    chat_page, ScriptedRunChatTransport, LIVE_CHAT_ID_FIXTURE,
-};
+use super::chat_worker::runtime_chat_fakes::{ChatFakes, LIVE_CHAT_ID_FIXTURE};
 use super::error::RunError;
 use super::run_runtime;
 use super::runtime_credential_fakes::{
@@ -27,13 +25,11 @@ use super::runtime_test_fixtures::{
 };
 use super::seams::{BroadcastTransports, RunStops, RuntimeStart, ServiceStops};
 
-const OFFLINE_AT_FIXTURE: &str = "2026-10-26T02:00:00Z";
-
 /// The TD parameter object (≤2-args rule): one scripted runtime run's
 /// injected collaborators.
 struct ScriptedRun<'a> {
     transport: &'a Arc<ScriptedTransport>,
-    chat: &'a Arc<ScriptedRunChatTransport>,
+    chat: &'a ChatFakes,
     verifier: &'a FakeVerifier,
     runner: &'a RecordingStreamingRunner,
 }
@@ -43,7 +39,10 @@ fn run_with_scripted(script: ScriptedRun<'_>) -> Result<(), RunError> {
     let store = FakeStore::granting();
     let endpoint = FakeEndpoint;
     let live = Arc::clone(script.transport);
-    let chat = Arc::clone(script.chat);
+    let chat: super::seams::ChatTransport = script.chat.lookup.clone();
+    let stream = Box::new(ScriptedRunStreamTransport::new(Arc::clone(
+        &script.chat.stream_ledger,
+    )));
     let start = RuntimeStart {
         config: &valid_config(),
         stops: RunStops {
@@ -56,7 +55,7 @@ fn run_with_scripted(script: ScriptedRun<'_>) -> Result<(), RunError> {
             endpoint: &endpoint,
             verifier: script.verifier,
         },
-        build_transport: Box::new(move |_access_token| BroadcastTransports { live, chat }),
+        build_transport: Box::new(move |_access_token| BroadcastTransports { live, chat, stream }),
     };
     run_runtime(start, script.runner)
 }
@@ -65,9 +64,11 @@ fn run_with_scripted(script: ScriptedRun<'_>) -> Result<(), RunError> {
 fn run_runtime_orchestrates_credentials_then_resources_then_streaming() {
     let transport = Arc::new(ScriptedTransport::default());
     transport.script_preparation_then_gate(Ok(Some(stream_with_status("active"))));
-    let chat = Arc::new(ScriptedRunChatTransport::default());
-    chat.script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
-    chat.script_list(Ok(chat_page(vec![], None, None, Some(OFFLINE_AT_FIXTURE))));
+    let chat = ChatFakes::new();
+    chat.lookup
+        .script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
+    chat.stream_ledger
+        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
     let runner = RecordingStreamingRunner::scripted(RunnerScript::ReportOk);
 
     run_with_scripted(ScriptedRun {
@@ -92,8 +93,13 @@ fn run_runtime_orchestrates_credentials_then_resources_then_streaming() {
     );
     assert_eq!(
         chat.operations(),
-        ["lookup_broadcast_chat_id", "list_messages"],
-        "the worker ran post-confirmation and joined in the gate finish"
+        ["lookup_broadcast_chat_id"],
+        "the worker resolved the chat id post-confirmation and joined in the gate finish"
+    );
+    assert_eq!(
+        chat.stream_ledger.operations(),
+        ["open"],
+        "the worker established the stream once and joined in the gate finish"
     );
     let recorded = runner.take_recorded();
     assert_eq!(recorded.destination_debug, "RtmpsDestination(<redacted>)");
@@ -105,7 +111,7 @@ fn run_runtime_orchestrates_credentials_then_resources_then_streaming() {
 #[test]
 fn scope_gate_failure_prevents_resource_creation() {
     let transport = Arc::new(ScriptedTransport::default());
-    let chat = Arc::new(ScriptedRunChatTransport::default());
+    let chat = ChatFakes::new();
     let runner = RecordingStreamingRunner::scripted(RunnerScript::ReportOk);
 
     let error = run_with_scripted(ScriptedRun {
@@ -126,7 +132,7 @@ fn scope_gate_failure_prevents_resource_creation() {
 fn broadcast_failure_maps_to_run_error_without_streaming() {
     let transport = Arc::new(ScriptedTransport::default());
     transport.script_create_stream_failure();
-    let chat = Arc::new(ScriptedRunChatTransport::default());
+    let chat = ChatFakes::new();
     let runner = RecordingStreamingRunner::scripted(RunnerScript::ReportOk);
 
     let error = run_with_scripted(ScriptedRun {
@@ -150,7 +156,7 @@ fn broadcast_failure_maps_to_run_error_without_streaming() {
 fn gate_fatal_stops_streaming_and_primarily_reports_the_wait() {
     let transport = Arc::new(ScriptedTransport::default());
     transport.script_preparation_then_gate(Ok(Some(stream_with_status("error"))));
-    let chat = Arc::new(ScriptedRunChatTransport::default());
+    let chat = ChatFakes::new();
     let runner = RecordingStreamingRunner::scripted(RunnerScript::MirrorProductionShutdown);
 
     let error = run_with_scripted(ScriptedRun {
@@ -175,7 +181,7 @@ fn gate_fatal_stops_streaming_and_primarily_reports_the_wait() {
 fn shutdown_order_cancels_the_wait_before_joining_the_gate() {
     let transport = Arc::new(ScriptedTransport::default());
     transport.script_preparation_then_gate(Err(LiveApiError::WaitCancelled));
-    let chat = Arc::new(ScriptedRunChatTransport::default());
+    let chat = ChatFakes::new();
     let runner =
         RecordingStreamingRunner::scripted(RunnerScript::PipelineFailureThenProductionOrder);
 

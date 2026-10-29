@@ -4,7 +4,6 @@
 //! cancellation aborts that must never be retried. Offline only.
 
 use std::cell::RefCell;
-use std::collections::VecDeque;
 
 use super::live_chat_test_fixtures::{
     ScriptedLiveChatTransport, BROADCAST_ID_FIXTURE, LIVE_CHAT_ID_FIXTURE,
@@ -16,7 +15,6 @@ const ZERO_INTERVAL_MS: u64 = 0;
 fn scripted(lookups: Vec<Result<Option<String>, LiveApiError>>) -> ScriptedLiveChatTransport {
     ScriptedLiveChatTransport {
         lookup_results: RefCell::new(lookups.into()),
-        list_results: RefCell::new(VecDeque::new()),
         operations: RefCell::new(Vec::new()),
     }
 }

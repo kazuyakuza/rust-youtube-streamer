@@ -147,3 +147,7 @@ fn epoch_seconds(days: i64, hour: u32, minute: u32, second: u32) -> Option<u64> 
         + u64::from(second);
     day_seconds.checked_add(clock_seconds)
 }
+
+#[cfg(test)]
+#[path = "live_chat_rfc3339_tests.rs"]
+mod live_chat_rfc3339_tests;

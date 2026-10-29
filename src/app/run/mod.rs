@@ -1,22 +1,16 @@
-//! The production `run` mode (plan D-T3-1..D-T3-15; TODO Task 3): the
-//! 10-stage startup (Ctrl+C pair → credentials/authorization → the
-//! run-side permission gate → transport → broadcast/stream resources →
-//! the ONE destination reveal → FFmpeg start → the thread-parallel
-//! post-start confirmation gate → the continuous chat-backed frame loop →
-//! ordered shutdown), its exit funnel, and (in `seams`) the testability
-//! parameter objects. Resource fate (D-T3-6 rule 8): NEVER delete, NEVER transition — with
-//! `enableAutoStop=true` the broadcast auto-completes ~1 minute after
-//! ingestion ends; startup failures AFTER O1/O2 leave the created `ready`
-//! resources in place (repeat-run accumulation is the documented
-//! limitation; operators delete stale resources in YouTube Studio).
-//! Phase 06 wires the real chat worker at stage 7.5: the worker thread
-//! spawns at gate `Confirmed` and joins in `gate.finish()` (the §2.2/§2.3
-//! refinement notes live in `chat_worker`/`streaming`).
+//! The production `run` mode (plan D-T3-1..D-T3-15; TODO Task 3): the 10-stage
+//! startup (Ctrl+C pair → credentials → scope gate → transport → resources →
+//! destination reveal → FFmpeg → confirmation gate → the chat-backed frame loop
+//! → ordered shutdown), its exit funnel and the `seams` parameter objects.
+//! Resource fate (D-T3-6 rule 8): NEVER delete, NEVER transition — `enableAutoStop=true`
+//! auto-completes after ingestion; post-O1/O2 failures leave `ready` resources in place.
+//! Phase-07: the chat worker's retrieval is the streamList gRPC client behind a confined current-thread runtime on the worker thread.
 
 mod broadcast;
 mod chat_failure;
+mod chat_stream_delivery;
+mod chat_stream_worker;
 mod chat_worker;
-mod chat_worker_delivery;
 mod credentials;
 mod error;
 mod gate;
@@ -31,13 +25,15 @@ use tracing::info;
 use crate::app::pipeline::{install_stop_request_handler, StopFlag};
 use crate::config::AppConfig;
 use crate::streaming::RtmpsDestination;
-use crate::youtube::{CredentialService, GoogleLiveApiTransport, WaitCanceller};
+use crate::youtube::{
+    CredentialService, GoogleLiveApiTransport, GoogleLiveChatStreamTransport, WaitCanceller,
+};
 
 use broadcast::{prepare_broadcast, public_watch_url, StageRuntime};
 use credentials::{authorize_from_service, authorize_scope_evidence, establish_credentials};
 use error::RunError;
 use gate::{spawn_startup_gate, GatePlan};
-use seams::{BroadcastTransports, RunStops, RuntimeStart, ServiceStops};
+use seams::{BroadcastTransports, ChatStageSources, RunStops, RuntimeStart, ServiceStops};
 use streaming::{PreparedStreaming, StreamingExecution, StreamingRunner};
 
 /// Exit code of a clean run stop (D-T3-8).
@@ -91,20 +87,20 @@ fn run_outcome(app_config: &AppConfig) -> Result<(), RunError> {
         stops,
         service,
         build_transport: Box::new(|access_token| {
+            let stream = Box::new(GoogleLiveChatStreamTransport::new(access_token.clone()));
             let transport = Arc::new(GoogleLiveApiTransport::new(access_token));
             BroadcastTransports {
                 live: transport.clone(),
                 chat: transport,
+                stream,
             }
         }),
     };
     run_runtime(start, &PreparedStreaming)
 }
 
-/// D-T3-2 stage 1 (the one documented refinement's precondition): the
-/// app's SINGLE Ctrl+C handler flips BOTH the frame-loop `StopFlag` AND a
-/// `WaitCanceller` clone (D-T2-10's Task-3 contract — both flags, one
-/// handler; no youtube types in `pipeline`).
+/// D-T3-2 stage 1: the app's SINGLE Ctrl+C handler flips BOTH the frame-loop
+/// `StopFlag` AND a `WaitCanceller` clone (no youtube types in `pipeline`).
 fn install_stop_pair() -> Result<RunStops, RunError> {
     let stops = RunStops {
         stop_flag: StopFlag::new(),
@@ -149,7 +145,10 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
     let broadcast_id = prepared.broadcast_id().to_string();
     let destination = RtmpsDestination::new(prepared.into_ingestion().into_url());
     let (source, chat_worker) = chat_worker::build_chat_stage(
-        transports.chat,
+        ChatStageSources {
+            lookup: transports.chat,
+            stream: transports.stream,
+        },
         &broadcast_id,
         start.stops.stop_flag.clone(),
     );

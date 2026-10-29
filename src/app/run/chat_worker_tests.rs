@@ -1,25 +1,21 @@
-//! Roster A (plan §5.2 items 5–10; items 1–4 live in the
-//! `chat_worker_flow_tests` sibling per AMENDMENT 1 ruling 3): graceful
-//! ends, terminal classes, the resolution budget and the pinned
-//! info-event constants. Offline only; the shared Mutex-based
-//! `runtime_chat_fakes`.
-
-use std::sync::Arc;
+//! Roster A (plan §E.1; items 1–4 of the retired flow roster live in the
+//! `chat_worker_flow_tests` sibling): the stream worker's graceful ends,
+//! terminal classes, the O6 resolution budget and the pinned info-event
+//! constants. Offline only; the shared `runtime_chat_fakes`.
 
 use crate::app::pipeline::ChatRetrievalError;
 use crate::app::run::chat_worker::runtime_chat_fakes::{
-    chat_page, run_worker, ScriptedRunChatTransport, LIVE_CHAT_ID_FIXTURE,
+    run_worker, ChatFakes, LIVE_CHAT_ID_FIXTURE,
 };
 use crate::chat::ChatMessage;
+use crate::youtube::{response_offline, response_with_token, yielded, LiveApiError};
 
-use super::ChatChannel;
-use super::{CHAT_BASELINE_MESSAGE, CHAT_ENDED_MESSAGE, CHAT_ID_RESOLVED_MESSAGE};
+use super::{ChatChannel, CHAT_BASELINE_MESSAGE, CHAT_ENDED_MESSAGE, CHAT_ID_RESOLVED_MESSAGE};
 
-pub(super) const PUBLISHED_AT: &str = "2026-10-26T01:02:03Z";
-pub(super) const OFFLINE_AT: &str = "2026-10-26T02:00:00Z";
-
-pub(super) fn lookup_found(fake: &ScriptedRunChatTransport) {
-    fake.script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
+pub(super) fn lookup_found(fakes: &ChatFakes) {
+    fakes
+        .lookup
+        .script_lookup(Ok(Some(LIVE_CHAT_ID_FIXTURE.to_string())));
 }
 
 pub(super) fn drain(receiver: &std::sync::mpsc::Receiver<ChatMessage>) -> Vec<ChatMessage> {
@@ -35,11 +31,13 @@ pub(super) fn terminal_of(channel: &ChatChannel) -> Option<ChatRetrievalError> {
 }
 
 #[test]
-fn worker_graceful_ended_page_disconnects_without_terminal_error() {
-    let fake = Arc::new(ScriptedRunChatTransport::default());
-    lookup_found(&fake);
-    fake.script_list(Ok(chat_page(vec![], None, None, Some(OFFLINE_AT))));
-    let channel = run_worker(fake);
+fn worker_offline_ended_batch_disconnects_without_terminal_error() {
+    let fakes = ChatFakes::new();
+    lookup_found(&fakes);
+    fakes
+        .stream_ledger
+        .script_session(vec![Some(Ok(yielded(&response_offline(vec![]))))]);
+    let channel = run_worker(&fakes);
 
     assert!(terminal_of(&channel).is_none(), "offlineAt is graceful");
     drop(channel.sender);
@@ -50,82 +48,91 @@ fn worker_graceful_ended_page_disconnects_without_terminal_error() {
 }
 
 #[test]
-fn worker_chat_ended_error_class_is_graceful() {
-    let fake = Arc::new(ScriptedRunChatTransport::default());
-    lookup_found(&fake);
-    fake.script_list(Err(crate::youtube::LiveApiError::ChatEnded));
-    let channel = run_worker(fake);
+fn worker_mid_session_precondition_is_graceful() {
+    let fakes = ChatFakes::new();
+    lookup_found(&fakes);
+    fakes.stream_ledger.script_session(vec![
+        Some(Ok(yielded(&response_with_token(
+            vec![],
+            crate::youtube::RESUME_TOKEN_FIXTURE,
+        )))),
+        Some(Err(LiveApiError::ChatPrecondition {
+            detail: "LIVE_CHAT_DISABLED-or-LIVE_CHAT_ENDED".to_string(),
+        })),
+    ]);
+    let channel = run_worker(&fakes);
 
-    assert!(terminal_of(&channel).is_none(), "ChatEnded is graceful");
-    drop(channel.sender);
-    assert!(matches!(
-        channel.receiver.try_recv(),
-        Err(std::sync::mpsc::TryRecvError::Disconnected)
-    ));
+    assert!(
+        terminal_of(&channel).is_none(),
+        "a mid-session precondition is the graceful end"
+    );
+    assert_eq!(
+        fakes.stream_ledger.operations(),
+        ["open"],
+        "the failure landed inside the ONE established session"
+    );
 }
 
 #[test]
-fn worker_chat_disabled_failure_writes_the_chat_unavailable_terminal() {
-    let fake = Arc::new(ScriptedRunChatTransport::default());
-    lookup_found(&fake);
-    fake.script_list(Err(crate::youtube::LiveApiError::ChatDisabled));
-    let channel = run_worker(fake);
+fn worker_establishment_precondition_writes_the_chat_unavailable_terminal() {
+    let fakes = ChatFakes::new();
+    lookup_found(&fakes);
+    fakes
+        .stream_ledger
+        .script_open_failure(LiveApiError::ChatPrecondition {
+            detail: "LIVE_CHAT_DISABLED-or-LIVE_CHAT_ENDED".to_string(),
+        });
+    let channel = run_worker(&fakes);
 
-    let failure = terminal_of(&channel).expect("ChatDisabled is terminal");
-    assert!(matches!(
-        failure,
-        ChatRetrievalError::ChatUnavailable { ref detail }
-            if detail == "live chat is disabled for this broadcast; enable chat and reuse its id"
-    ));
+    let failure = terminal_of(&channel).expect("an establishment precondition is terminal");
+    assert_eq!(
+        failure.to_string(),
+        "live chat is unavailable: live chat precondition failed \
+         (reason 'LIVE_CHAT_DISABLED-or-LIVE_CHAT_ENDED')"
+    );
 }
 
 #[test]
 fn worker_resolution_absence_after_budget_maps_chat_unavailable() {
-    let fake = Arc::new(ScriptedRunChatTransport::default());
+    let fakes = ChatFakes::new();
     for _attempt in 0..6 {
-        fake.script_lookup(Ok(None));
+        fakes.lookup.script_lookup(Ok(None));
     }
-    let channel = run_worker(Arc::clone(&fake));
+    let channel = run_worker(&fakes);
 
     let failure = terminal_of(&channel).expect("absence after budget is terminal");
-    assert!(matches!(
-        failure,
-        ChatRetrievalError::ChatUnavailable { ref detail }
-            if detail == "YouTube live chat not found; deleted or never created"
-    ));
+    let ChatRetrievalError::ChatUnavailable { detail } = failure else {
+        panic!("absence after the O6 budget is the ChatUnavailable class");
+    };
+    assert_eq!(
+        detail,
+        "YouTube live chat not found; deleted or never created"
+    );
     assert!(
-        fake.operations()
+        fakes
+            .operations()
             .iter()
             .all(|op| *op == "lookup_broadcast_chat_id"),
-        "no list call happens without a chat id"
+        "no stream open happens without a chat id"
     );
+    assert!(fakes.stream_ledger.operations().is_empty());
 }
 
 #[test]
-fn worker_rate_limit_exceeded_is_transient_while_quota_exhaustion_is_terminal() {
-    let recovering = Arc::new(ScriptedRunChatTransport::default());
-    lookup_found(&recovering);
-    recovering.script_list(Err(crate::youtube::LiveApiError::QuotaLike {
-        reason: "rateLimitExceeded".to_string(),
-    }));
-    recovering.script_list(Err(crate::youtube::LiveApiError::QuotaLike {
-        reason: "rateLimitExceeded".to_string(),
-    }));
-    recovering.script_list(Ok(chat_page(vec![], None, None, Some(OFFLINE_AT))));
-    let channel = run_worker(recovering);
-    assert!(
-        terminal_of(&channel).is_none(),
-        "rateLimitExceeded recovers within the budget"
-    );
+fn worker_lookup_ending_failure_writes_the_chat_unavailable_terminal() {
+    let fakes = ChatFakes::new();
+    fakes.lookup.script_lookup(Err(LiveApiError::ChatDisabled));
+    let channel = run_worker(&fakes);
 
-    let exhausted = Arc::new(ScriptedRunChatTransport::default());
-    lookup_found(&exhausted);
-    exhausted.script_list(Err(crate::youtube::LiveApiError::QuotaLike {
-        reason: "quotaExceeded".to_string(),
-    }));
-    let channel = run_worker(exhausted);
-    let failure = terminal_of(&channel).expect("quotaExceeded is terminal");
-    assert!(matches!(failure, ChatRetrievalError::Quota { .. }));
+    let failure = terminal_of(&channel).expect("ChatDisabled aborts the resolution");
+    let ChatRetrievalError::ChatUnavailable { detail } = failure else {
+        panic!("the ending failure maps into ChatUnavailable");
+    };
+    assert_eq!(
+        detail,
+        "live chat is disabled for this broadcast; enable chat and reuse its id"
+    );
+    assert!(fakes.stream_ledger.operations().is_empty());
 }
 
 #[test]

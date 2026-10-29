@@ -37,3 +37,7 @@ pub(super) fn terminal_retrieval_error(error: &LiveApiError) -> ChatRetrievalErr
         },
     }
 }
+
+#[cfg(test)]
+#[path = "chat_failure_tests.rs"]
+mod chat_failure_tests;
