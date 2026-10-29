@@ -8,10 +8,14 @@ use std::time::Duration;
 use super::*;
 use crate::youtube::ACCESS_TOKEN_FIXTURE;
 
+fn fixture_bearer() -> MetadataValue<Ascii> {
+    bearer_token_metadata(&AccessToken::new(ACCESS_TOKEN_FIXTURE))
+        .expect("the fixture token is header-safe")
+}
+
 #[test]
 fn bearer_token_metadata_is_bearer_only() {
-    let metadata = bearer_token_metadata(&AccessToken::new(ACCESS_TOKEN_FIXTURE))
-        .expect("the fixture token is header-safe");
+    let metadata = fixture_bearer();
     assert_eq!(
         metadata.to_str().expect("the value is ASCII"),
         "Bearer access-token-fixture"
@@ -20,9 +24,8 @@ fn bearer_token_metadata_is_bearer_only() {
 
 #[test]
 fn bearer_token_metadata_holds_the_authorization_key_not_an_api_key() {
-    let metadata = bearer_token_metadata(&AccessToken::new(ACCESS_TOKEN_FIXTURE))
-        .expect("the fixture token is header-safe");
-    let rendered = metadata.to_str().expect("the value is ASCII");
+    let bearer = fixture_bearer();
+    let rendered = bearer.to_str().expect("the value is ASCII");
     assert_eq!(AUTHORIZATION_METADATA_KEY, "authorization");
     assert!(rendered.starts_with("Bearer "));
     assert!(!rendered.contains("key="));
@@ -58,8 +61,7 @@ fn stream_endpoint_builds_offline_with_connect_timeout_and_tls_shape() {
 
 #[test]
 fn stream_request_carries_the_bearer_metadata_only() {
-    let bearer = bearer_token_metadata(&AccessToken::new(ACCESS_TOKEN_FIXTURE))
-        .expect("the fixture token is header-safe");
+    let bearer = fixture_bearer();
     let request = stream_request(LiveChatMessageListRequest::default(), bearer);
     let metadata = request.metadata();
     assert_eq!(metadata.len(), 1);

@@ -148,13 +148,13 @@ pub(crate) use live_chat_models::chat_messages_path;
 #[cfg(test)]
 pub(crate) use live_chat_resolution::resolve_live_chat_id_with_interval;
 pub(crate) use live_error::LiveApiError;
+pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
+pub(crate) use live_models::LiveStream;
+pub(crate) use readiness_wait::{wait_until_stream_active, StreamObservationRequest};
 // Phase-07 pinned Task-3 consumption surface (record P7-12; plan
 // `.kilo/plans/20261029-phase07-task2-streaming-client-bridge.md` §C): the
 // worker consumes the stream seam; clippy-named staging until the worker
 // rewires.
-pub(crate) use live_ingestion::{LiveBroadcastPreparer, PreparedBroadcast};
-pub(crate) use live_models::LiveStream;
-pub(crate) use readiness_wait::{wait_until_stream_active, StreamObservationRequest};
 #[allow(unused_imports)]
 pub(crate) use stream_transport::{
     ChatStreamRequest, ChatStreamTransport, LiveChatStreamSession, YieldedChatStreamBatch,
