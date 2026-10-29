@@ -41,7 +41,7 @@ Every operation this service performs is a **YouTube Data API v3** operation:
 | --- | --- | --- |
 | `channels.list` (`part=id&mine=true`) — authorization probe | reusable credential service | Phase 04 (implemented) |
 | `liveBroadcasts` / `liveStreams` lifecycle | the production `run` command (Phase 05: [`docs/production-run.md`](production-run.md)) | Phase 05 (implemented) |
-| `liveChatMessages` (`liveChatMessages.list` polling is the selected method) | the production `run` command's live-chat worker (Phase 06: implemented and documented; see [`docs/production-run.md`](production-run.md)) | Phase 06 |
+| `liveChatMessages` (`liveChatMessages.streamList` server-streaming is the selected method; the `list` polling surface was retired in Phase 07) | the production `run` command's live-chat worker (Phases 06–07: implemented and documented; see [`docs/production-run.md`](production-run.md)) | Phases 06–07 |
 
 Google's rule is explicit: *"Any application that calls Google APIs needs to enable those APIs in the API Console."* If the API is not enabled in the project that owns your OAuth client, the first API call fails.
 
@@ -137,7 +137,7 @@ Consequences for this project:
 
 - **`auth` and the startup probe are negligible** (~1 unit per authorization/verification).
 - **Broadcast/stream lifecycle is cheap** (~1 unit per lifecycle call).
-- **Live-chat reading is the quota driver.** `liveChatMessages.list` costs 5 units, so a continuous poll every 5 seconds would consume ≈17,000 units/day — over the default ceiling. The Phase 06 chat worker wired into `run` therefore paces polling by honoring the server-provided `pollingIntervalMillis` (a bounded default applies only when a response omits it); the detailed quota accounting for a real broadcast lives in the "Quota (What Chat Polling Costs)" subsection of [`docs/production-run.md`](production-run.md) and in the Phase 06 completion report. A quota extension (free, manually reviewed) remains the only path above the default ceiling.
+- **Live-chat reading costs per connection, not per poll.** The production worker establishes the official `liveChatMessages.streamList` server-streaming connection (5 units per establishment call); it is re-established ONLY after a drop (≤ 11 connection calls ≈ 55 units inside one sustained outage window under the worker's bounded budget) and makes NO per-interval polling calls. The one-time chat-id resolution lookup costs 1 unit. Push-billing on an established connection is officially undocumented — never invented here. The detailed quota accounting for a real broadcast lives in the "Quota (What Chat Streaming Costs)" subsection of [`docs/production-run.md`](production-run.md) and in the Phase 07 completion report. A quota extension (free, manually reviewed) remains the only path above the default ceiling.
 - **More quota cannot be bought.** The only path above the default is the free, manually reviewed *YouTube API Services — Audit and Quota Extension* form; approval and timing are not guaranteed.
 - Exhausting the daily quota returns `403 quotaExceeded` until the reset.
 
