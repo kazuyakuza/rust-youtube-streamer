@@ -254,7 +254,7 @@ Mapping additions in `src/youtube/` (new pure module `live_error/grpc_status.rs`
 | item batch DECODE failure (prost error on an item) | existing `MalformedResponse { … }` | transient (batch discarded; NEVER treated as ordinary chat — the whole batch is dropped and the token state stays at last-delivered; dedup prevents re-entrance on the next establish) |
 
 - `LiveApiError` variant count: 17 → **19** (the NEW `ChatPrecondition` and `InvalidChatRequest`; decode failure reuses the existing `MalformedResponse`, so no separate deserialize variant is added). Hand-written secret-free Display lines added; the structure map/`tech.md` counts are updated in Task-4 metadata.
-- The app-level CLOSED failure classes are REUSED as-is: `is_transient_failure` STAYS CLOSED (the一身 transient list unchanged — no arm is added); the establishment/mid-session branching for `ChatPrecondition` lives in the strategy-loop policy (a pure match, pinned by test), NOT through the shared classifier.
+- The app-level CLOSED failure classes are REUSED as-is: `is_transient_failure` STAYS CLOSED (the entire transient list unchanged — no arm is added); the establishment/mid-session branching for `ChatPrecondition` lives in the strategy-loop policy (a pure match, pinned by test), NOT through the shared classifier.
 - New pure helpers are ≤ 2-arg, body ≤ 50 lines, file ≤ 200 lines, nesting ≤ 2 (§15).
 
 ---
