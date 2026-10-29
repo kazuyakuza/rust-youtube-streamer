@@ -179,5 +179,9 @@ mod chat_worker_flow_tests;
 mod chat_worker_budget_tests;
 
 #[cfg(test)]
+#[path = "chat_worker_burst_tests.rs"]
+mod chat_worker_burst_tests;
+
+#[cfg(test)]
 #[path = "gate_chat_tests.rs"]
 mod gate_chat_tests;
