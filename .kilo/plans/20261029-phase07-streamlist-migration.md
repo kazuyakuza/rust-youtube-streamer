@@ -75,3 +75,9 @@ Branch creation/switch RESTRICTED to step 2; version bump RESTRICTED to step 3; 
 - R4: latency improvement is the user's motivating goal — the integration task pins the offline latency property (no added interval between arrival and channel delivery) and the docs set honest expectations (YouTube-side push latency is not agent-controlled).
 - R5: regression in demo/RTMPS/redaction/stop contracts — pinned tests + byte-stability ledger per task.
 - On any sub-step failure: pause, log, ask the user; max 3 review cycles then escalate.
+
+## User Rulings (2026-10-29)
+
+- Global plan APPROVED via the workflow `question` step; per-task plans AUTO-APPROVED (option: "Approve Global and Tasks Plans").
+- Task-1 polling-fate ruling: NO pre-citation bias applied — the architector weighs official evidence alone; retire vs retain-as-documented-fallback both remain first-class and the ruling is recorded with citations in the Task-1 research plan.
+- Amendment appended below the original content; the steps/pre-analysis above are never overwritten.
