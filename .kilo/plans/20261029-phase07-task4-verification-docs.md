@@ -554,9 +554,79 @@ NOT done by Task 4 (owners): the live E2E and ALL live-Google claims = OPERATOR 
 
 ---
 
-## §L — Addendum: OBSERVED records (written by the 4.2 implementer; empty at plan time)
+## §L — Addendum: OBSERVED records (written by the 4.2 implementer)
 
-(To be appended post-execution: gate log path + OBSERVED count; both build exits + `ls -l` sizes; §E audit outputs; the §C drift-check verdicts incl. the two cloud-prerequisites restorations; any deviation + disposition.)
+### L.1 Plan/commit records (observed)
+
+- Commit 1 `f12027a` `chore: track the phase07 task4 verification docs plan` (this plan only).
+- Commit 2 `7ab6eee` `feat: pin the chat-worker burst retention at the full channel` (2 files: `src/app/run/chat_worker.rs` +186/−0 net hunk, NEW `src/app/run/chat_worker_burst_tests.rs`, 80 insertions).
+- Commit 3 `1e16c3f` `docs: document the stream-backed live chat retrieval for operators` (3 files, +35/−31).
+- Commit 4 (metadata + reports + this §L) follows the doc set in §F.
+- Precondition verified: branch `feat/phase07-streamlist-retrieval`; HEAD at entry `ca9c55f`; the only pre-existing dirty path was this plan file (committed as commit 1). No push performed.
+
+### L.2 §A.7 landing (observed)
+
+- `cargo fmt --check` (container): exit 0 BEFORE and AFTER the gate.
+- Targeted `cargo test --locked chat_worker_burst`: exit 0, `running 1 test … ok. 1 passed; 0 failed; 0 ignored; 493 filtered out`.
+- `src/app/run/chat_worker.rs` observed **187 lines** after the registration block (the plan predicted 186; the inserted block is 4 lines including the separating blank). Hard cap 200 holds. Recorded as a count observation, not a structural deviation.
+- The test file landed byte-for-byte as encoded (rustfmt-clean on first write; no mechanical re-shaping needed).
+
+### L.3 §B.1 gate (observed)
+
+- Command: `docker compose -f /rust-youtube-streamer/docker-compose.yml run --rm rust sh scripts/dev-checks.sh` → **exit 0**.
+- `test result: ok. 494 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out` → **494** (493 baseline + 1 new), matching the 493+1 roster arithmetic.
+- Summary `ALL CHECKS PASSED`; log path **`logs/checks/20261029T203729Z.log`** (the fresh log governs; the README count line carries only the observed integer 494).
+- No fix cycles were needed (first gate run green).
+
+### L.4 §B.2–B.4 builds (observed, TODO-faithful order)
+
+- `sh scripts/build-windows.sh` (FIRST) → **exit 0**, script-printed size **12,336,636 bytes**.
+- `sh scripts/build-linux.sh` (SECOND) → **exit 0**, script-printed size **7,665,712 bytes**.
+- `ls -l /rust-youtube-streamer/dist /rust-youtube-streamer/dist/windows` → `rust-youtube-streamer-service` **7,665,712** bytes; `rust-youtube-streamer-service.exe` **12,336,636** bytes. Both match the printed sizes exactly (no build-hygiene stop).
+- TODO wording anomaly recorded: TODO line 84's heading says "Rebuild Linux" while the first command is the Windows script; both runs executed in the TODO's exact command order (Windows, then Linux) as §B.2 encodes.
+
+### L.5 §C doc-edit matrix (observed verdicts)
+
+- `docs/production-run.md`: all 15 encoded edits (C.a.1–C.a.15) applied; byte-stable zones untouched; TOC unchanged (H2 set unchanged; the renamed quota H3 has no in-file anchor). **ONE minimal anchor repair**: C.a.3's encoded anchor `(row 7 at the worker's first successful poll;` does not resolve because the actual parenthetical reads `(row 6 after row 5; row 7 at the worker's first successful poll; …`; applied the minimal anchor `row 7 at the worker's first successful poll;` with the encoded replacement text (otherwise byte-identical).
+- `docs/configuration.md`: **NO EDIT** — drift-check passed. Hits are exactly the `### chat` section + `log_file` bullet, the validation-rule line, the `run` bullet's "(Phase 06 chat worker wired into `run`; details in production-run.md)" pointer, and the `demo` bullet; none asserts polling or a retrieval method; the re-establishment bounds remain internal constants (no new setting justified).
+- `docs/authentication.md`: **NO EDIT** — drift-check passed; the scope-sufficiency sentence ("the minimal YouTube API permission covering the needs of the subsequent broadcast/chat phases") remains true per the §1.5 re-verification; the file asserts no method name.
+- `docs/google-cloud-prerequisites.md`: **TWO sanctioned truth-restorations applied** (C.c.1 line 44 row; C.c.2 line 140 bullet) on the recorded basis that the scope/permission picture did NOT change but the "polling is the selected method" statements were false against the landed tree. The line-130 `liveChatMessages.list / streamList | 5` fact row stayed byte-stable. No real drift beyond the two encoded lines was found.
+- `README.md`: the 4 encoded edits applied (Current Status sentence, observed test-count integer 494, Tokio bullet, new gRPC/prost bullet) + the Production Run polling sentence; TOC unchanged; no other line touched.
+- `.agent/project-structure.md`: full re-cut applied — Cargo.toml v0.13.0 + stream-family deps; `app/` intro; `run/` **31 files: 13 sources + 4 fixtures + 14 test rosters** (OBSERVED by `git ls-files src/app/run` = 31; the plan's 30/13 prediction was stale); the `chat_worker.rs` row rewritten + the two new `chat_stream_worker.rs`/`chat_stream_delivery.rs` rows added; the deleted `chat_worker_delivery.rs` row removed; the roster line re-cut to observed counts (`chat_worker_burst_tests 1`, `chat_worker_flow_tests 6`, `chat_worker_budget_tests 8`, `chat_worker_tests 6`, `gate_chat_tests 2`, `chat_failure_tests 2`, `chat_source_tests 5`; run rosters total **58**); `youtube/` **92 files: 47 sources + 4 fixtures + 41 test rosters** (OBSERVED by `git ls-files src/youtube` = 92; the plan's 82 prediction was stale) + the stream-family sentence; the four Phase-06 chat rows rewritten to the surviving surfaces; the retired `live_chat_models_tests`/`live_chat_mapping_tests` references removed from the roster summary; new sentinel rows added for `stream_proto.rs`, `stream_transport.rs`, `stream_client.rs`, `stream_concrete.rs`, `live_chat_stream_mapping.rs`, `stream_test_fixtures.rs`, `stream_run_fixtures.rs`; the youtube roster summary re-cut to **231** observed tests (per-roster counts from `git grep -c "#\[test\]"`, summing to 231); `live_error` row **17 → 19 variants** + the `grpc_status.rs` description; the `docs/` line gained the renamed-quota-subsection note; the dead-code inventory re-cut: **8 `#[allow(dead_code)]` attribute lines + the `manual_clamp` line at `chat_stream_delivery.rs`** (NO comment-only mention observed — the plan's "1 comment mention" is stale against the tree), zero new `allow(`.
+- `.agent/project-info/tech.md`: the 4 encoded edits (Stack bullet, new Phase-07 dependency bullet, retrieval-method replacement, Lifecycle confinement bullet) applied. **ONE minimal accuracy repair beyond the list**: the Lifecycle opening paragraph's "then poll on the server-instructed interval" was corrected to "then establish the server-streamed Live Chat connection", which the plan's item 4 would otherwise contradict.
+- `.agent/project-info/context.md`: the encoded Phase-07 dated block inserted after the Task-1 section (placeholders filled with the observed gate/build values); Immediate Next Steps gained the encoded item ABOVE the first item (a duplicate `1.` numbering results by design — the file already carried a duplicate `2.`). Additionally the Current Work Focus header gained the caller-directed Phase-07 state paragraph (kept above the historical Phase-06 paragraph; all dated blocks byte-stable).
+- `.agent/reports/20261026-phase-06-youtube-live-chat-integration.md`: the dated operator-confirmation addendum inserted directly after `## Manual Verification Procedure (operator-run)` and before `## Checks Actually Performed vs NOT Performed`; nothing else restructured.
+- `.agent/reports/20261029-phase-07-streamlist-migration.md`: NEW completion report written to the §C.i 15-section skeleton with the observed values above.
+
+### L.6 §E hygiene/secret audit (observed)
+
+- `git status --porcelain` (pre-final-commit) → only the task paths (docs/metadata set; no `dist/`, no logs, no credentials).
+- `git ls-files dist videos` → EMPTY (both).
+- `git check-ignore -v dist/rust-youtube-streamer-service` → `.gitignore:34:dist/`; `… .exe` → `.gitignore:34:dist/`; `logs/chat.log` → `.gitignore:18:logs/*`; `videos/` → **`.gitignore:56:videos/`** (the plan's line-55 note is off by one; the rule resolves at 56).
+- `git grep -nE "ya29|AIza" -- src docs README.md .agent` → **15 pre-existing lines, all historical audit-prose in `.agent`** (`context.md` 7, the Phase-04 report 2, the Phase-05 report 5, the Phase-06 report 1) — identical to HEAD; ZERO in `src`/`docs`/`README.md`; ZERO new. The plan's "ZERO hits" expectation is stale for the historical `.agent` prose; the security property (no token literal) holds.
+- `git grep -n "key=" -- src docs README.md` → **5 pre-existing lines**: 3 doc-comment "never an API key/no `key=`" mentions (`google_live_api_transport.rs:3`, `live_chat_models.rs:4`, `live_chat_wire_checks_tests.rs:3`) + 2 negative assertions (`live_chat_wire_checks_tests.rs:30`, `stream_client_tests.rs:31`); zero new.
+- `git grep -n "rtmps://" -- src docs` → only `.example.test` fixture shapes, the `pipe_drain.rs` redaction comment, the `production-run.md` Ingest-Probe placeholder mention, and secret-absence assertions; zero new.
+- `git grep -n "allow(" -- src` → 8 `#[allow(dead_code)]` + 1 `#[allow(clippy::manual_clamp)]` (`chat_stream_delivery.rs:173`); zero new.
+- `git grep -n "tonic::async_trait" -- src/app` → ZERO. `git grep -n "tokio::runtime" -- src` → 2 files (`chat_worker.rs`, `stream_test_fixtures.rs`; 3 lines).
+- Retired-name greps (`list_messages`, `chat_messages_path`, `ChatListCommand`, `map_page`, `ChatPageOutcome`, `polling_interval_millis`, `DEFAULT_CHAT_POLL_INTERVAL`, `Staged for the Task-3`) → ALL ZERO. `LiveChatMessageList` → **27** hits (the Task-2-KEEP proto-model substrings).
+- `git diff --stat dc3312a^..HEAD -- src/app/demo src/streaming` → EMPTY (the preservation ledger's zero-diff re-verified).
+- `cargo fmt --check` (container, final docs tree) → exit 0.
+
+### L.7 Deviations and disposition
+
+1. `chat_worker.rs` 187 lines vs the 186 prediction — ACCEPTED (cap holds; recorded).
+2. C.a.3 anchor repair — MINIMAL, applied and recorded (L.5).
+3. Structure-map observed counts differ from the plan's stale predictions (run 31 vs 30; youtube 92 vs 82; roster totals 58 / 231; no comment-only `allow` mention) — recorded from observation per the plan's own "record OBSERVED, never invent" rule.
+4. Structure-map minimal accuracy repairs beyond the enumerated rows (the fixture row, the youtube roster summary's retired references/counts, the `youtube/mod.rs` re-export row) — MINIMAL, observed-driven, no scope change.
+5. `tech.md` Lifecycle opening sentence correction ("poll" → "establish the streamed connection") — MINIMAL accuracy repair required by the plan's own new confinement bullet.
+6. `context.md` Current Work Focus refresh — caller-directed in the Task-4 prompt; historical blocks untouched; the Immediate-Next-Steps duplicate `1.` numbering follows the plan's explicit insertion rule.
+7. §E expectations that proved stale (ya29/AIza zero-hits, `key=` count, `videos/` ignore line 56) — OBSERVED values recorded; no security-relevant deviation.
+8. No STOP condition fired: no gate/build failure, no unresolved anchor, no polling-is-selected drift beyond the two sanctioned restorations, no line-count overflow.
+
+### L.8 NOT done by this pass
+
+- 4.3 review/simplification, 4.4 docs pass, 4.5b adherence, 4.6 TODO `[DONE]`/checkbox flips, workflow step 5 (rename/merge/push `origin` ONLY) — all owned by their steps; this pass performed NO push and edited NO TODO file.
+- The manual unlisted-broadcast E2E and every live Google/stream claim remain OPERATOR-only.
 
 ---
 
