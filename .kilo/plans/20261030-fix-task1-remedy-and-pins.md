@@ -510,7 +510,7 @@ NO other section may be modified; the pre-analysis above is the binding record. 
 ### L.1 Pre-flight (2026-10-30, implementer)
 
 - Branch `fix/stream-establishment-readiness`; HEAD `6151fa0` (v0.13.1 bump lineage); tree clean except the untracked plan file.
-- `#[allow(` inventory snapshot: 10 entries (`app/auth/mod.rs:86`, `app/pipeline/source_error.rs:23`,
+- `#[allow(` inventory snapshot: 9 entries (`app/auth/mod.rs:86`, `app/pipeline/source_error.rs:23`,
   `app/run/chat_stream_delivery.rs:173`, `chat/store.rs:123`, `youtube/authorization.rs:35` + `:93`,
   `youtube/error.rs:24`, `youtube/mod.rs:76` + `:81`). Unchanged by this task (no additions).
 - Plan-tracking commit: `cf258f2 chore: track stream establishment readiness fix Task 1 plan`.
@@ -568,6 +568,10 @@ NO other section may be modified; the pre-analysis above is the binding record. 
   (6 files: 3 changed sources + the ruled `chat_stream_delivery.rs` relocation + 2 new rosters).
 - Final `wc -l`: `chat_worker.rs` 199, `chat_stream_delivery.rs` 200, `stream_concrete.rs` 95,
   `stream_concrete_tests.rs` 107, `chat_worker_panic_tests.rs` 76, `stream_client.rs` 97 (all ≤ 200).
+- Post-fold (`2873692`, the §OBS fold ruled in by the caller): `chat_stream_delivery.rs` 200 → **195**
+  (rustfmt kept the folded `record_terminal(&self.plan.terminal, transport_terminal(last_detail));` on ONE
+  line — the §OBS 200→198 projection did not bind); every other count above unchanged; the governing
+  post-fold gate is **497 passed / 0 failed** (`logs/checks/20261030T222042Z.log`, four PASS lines).
 - Task-2 scope untouched (docs/, builds, report, project-structure, tech.md, context.md).
 
 (End of plan — §L addendum entries follow this line when recorded by the implementer.)
