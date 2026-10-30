@@ -958,7 +958,7 @@ dependencies = [
 
 [[package]]
 name = "rust-youtube-streamer-service"
-version = "0.13.0"
+version = "0.13.1"
 dependencies = [
  "ab_glyph",
  "ctrlc",
