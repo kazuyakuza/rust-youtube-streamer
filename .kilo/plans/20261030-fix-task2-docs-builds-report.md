@@ -391,3 +391,39 @@ recalled from a command or a path-cited record, never asserted.
 <!-- IMPLEMENTER: append dated observations — the fresh gate log path + OBSERVED total, the 4 build outputs + sizes,
 the audit results, the drift-verified NO-EDIT confirmations, and any correction found while applying §C.
 NO other section may be modified; the pre-analysis above is the binding record. -->
+
+### L.1 Pre-flight and plan tracking (2026-10-30, implementer)
+
+- Branch `fix/stream-establishment-readiness`; HEAD `a4eb832` (Task-1 4.6 marks; v0.13.1 lineage); tree clean except the untracked plan file.
+- Plan-tracking commit: `a7db8dc chore: track stream establishment readiness fix Task 2 plan`.
+- `#[allow(` snapshot: 9 attribute lines (8 `dead_code` + 1 `clippy::manual_clamp` now at `chat_stream_delivery.rs:168`); unchanged by Task 2.
+
+### L.2 §B observed matrix (container 2026-10-30)
+
+- FULL gate `sh scripts/dev-checks.sh` → exit 0; four PASS lines (`fmt-check`/`check`/`test`/`clippy`);
+  `ALL CHECKS PASSED`; `test result: ok. 497 passed; 0 failed`; log `logs/checks/20261030T224512Z.log`.
+  OBSERVED total **497** (494 baseline + Task-1's 3 pins) — the plan's expected 497 held.
+- windows-gnu check `cargo check --locked --target x86_64-pc-windows-gnu` → exit 0 (`Finished dev profile`).
+- Windows build (`build-windows.sh`) → exit 0; script print 12334184 bytes.
+- Linux build (`build-linux.sh`) → exit 0; script print 7654688 bytes.
+- `ls -l` cross-check → Linux 7654688 and Windows 12334184, both non-empty and MATCHING the script prints exactly.
+- Audit: `git status --porcelain` = only the intended docs/metadata/report paths as each commit was staged;
+  `git ls-files dist videos` EMPTY; `git ls-files credentials` = `.gitkeep` only;
+  `check-ignore` → `.gitignore:34:dist/` (both artifacts) and `.gitignore:18:logs/*` (the cited operator log);
+  `ya29`/`AIza` = ZERO in `src docs README.md`; `key=` = the pre-existing doc/test-context set, count unchanged;
+  `rtmps://` = pre-existing `.example.test` fixtures/doc-context only, count unchanged; `#[allow(` = 9 attribute lines, unchanged.
+- Fresh structure counts (from `git ls-files` + `rg -c "#\[test\]"`): run/ **32 files = 13 sources + 4 fixtures + 15 rosters**
+  carrying **59 unit tests**; youtube/ **93 files = 47 sources + 4 fixtures + 42 rosters** carrying **233 unit tests**;
+  `Cargo.toml` v0.13.1. All §C.3 predicted counts matched the observed tree.
+- Drift-verified NO-EDIT (all confirmed untouched): `docs/production-run.md` sections Overview; Prerequisites;
+  What Happens at Startup; What the Logs Look Like; Shutdown Behavior; Broadcast/Stream Fate; Privacy;
+  Quota; Ingest Probe Procedure; Known Stream-Health Limitation; Manual Verification Procedure; Out of Scope;
+  See Also. README Key Technologies bullets stay verbatim. No correction to §C text was needed while applying it.
+- Report placeholders `⟨OBS_GATE_TOTAL⟩`/`⟨OBS_GATE_LOG_PATH⟩`/`⟨OBS_WIN_SIZE⟩`/`⟨OBS_LINUX_SIZE⟩` were replaced with
+  the observed values above in `README.md`, `.agent/project-info/context.md`, and the new report.
+
+### L.3 Commits landed by this pass
+
+- `a7db8dc` plan tracked; `9604bbd` user docs (`docs: record the stream establishment readiness fix for operators`);
+  `369937d` metadata + report (`docs: record the readiness-fix metadata and completion report`); the §L addendum commit follows.
+- Task-2 changed docs only — no code, test, lockfile, or version change. The report's own hash is unknowable from inside the record (predecessor convention).
