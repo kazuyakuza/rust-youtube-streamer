@@ -507,4 +507,67 @@ STOP with evidence + options (to the caller) ONLY on: (1) the anchor pin fails a
 the OBSERVED 494+n total, any lint ladder usage, and corrections to this plan's snippets discovered while editing.
 NO other section may be modified; the pre-analysis above is the binding record. -->
 
+### L.1 Pre-flight (2026-10-30, implementer)
+
+- Branch `fix/stream-establishment-readiness`; HEAD `6151fa0` (v0.13.1 bump lineage); tree clean except the untracked plan file.
+- `#[allow(` inventory snapshot: 10 entries (`app/auth/mod.rs:86`, `app/pipeline/source_error.rs:23`,
+  `app/run/chat_stream_delivery.rs:173`, `chat/store.rs:123`, `youtube/authorization.rs:35` + `:93`,
+  `youtube/error.rs:24`, `youtube/mod.rs:76` + `:81`). Unchanged by this task (no additions).
+- Plan-tracking commit: `cf258f2 chore: track stream establishment readiness fix Task 1 plan`.
+
+### L.2 Line-cap STOP and the caller ruling (Option A)
+
+- First landing of §A/§B/§C: `chat_worker.rs` = 208 after rustfmt (two §B snippets rewrap at the 100-column
+  limit: the runtime-start arm 1→4 lines, the tail `record_terminal` 1→4 lines). Ladder L1 (−1) → 207,
+  L2 (−2) → 205 ⇒ cap still violated ⇒ STOP per §B.4/§G(3) (reported to the caller, no commit).
+- Caller ruling (Option A, with a bounded release valve), applied:
+  - `CHAT_WORKER_PANIC_DETAIL` + `transport_terminal` MOVED from `chat_worker.rs` into
+    `chat_stream_delivery.rs` beside `record_terminal` (`pub(super)` both; `chat_worker.rs` imports them in the
+    existing `use super::chat_stream_delivery::{...}` line — no new line).
+  - `chat_worker.rs` 205 → 197; `chat_stream_delivery.rs` 193 → 201; the moved block's single doc line trimmed
+    (the ruling's authorized lever) → 200. Code never compressed beyond the plan's ladder.
+  - Clippy then fired `clippy::redundant_pattern_matching` on the L2 `if let Err(_) = …` form; handled by a
+    rule-following re-shape (NOT an allow): L2 reverted to the plan's canonical §B.3 shape
+    (`let unwound = std::panic::catch_unwind(…).is_err(); if unwound { … }`) → `chat_worker.rs` 199.
+  - Final: `chat_worker.rs` = 199, `chat_stream_delivery.rs` = 200 (module-doc release valve NOT used).
+- `gate.rs` untouched (`let _ = worker.join()` intact).
+
+### L.3 Plan-snippet corrections discovered while editing (mechanical)
+
+1. §C.2: `tokio::time::timeout` must be CONSTRUCTED inside the runtime (eager construction panics
+   "there is no reactor running"); the fix-shape pin wraps it in `async { … }.await` inside
+   `stream_test_block_on`.
+2. §C.1/§C.2: `let _ = grpc.server_streaming(..)` is ambiguous (E0282); the anchor pins `M2` through
+   `.map(|response| TonicChatStreamSession::new(response.into_inner()))` (the production constructor).
+3. §C.3: `use super::source::ChatSource` is invalid from the roster (its `super` IS `chat_worker`); corrected to
+   `use super::super::source::ChatSource`.
+4. §C.3: `let mut lookup` → `let lookup` (`ScriptedRunChatTransport::script_lookup` takes `&self`; avoids
+   `unused_mut`).
+5. §C.3: the helper's `.take()` consumed the terminal before the `ChatSource` assertion; changed to a
+   non-consuming `as_ref()` peek with `detail.as_str()` so the cell survives for the source assertion.
+
+### L.4 Observed verification (container, 2026-10-30)
+
+- `cargo fmt --check` → exit 0.
+- `cargo test --locked stream_concrete` → **2 passed / 0 failed** (495 filtered ⇒ 497 total); both pins
+  (`establishment_anchor_unread_shape_panics_locally`,
+  `establishment_fixed_shape_reserves_readiness_and_yields_typed_error`) ok.
+- Pin (b) OBSERVED reason member: **`the stream endpoint connection failed`** (`STREAM_CONNECT_FAILURE_REASON`) —
+  inside the pinned 3-member set (the eager connect is refused before the reserve arm can fire, as §C.2 records).
+- `cargo test --locked chat_worker` → **24 passed / 0 failed** (23 pre-existing + the new
+  `worker_panicking_transport_writes_the_terminal`).
+- `cargo test --locked chat_stream` (delivery/mapping family filter) → **12 passed / 0 failed**.
+- `cargo clippy --locked -- -D warnings` → exit 0, zero warnings, zero new `#[allow(`.
+- FULL GATE `sh scripts/dev-checks.sh` → exit 0; `PASS fmt-check/check/test/clippy`; **ALL CHECKS PASSED**;
+  log `logs/checks/20261030T220937Z.log`; OBSERVED **497 passed / 0 failed** (= 494 baseline + 3 new pins).
+- `cargo check --locked --target x86_64-pc-windows-gnu` → exit 0. NO release builds (Task 2).
+
+### L.5 Commits and final line counts
+
+- `cf258f2` plan tracked; `5190145 feat: reserve stream endpoint readiness and contain chat worker panics`
+  (6 files: 3 changed sources + the ruled `chat_stream_delivery.rs` relocation + 2 new rosters).
+- Final `wc -l`: `chat_worker.rs` 199, `chat_stream_delivery.rs` 200, `stream_concrete.rs` 95,
+  `stream_concrete_tests.rs` 107, `chat_worker_panic_tests.rs` 76, `stream_client.rs` 97 (all ≤ 200).
+- Task-2 scope untouched (docs/, builds, report, project-structure, tech.md, context.md).
+
 (End of plan — §L addendum entries follow this line when recorded by the implementer.)
