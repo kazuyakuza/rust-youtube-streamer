@@ -184,6 +184,13 @@ pub(super) fn record_terminal(cell: &Mutex<Option<ChatRetrievalError>>, error: C
     }
 }
 
+pub(super) const CHAT_WORKER_PANIC_DETAIL: &str =
+    "the chat streaming worker panicked; its backtrace is on the standard error stream and the run fails with exit code 1";
+
+pub(super) fn transport_terminal(detail: String) -> ChatRetrievalError {
+    ChatRetrievalError::Transport { detail }
+}
+
 #[cfg(not(test))]
 fn sleep_slice(ms: u64) {
     std::thread::sleep(std::time::Duration::from_millis(ms));

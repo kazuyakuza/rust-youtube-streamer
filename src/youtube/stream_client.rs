@@ -29,6 +29,7 @@ pub(crate) const AUTHORIZATION_METADATA_KEY: &str = "authorization";
 pub(super) const STREAM_CONNECT_TIMEOUT_REASON: &str =
     "the stream endpoint connect attempt timed out";
 pub(super) const STREAM_CONNECT_FAILURE_REASON: &str = "the stream endpoint connection failed";
+pub(super) const STREAM_READY_FAILURE_REASON: &str = "the stream endpoint readiness reserve failed";
 const STREAM_ENDPOINT_BUILD_REASON: &str = "the stream endpoint could not be built";
 
 /// P7-6 stream family connect bound (Task 1 record §A.3): 10 s.

@@ -30,7 +30,7 @@ use crate::chat::ChatMessage;
 use crate::youtube::{LiveApiError, LiveChatTransport};
 
 use super::chat_failure::terminal_retrieval_error;
-use super::chat_stream_delivery::record_terminal;
+use super::chat_stream_delivery::{record_terminal, transport_terminal, CHAT_WORKER_PANIC_DETAIL};
 use super::chat_stream_worker::{run_stream_loop, StreamWorker};
 use super::seams::{ChatStageSources, ChatStreamHandle, ChatTransport};
 use super::source::ChatSource;
@@ -121,13 +121,21 @@ fn run_chat_worker(plan: ChatWorkerPlan) {
     let Ok(runtime) = chat_runtime() else {
         record_terminal(
             &plan.terminal,
-            ChatRetrievalError::Transport {
-                detail: CHAT_RUNTIME_START_FAILURE.to_string(),
-            },
+            transport_terminal(CHAT_RUNTIME_START_FAILURE.to_string()),
         );
         return;
     };
-    runtime.block_on(run_stream_loop(StreamWorker::new(plan, live_chat_id)));
+    let terminal = Arc::clone(&plan.terminal);
+    let unwound = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        runtime.block_on(run_stream_loop(StreamWorker::new(plan, live_chat_id)));
+    }))
+    .is_err();
+    if unwound {
+        record_terminal(
+            &terminal,
+            transport_terminal(CHAT_WORKER_PANIC_DETAIL.to_string()),
+        );
+    }
 }
 
 /// ONE runtime instance for the whole app (record §10): the current-thread
@@ -185,3 +193,7 @@ mod chat_worker_burst_tests;
 #[cfg(test)]
 #[path = "gate_chat_tests.rs"]
 mod gate_chat_tests;
+
+#[cfg(test)]
+#[path = "chat_worker_panic_tests.rs"]
+mod chat_worker_panic_tests;
