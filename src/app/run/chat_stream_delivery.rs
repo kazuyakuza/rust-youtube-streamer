@@ -125,12 +125,7 @@ impl StreamWorker {
     fn await_reestablishment(&mut self, last_detail: String) -> bool {
         self.consecutive_failures += 1;
         if self.consecutive_failures >= CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES {
-            record_terminal(
-                &self.plan.terminal,
-                ChatRetrievalError::Transport {
-                    detail: last_detail,
-                },
-            );
+            record_terminal(&self.plan.terminal, transport_terminal(last_detail));
             return true;
         }
         let delay = backoff_delay_ms(self.consecutive_failures, CHAT_SLEEP_SLICE_MS);
