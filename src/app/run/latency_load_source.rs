@@ -150,12 +150,6 @@ impl PacedQueueProducerSource {
     }
 }
 
-impl MessageSource for PacedQueueProducerSource {
-    fn next_message(&mut self) -> Result<Option<ChatMessage>, ChatSourceError> {
-        self.step()
-    }
-}
-
 /// Shares the producer with the pipeline while the scenario keeps its own
 /// handle for the post-stop leftover drain.
 pub(super) struct SharedProducer {

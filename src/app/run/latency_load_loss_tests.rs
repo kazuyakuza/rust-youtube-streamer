@@ -3,35 +3,14 @@
 //! scenario documents the queued shutdown loss, and the rational-rate and FPS
 //! derivations are pinned without running a scenario.
 
-use crate::app::pipeline::PipelinePacing;
 use crate::config::valid_config;
 
 use super::{
-    assert_full_round_trip_accounting, run_scenario, LatencyScenario, RatePhase, RateProfile,
+    assert_full_round_trip_accounting, assert_scenario_pacing, configured_interval_nanos, phase,
+    run_scenario, scenario, RateProfile, CHANNEL_CAPACITY,
 };
 
-const CHANNEL_CAPACITY: u64 = crate::app::run::chat_worker::CHAT_CHANNEL_CAPACITY as u64;
 const MIXED_DUE_TOTAL: u64 = 40 + 16 * 2 + 64 / 2;
-
-fn phase(frames: u64, numerator: u64, denominator: u64) -> RatePhase {
-    RatePhase {
-        frames,
-        rate: RateProfile {
-            numerator,
-            denominator,
-        },
-    }
-}
-
-fn scenario(label: &'static str, phases: Vec<RatePhase>) -> LatencyScenario {
-    LatencyScenario { label, phases }
-}
-
-fn configured_interval_nanos() -> u64 {
-    PipelinePacing::from_config(&valid_config().video)
-        .expect("validated FPS derives pacing")
-        .interval_nanos()
-}
 
 #[test]
 fn round_trip_counts_prove_no_silent_loss_and_bounded_memory() {
@@ -46,11 +25,7 @@ fn round_trip_counts_prove_no_silent_loss_and_bounded_memory() {
     );
     assert_eq!(scenario.due_total(), MIXED_DUE_TOTAL);
     let run = run_scenario(scenario);
-    assert_eq!(
-        run.pacing_interval_nanos,
-        configured_interval_nanos(),
-        "the scenario interval derives from the configured FPS"
-    );
+    assert_scenario_pacing(&run);
     assert_full_round_trip_accounting(MIXED_DUE_TOTAL, &run);
 }
 

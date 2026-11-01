@@ -22,13 +22,13 @@ use crate::config::{valid_config, AppConfig};
 use self::latency_load_source::{PacedQueueProducerSource, ProducerParts, SharedProducer};
 
 /// Rational messages-per-frame: integer credit accounting only.
-pub(super) struct RateProfile {
-    pub(super) numerator: u64,
-    pub(super) denominator: u64,
+struct RateProfile {
+    numerator: u64,
+    denominator: u64,
 }
 
 impl RateProfile {
-    pub(super) fn advance(&self, credit: &mut u64) -> u64 {
+    fn advance(&self, credit: &mut u64) -> u64 {
         *credit = credit.saturating_add(self.numerator);
         let released = *credit / self.denominator;
         *credit -= released * self.denominator;
@@ -36,22 +36,22 @@ impl RateProfile {
     }
 }
 
-pub(super) struct RatePhase {
-    pub(super) frames: u64,
-    pub(super) rate: RateProfile,
+struct RatePhase {
+    frames: u64,
+    rate: RateProfile,
 }
 
-pub(super) struct LatencyScenario {
-    pub(super) label: &'static str,
-    pub(super) phases: Vec<RatePhase>,
+struct LatencyScenario {
+    label: &'static str,
+    phases: Vec<RatePhase>,
 }
 
 impl LatencyScenario {
-    pub(super) fn total_frames(&self) -> u64 {
+    fn total_frames(&self) -> u64 {
         self.phases.iter().map(|phase| phase.frames).sum()
     }
 
-    pub(super) fn due_total(&self) -> u64 {
+    fn due_total(&self) -> u64 {
         self.phases
             .iter()
             .map(|phase| phase.frames * phase.rate.numerator / phase.rate.denominator)
@@ -59,18 +59,47 @@ impl LatencyScenario {
     }
 }
 
-pub(super) struct ScenarioOutcome {
-    pub(super) total_frames: u64,
-    pub(super) pacing_interval_nanos: u64,
-    pub(super) snapshot: SummarySnapshot,
-    pub(super) leftover: Vec<ChatMessage>,
-    pub(super) _kept_temp: tempfile::TempDir,
+const CHANNEL_CAPACITY: u64 = CHAT_CHANNEL_CAPACITY as u64;
+
+fn configured_interval_nanos() -> u64 {
+    PipelinePacing::from_config(&valid_config().video)
+        .expect("validated FPS derives pacing")
+        .interval_nanos()
 }
 
-pub(super) fn run_scenario(scenario: LatencyScenario) -> ScenarioOutcome {
+fn phase(frames: u64, numerator: u64, denominator: u64) -> RatePhase {
+    RatePhase {
+        frames,
+        rate: RateProfile {
+            numerator,
+            denominator,
+        },
+    }
+}
+
+fn scenario(label: &'static str, phases: Vec<RatePhase>) -> LatencyScenario {
+    LatencyScenario { label, phases }
+}
+
+fn assert_scenario_pacing(run: &ScenarioOutcome) {
+    assert_eq!(
+        run.pacing_interval_nanos,
+        configured_interval_nanos(),
+        "the scenario interval derives from the configured FPS"
+    );
+}
+
+struct ScenarioOutcome {
+    total_frames: u64,
+    pacing_interval_nanos: u64,
+    snapshot: SummarySnapshot,
+    leftover: Vec<ChatMessage>,
+    _kept_temp: tempfile::TempDir,
+}
+
+fn run_scenario(scenario: LatencyScenario) -> ScenarioOutcome {
     let config = valid_config();
-    let pacing = PipelinePacing::from_config(&config.video).expect("validated FPS derives pacing");
-    let pacing_interval_nanos = pacing.interval_nanos();
+    let pacing_interval_nanos = configured_interval_nanos();
     let temp = tempfile::Builder::new()
         .prefix(scenario.label)
         .tempdir()
@@ -113,7 +142,7 @@ pub(super) fn run_scenario(scenario: LatencyScenario) -> ScenarioOutcome {
     }
 }
 
-pub(super) fn assert_full_round_trip_accounting(due_total: u64, run: &ScenarioOutcome) {
+fn assert_full_round_trip_accounting(due_total: u64, run: &ScenarioOutcome) {
     let snapshot = &run.snapshot;
     assert_eq!(
         snapshot.enqueued_total, snapshot.received_total,

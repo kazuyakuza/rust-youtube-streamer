@@ -3,42 +3,12 @@
 //! rates, so counts, queue verdicts, and channel latencies are deterministic
 //! and no scenario sleeps.
 
-use crate::app::pipeline::PipelinePacing;
-use crate::app::run::chat_worker::CHAT_CHANNEL_CAPACITY;
-use crate::config::valid_config;
+use super::{
+    assert_scenario_pacing, configured_interval_nanos, phase, run_scenario, scenario,
+    CHANNEL_CAPACITY,
+};
 
-use super::{run_scenario, LatencyScenario, RatePhase, RateProfile, ScenarioOutcome};
-
-const CHANNEL_CAPACITY: u64 = CHAT_CHANNEL_CAPACITY as u64;
 const LOW_RATE_FRAMES: u64 = 161;
-
-fn phase(frames: u64, numerator: u64, denominator: u64) -> RatePhase {
-    RatePhase {
-        frames,
-        rate: RateProfile {
-            numerator,
-            denominator,
-        },
-    }
-}
-
-fn scenario(label: &'static str, phases: Vec<RatePhase>) -> LatencyScenario {
-    LatencyScenario { label, phases }
-}
-
-fn configured_interval_nanos() -> u64 {
-    PipelinePacing::from_config(&valid_config().video)
-        .expect("validated FPS derives pacing")
-        .interval_nanos()
-}
-
-fn assert_scenario_pacing(run: &ScenarioOutcome) {
-    assert_eq!(
-        run.pacing_interval_nanos,
-        configured_interval_nanos(),
-        "the scenario interval derives from the configured FPS"
-    );
-}
 
 #[test]
 fn low_rate_below_capacity_drains_per_frame_with_zero_backlog() {
