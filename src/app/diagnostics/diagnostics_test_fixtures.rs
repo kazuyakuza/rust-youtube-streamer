@@ -73,6 +73,26 @@ pub(crate) fn collector_with_output_file(path: &Path) -> TestCollector {
     )
 }
 
+pub(super) fn diagnostics_with_capabilities(
+    pipeline_timing: bool,
+    queue_metrics: bool,
+    periodic_summary: bool,
+) -> DiagnosticsConfig {
+    DiagnosticsConfig {
+        pipeline_timing_events: Some(pipeline_timing),
+        queue_metrics: Some(queue_metrics),
+        periodic_summary: Some(periodic_summary),
+        summary_interval_seconds: Some(1),
+        output_file: None,
+        max_file_bytes: Some(1_048_576),
+        max_generations: Some(3),
+    }
+}
+
+pub(super) fn collector_for_config(diagnostics: &DiagnosticsConfig) -> TestCollector {
+    test_collector(diagnostics, TEST_PACING_INTERVAL_NANOS)
+}
+
 fn enabled_diagnostics(output_file: Option<String>) -> DiagnosticsConfig {
     DiagnosticsConfig {
         pipeline_timing_events: Some(true),

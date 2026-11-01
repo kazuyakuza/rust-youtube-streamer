@@ -1,9 +1,7 @@
-//! The collector: the ONE opt-in diagnostics handle shared (by clone) between
-//! the chat worker and the frame loop. Disabled configurations never build
-//! one. All cross-thread aggregation lives behind `Arc<Mutex<state>>`; the
-//! per-handle bookkeeping is a `RefCell` because each clone belongs to one
-//! thread and sequential sends never interleave within the worker. The
-//! worker/queue reporting half lives in the `collector_stages` sibling.
+//! The collector: the ONE opt-in handle, cloned to the chat worker and the frame
+//! loop; disabled configs never build one. Cross-thread aggregation sits behind
+//! `Arc<Mutex<state>>`; per-clone `RefCell` bookkeeping is safe (one thread per
+//! clone, no interleaved sends). Worker/queue reporting: `collector_stages` sibling.
 
 use std::cell::RefCell;
 use std::sync::{Arc, LazyLock, Mutex};
@@ -79,10 +77,11 @@ impl DiagnosticsCollector {
 
     pub(crate) fn note_render_completed(&self) {
         let now = self.now();
-        if let Some(start) = self.local.borrow_mut().render_start_nanos.take() {
+        let start = self.local.borrow_mut().render_start_nanos.take();
+        if let Some(start) = start {
             self.with_state(|state| state.record_render(now.saturating_sub(start)));
+            self.record_message_render(now);
         }
-        self.record_message_render(now);
     }
 
     pub(crate) fn note_write_started(&self) {
@@ -93,14 +92,15 @@ impl DiagnosticsCollector {
 
     pub(crate) fn note_write_completed(&self) {
         let now = self.now();
-        if let Some(start) = self.local.borrow_mut().write_start_nanos.take() {
+        let start = self.local.borrow_mut().write_start_nanos.take();
+        if let Some(start) = start {
             self.with_state(|state| state.record_write(now.saturating_sub(start)));
-        }
-        let dequeued = self.local.borrow_mut().last_dequeued.take();
-        if let Some(entry) = dequeued {
-            let lag_ns = now.saturating_sub(entry.stamp_nanos);
-            let details = TimingDetails::stage(entry.correlation.as_deref(), lag_ns);
-            self.emit(&TimingEvent::new("written", details));
+            let dequeued = self.local.borrow_mut().last_dequeued.take();
+            if let Some(entry) = dequeued {
+                let lag_ns = now.saturating_sub(entry.stamp_nanos);
+                let details = TimingDetails::stage(entry.correlation.as_deref(), lag_ns);
+                self.emit(&TimingEvent::new("written", details));
+            }
         }
     }
 

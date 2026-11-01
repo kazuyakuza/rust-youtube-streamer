@@ -97,20 +97,28 @@ impl StreamWorker {
                 .and_then(|_| message.message_id().map(str::to_owned));
             match self.plan.sender.try_send(message) {
                 Ok(()) => {
-                    if let Some(diagnostics) = &self.plan.diagnostics {
-                        diagnostics.report_enqueue_success(reported_correlation.as_deref());
-                    }
+                    self.report_enqueue_success_if_enabled(reported_correlation.as_deref());
                     return;
                 }
                 Err(TrySendError::Full(returned)) => {
-                    if let Some(diagnostics) = &self.plan.diagnostics {
-                        diagnostics.report_enqueue_full(returned.message_id());
-                    }
+                    self.report_enqueue_full_if_enabled(&returned);
                     message = returned;
                     sleep_slice(CHAT_SLEEP_SLICE_MS);
                 }
                 Err(TrySendError::Disconnected(_)) => return,
             }
+        }
+    }
+
+    fn report_enqueue_success_if_enabled(&self, correlation: Option<&str>) {
+        if let Some(diagnostics) = &self.plan.diagnostics {
+            diagnostics.report_enqueue_success(correlation);
+        }
+    }
+
+    fn report_enqueue_full_if_enabled(&self, message: &ChatMessage) {
+        if let Some(diagnostics) = &self.plan.diagnostics {
+            diagnostics.report_enqueue_full(message.message_id());
         }
     }
 }

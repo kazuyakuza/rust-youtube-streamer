@@ -140,3 +140,44 @@ fn rows_never_carry_message_text_or_author() {
     assert!(!content.contains("SECRET-TEXT"));
     assert!(!content.contains("\"author\""));
 }
+
+#[test]
+fn queue_metrics_alone_does_not_emit_timing_rows_or_histograms() {
+    let dir = tempfile::tempdir().expect("temp dir must be created");
+    let path = dir.path().join("diagnostics.log");
+    let mut diagnostics = diagnostics_with_capabilities(false, true, false);
+    diagnostics.output_file = Some(path.to_string_lossy().into_owned());
+    let harness = collector_for_config(&diagnostics);
+    let message = secret_message();
+
+    harness.collector.report_batch_received(1);
+    harness.collector.note_worker_receipt();
+    harness.advance(10);
+    harness
+        .collector
+        .report_enqueue_success(message.message_id());
+    harness.advance(20);
+    harness.collector.note_message_dequeued(&message);
+    harness.collector.note_render_started();
+    harness.advance(5);
+    harness.collector.note_render_completed();
+    harness.collector.note_write_started();
+    harness.advance(7);
+    harness.collector.note_write_completed();
+
+    let content = std::fs::read_to_string(&path).expect("queue rows must be written");
+    assert!(
+        content.contains("\"event\":\"queue\""),
+        "queue metrics still emit queue rows"
+    );
+    assert!(!content.contains("\"stage\":\"dequeued\""));
+    assert!(!content.contains("\"stage\":\"rendered\""));
+    assert!(!content.contains("\"stage\":\"written\""));
+
+    let snapshot = harness.snapshot();
+    assert_eq!(snapshot.enqueued_total, 1);
+    assert_eq!(snapshot.dequeued_total, 1);
+    assert_eq!(snapshot.message_render_ns.count, 0);
+    assert_eq!(snapshot.render_ns.count, 0);
+    assert_eq!(snapshot.write_ns.count, 0);
+}
