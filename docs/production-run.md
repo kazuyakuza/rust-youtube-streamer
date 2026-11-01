@@ -375,6 +375,8 @@ Two honest limits follow:
 - These are **application-internal measurements only**. Viewer-side end-to-end latency — the delay a viewer perceives on the watch page, dominated by YouTube's own ingest and delivery pipeline (operators have reported figures on the order of ~35 s) — is an EXTERNAL measurement this instrumentation neither captures nor can capture; no value in the diagnostics output is a viewer-latency figure.
 - The periodic summary is driven by the frame loop, so the final partial interval is not flushed at shutdown (nothing is emitted on Ctrl+C beyond the last completed period).
 
+The offline test map that reproduces each stage boundary with the real queue and frame loop, and the operator-run viewer-latency measurement procedure that completes the picture: [`docs/latency-test-map.md`](latency-test-map.md).
+
 ### Baseline Overhead When Disabled
 
 With every capability false/absent, the collector is never built (construction returns `None`), so `auth`, `demo`, and `run` behave exactly as before and create no diagnostics artifact. The only cost is:
