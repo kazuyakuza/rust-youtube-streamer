@@ -186,3 +186,7 @@ fn into_chat_message(carrier: &ChatTextMessage) -> ChatMessage {
 #[cfg(test)]
 #[path = "chat_delivery_diagnostics_tests.rs"]
 mod chat_delivery_diagnostics_tests;
+
+#[cfg(test)]
+#[path = "latency_load_fixtures.rs"]
+mod latency_load_fixtures;

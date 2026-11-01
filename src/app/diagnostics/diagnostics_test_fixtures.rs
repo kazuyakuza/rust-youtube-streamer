@@ -10,7 +10,7 @@ use crate::config::diagnostics_config::DiagnosticsConfig;
 
 use super::collector::{DiagnosticsCollector, MonotonicNanos};
 use super::collector_stages::CollectorSettings;
-use super::events::SummarySnapshot;
+pub(crate) use super::events::SummarySnapshot;
 use super::state::DiagnosticsState;
 
 const TEST_PACING_INTERVAL_NANOS: u64 = 40;
@@ -38,6 +38,7 @@ impl MonotonicNanos for FixedMonotonicNanos {
     }
 }
 
+#[derive(Clone)]
 pub(crate) struct TestCollector {
     pub(crate) collector: DiagnosticsCollector,
     state: Arc<Mutex<DiagnosticsState>>,
@@ -63,6 +64,10 @@ impl TestCollector {
 
 pub(crate) fn enabled_collector_for_tests() -> TestCollector {
     test_collector(&enabled_diagnostics(None), TEST_PACING_INTERVAL_NANOS)
+}
+
+pub(crate) fn enabled_collector_with_pacing(pacing_interval_nanos: u64) -> TestCollector {
+    test_collector(&enabled_diagnostics(None), pacing_interval_nanos)
 }
 
 pub(crate) fn collector_with_output_file(path: &Path) -> TestCollector {
