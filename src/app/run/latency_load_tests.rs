@@ -4,7 +4,7 @@
 //! and no scenario sleeps.
 
 use super::{
-    assert_scenario_pacing, configured_interval_nanos, phase, run_scenario, scenario,
+    assert_scenario_pacing, configured_interval_nanos, phase, rate_profile, run_scenario, scenario,
     CHANNEL_CAPACITY,
 };
 
@@ -15,7 +15,7 @@ fn low_rate_below_capacity_drains_per_frame_with_zero_backlog() {
     let interval = configured_interval_nanos();
     let run = run_scenario(scenario(
         "latency-low-rate",
-        vec![phase(LOW_RATE_FRAMES, 1, 16)],
+        vec![phase(LOW_RATE_FRAMES, rate_profile(1, 16))],
     ));
     assert_scenario_pacing(&run);
     let snapshot = &run.snapshot;
@@ -43,8 +43,8 @@ fn single_burst_temporarily_fills_channel_then_drains() {
     let run = run_scenario(scenario(
         "latency-single-burst",
         vec![
-            phase(1, CHANNEL_CAPACITY, 1),
-            phase(CHANNEL_CAPACITY + 2, 0, 1),
+            phase(1, rate_profile(CHANNEL_CAPACITY, 1)),
+            phase(CHANNEL_CAPACITY + 2, rate_profile(0, 1)),
         ],
     ));
     assert_scenario_pacing(&run);
@@ -68,7 +68,7 @@ fn sustained_below_capacity_keeps_backlog_stable() {
     let interval = configured_interval_nanos();
     let run = run_scenario(scenario(
         "latency-sustained-below",
-        vec![phase(128, 1, 2), phase(4, 0, 1)],
+        vec![phase(128, rate_profile(1, 2)), phase(4, rate_profile(0, 1))],
     ));
     assert_scenario_pacing(&run);
     let snapshot = &run.snapshot;
@@ -83,7 +83,10 @@ fn sustained_below_capacity_keeps_backlog_stable() {
 #[test]
 fn sustained_at_capacity_holds_one_frame_backlog() {
     let interval = configured_interval_nanos();
-    let run = run_scenario(scenario("latency-sustained-at", vec![phase(128, 1, 1)]));
+    let run = run_scenario(scenario(
+        "latency-sustained-at",
+        vec![phase(128, rate_profile(1, 1))],
+    ));
     assert_scenario_pacing(&run);
     let snapshot = &run.snapshot;
     assert_eq!(
@@ -106,7 +109,10 @@ fn sustained_above_capacity_pins_queue_at_capacity_and_drains_after_rate_falls()
     let interval = configured_interval_nanos();
     let run = run_scenario(scenario(
         "latency-sustained-above",
-        vec![phase(128, 2, 1), phase(4 * CHANNEL_CAPACITY, 0, 1)],
+        vec![
+            phase(128, rate_profile(2, 1)),
+            phase(4 * CHANNEL_CAPACITY, rate_profile(0, 1)),
+        ],
     ));
     assert_scenario_pacing(&run);
     let snapshot = &run.snapshot;
@@ -135,8 +141,8 @@ fn recovery_after_burst_drains_backlog_to_zero() {
     let run = run_scenario(scenario(
         "latency-recovery-after-burst",
         vec![
-            phase(1, CHANNEL_CAPACITY + 8, 1),
-            phase(4 * CHANNEL_CAPACITY, 0, 1),
+            phase(1, rate_profile(CHANNEL_CAPACITY + 8, 1)),
+            phase(4 * CHANNEL_CAPACITY, rate_profile(0, 1)),
         ],
     ));
     assert_scenario_pacing(&run);

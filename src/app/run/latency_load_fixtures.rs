@@ -67,14 +67,15 @@ fn configured_interval_nanos() -> u64 {
         .interval_nanos()
 }
 
-fn phase(frames: u64, numerator: u64, denominator: u64) -> RatePhase {
-    RatePhase {
-        frames,
-        rate: RateProfile {
-            numerator,
-            denominator,
-        },
+fn rate_profile(numerator: u64, denominator: u64) -> RateProfile {
+    RateProfile {
+        numerator,
+        denominator,
     }
+}
+
+fn phase(frames: u64, rate: RateProfile) -> RatePhase {
+    RatePhase { frames, rate }
 }
 
 fn scenario(label: &'static str, phases: Vec<RatePhase>) -> LatencyScenario {

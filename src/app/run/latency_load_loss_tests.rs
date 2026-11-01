@@ -7,7 +7,7 @@ use crate::config::valid_config;
 
 use super::{
     assert_full_round_trip_accounting, assert_scenario_pacing, configured_interval_nanos, phase,
-    run_scenario, scenario, RateProfile, CHANNEL_CAPACITY,
+    rate_profile, run_scenario, scenario, RateProfile, CHANNEL_CAPACITY,
 };
 
 const MIXED_DUE_TOTAL: u64 = 40 + 16 * 2 + 64 / 2;
@@ -17,10 +17,10 @@ fn round_trip_counts_prove_no_silent_loss_and_bounded_memory() {
     let scenario = scenario(
         "latency-mixed-profile",
         vec![
-            phase(1, 40, 1),
-            phase(16, 2, 1),
-            phase(64, 1, 2),
-            phase(4 * CHANNEL_CAPACITY, 0, 1),
+            phase(1, rate_profile(40, 1)),
+            phase(16, rate_profile(2, 1)),
+            phase(64, rate_profile(1, 2)),
+            phase(4 * CHANNEL_CAPACITY, rate_profile(0, 1)),
         ],
     );
     assert_eq!(scenario.due_total(), MIXED_DUE_TOTAL);
@@ -34,7 +34,10 @@ fn stop_with_messages_queued_documents_shutdown_loss() {
     let interval = configured_interval_nanos();
     let run = run_scenario(scenario(
         "latency-queued-shutdown",
-        vec![phase(1, CHANNEL_CAPACITY, 1), phase(23, 0, 1)],
+        vec![
+            phase(1, rate_profile(CHANNEL_CAPACITY, 1)),
+            phase(23, rate_profile(0, 1)),
+        ],
     ));
     assert_eq!(run.total_frames, 24);
     let snapshot = &run.snapshot;
