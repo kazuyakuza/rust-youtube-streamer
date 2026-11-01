@@ -19,12 +19,12 @@
 //! only the chat id appears, as the `live_chat_id` tracing field of the
 //! resolution line.
 
-use std::sync::mpsc::{sync_channel, Receiver, SyncSender};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 
 use tracing::info;
 
+use crate::app::diagnostics::DiagnosticsCollector;
 use crate::app::pipeline::{ChatRetrievalError, StopFlag};
 use crate::chat::ChatMessage;
 use crate::youtube::{LiveApiError, LiveChatTransport};
@@ -34,6 +34,14 @@ use super::chat_stream_delivery::{record_terminal, transport_terminal, CHAT_WORK
 use super::chat_stream_worker::{run_stream_loop, StreamWorker};
 use super::seams::{ChatStageSources, ChatStreamHandle, ChatTransport};
 use super::source::ChatSource;
+
+#[path = "chat_channel.rs"]
+mod chat_channel;
+
+pub(super) use chat_channel::chat_channel;
+use chat_channel::chat_runtime;
+#[cfg(test)]
+pub(super) use chat_channel::ChatChannel;
 
 pub(super) const CHAT_CHANNEL_CAPACITY: usize = 64;
 pub(super) const CHAT_SLEEP_SLICE_MS: u64 = 1_000;
@@ -50,32 +58,18 @@ pub(super) const CHAT_ENDED_MESSAGE: &str =
 /// panic — a runtime that cannot start is a typed terminal).
 const CHAT_RUNTIME_START_FAILURE: &str = "the confined chat streaming runtime failed to start";
 
-/// The bounded channel bundle: the frame-loop side (source) and the
-/// worker side (plan) of one 64-entry channel plus the shared terminal cell.
-pub(super) struct ChatChannel {
-    pub(super) sender: SyncSender<ChatMessage>,
-    pub(super) receiver: Receiver<ChatMessage>,
-    pub(super) terminal: Arc<Mutex<Option<ChatRetrievalError>>>,
-}
-
-pub(super) fn chat_channel() -> ChatChannel {
-    let (sender, receiver) = sync_channel(CHAT_CHANNEL_CAPACITY);
-    ChatChannel {
-        sender,
-        receiver,
-        terminal: Arc::new(Mutex::new(None)),
-    }
-}
-
 /// The gate-carried worker payload (spawned on `GateFinish::Confirmed`);
 /// `stop_flag` is the SAME shared frame-loop flag (D-T3-C).
 pub(super) struct ChatWorkerPlan {
     pub(super) lookup: ChatTransport,
     pub(super) stream: ChatStreamHandle,
     pub(super) broadcast_id: String,
-    pub(super) sender: SyncSender<ChatMessage>,
+    pub(super) sender: std::sync::mpsc::SyncSender<ChatMessage>,
     pub(super) terminal: Arc<Mutex<Option<ChatRetrievalError>>>,
     pub(super) stop_flag: StopFlag,
+    /// The SAME opt-in collector clone that rides the streaming execution, so
+    /// worker-side queue events reach the frame-loop summary timer.
+    pub(super) diagnostics: Option<DiagnosticsCollector>,
 }
 
 pub(super) fn spawn_chat_worker(plan: ChatWorkerPlan) -> JoinHandle<()> {
@@ -90,7 +84,11 @@ pub(super) fn build_chat_stage(
     broadcast_id: &str,
     stop_flag: StopFlag,
 ) -> (ChatSource, ChatWorkerPlan) {
-    let ChatStageSources { lookup, stream } = chat;
+    let ChatStageSources {
+        lookup,
+        stream,
+        diagnostics,
+    } = chat;
     let channel = chat_channel();
     let source = ChatSource::new(channel.receiver, Arc::clone(&channel.terminal));
     let plan = ChatWorkerPlan {
@@ -100,6 +98,7 @@ pub(super) fn build_chat_stage(
         sender: channel.sender,
         terminal: channel.terminal,
         stop_flag,
+        diagnostics,
     };
     (source, plan)
 }
@@ -136,15 +135,6 @@ fn run_chat_worker(plan: ChatWorkerPlan) {
             transport_terminal(CHAT_WORKER_PANIC_DETAIL.to_string()),
         );
     }
-}
-
-/// ONE runtime instance for the whole app (record §10): the current-thread
-/// scheduler confined to this worker thread, built once per run.
-fn chat_runtime() -> Result<tokio::runtime::Runtime, ()> {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|_| ())
 }
 
 #[cfg(not(test))]

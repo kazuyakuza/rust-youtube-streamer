@@ -34,6 +34,7 @@ fn run_maps_retrieval_failure_to_the_chat_retrieval_variant() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
 
     let Err(error) = pipeline.run() else {

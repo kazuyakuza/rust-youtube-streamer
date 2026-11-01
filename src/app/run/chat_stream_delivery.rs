@@ -9,19 +9,24 @@
 //! rule).
 
 use std::sync::mpsc::TrySendError;
-use std::sync::Mutex;
 
 use tracing::info;
 
-use crate::app::pipeline::{ChatRetrievalError, StopFlag};
 use crate::chat::ChatMessage;
 use crate::youtube::{ChatTextMessage, LiveApiError, YieldedChatStreamBatch};
 
 use super::chat_failure::{is_transient_failure, terminal_retrieval_error};
 use super::chat_stream_worker::{StreamWorker, STREAM_CLEAN_CLOSE_DETAIL};
 use super::chat_worker::{
-    CHAT_BACKOFF_MAX_MS, CHAT_BASELINE_MESSAGE, CHAT_ENDED_MESSAGE,
-    CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES, CHAT_SLEEP_SLICE_MS,
+    CHAT_BASELINE_MESSAGE, CHAT_ENDED_MESSAGE, CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES,
+    CHAT_SLEEP_SLICE_MS,
+};
+
+#[path = "chat_worker_helpers.rs"]
+mod chat_worker_helpers;
+pub(super) use chat_worker_helpers::{
+    backoff_delay_ms, record_terminal, sleep_in_stop_slices, sleep_slice, transport_terminal,
+    CHAT_WORKER_PANIC_DETAIL,
 };
 
 impl StreamWorker {
@@ -42,6 +47,9 @@ impl StreamWorker {
             return;
         }
         self.retain_token(batch.next_page_token);
+        if let Some(diagnostics) = &self.plan.diagnostics {
+            diagnostics.report_batch_received(batch.messages.len() as u64);
+        }
         self.deliver(batch.messages);
     }
 
@@ -66,6 +74,9 @@ impl StreamWorker {
             if !unseen {
                 continue;
             }
+            if let Some(diagnostics) = &self.plan.diagnostics {
+                diagnostics.note_worker_receipt(carrier.message_id.as_deref());
+            }
             let message = into_chat_message(&carrier);
             self.send_stop_aware(message);
         }
@@ -79,9 +90,20 @@ impl StreamWorker {
             if self.plan.stop_flag.is_requested() {
                 return;
             }
+            let report_message = self.plan.diagnostics.as_ref().map(|_| message.clone());
             match self.plan.sender.try_send(message) {
-                Ok(()) => return,
+                Ok(()) => {
+                    if let (Some(diagnostics), Some(reported)) =
+                        (&self.plan.diagnostics, &report_message)
+                    {
+                        diagnostics.report_enqueue_success(reported);
+                    }
+                    return;
+                }
                 Err(TrySendError::Full(returned)) => {
+                    if let Some(diagnostics) = &self.plan.diagnostics {
+                        diagnostics.report_enqueue_full(returned.message_id());
+                    }
                     message = returned;
                     sleep_slice(CHAT_SLEEP_SLICE_MS);
                 }
@@ -129,6 +151,9 @@ impl StreamWorker {
             return true;
         }
         let delay = backoff_delay_ms(self.consecutive_failures, CHAT_SLEEP_SLICE_MS);
+        if let Some(diagnostics) = &self.plan.diagnostics {
+            diagnostics.report_reconnect(delay);
+        }
         sleep_in_stop_slices(delay, &self.plan.stop_flag);
         false
     }
@@ -148,48 +173,6 @@ fn into_chat_message(carrier: &ChatTextMessage) -> ChatMessage {
     message
 }
 
-/// Bounded stop-sliced wait (D-6) — byte-verbatim pair (the sync slice fn
-/// with the existing cfg-split: production `thread::sleep`, test no-op).
-pub(super) fn sleep_in_stop_slices(total_ms: u64, stop_flag: &StopFlag) {
-    let mut remaining_ms = total_ms;
-    while remaining_ms > 0 {
-        if stop_flag.is_requested() {
-            return;
-        }
-        let slice_ms = remaining_ms.min(CHAT_SLEEP_SLICE_MS);
-        sleep_slice(slice_ms);
-        remaining_ms -= slice_ms;
-    }
-}
-
-pub(super) fn backoff_delay_ms(attempt: u32, base_ms: u64) -> u64 {
-    // Phase-06 Task 3: the D-6 pinned max/min body (record §4.3.7) — the
-    // clippy-named allow keeps the plan's shape (plan §6(f)).
-    #[allow(clippy::manual_clamp)]
-    let base = base_ms.max(CHAT_SLEEP_SLICE_MS).min(CHAT_BACKOFF_MAX_MS);
-    let doubled = base.saturating_mul(2u64.saturating_pow(attempt - 1));
-    doubled.min(CHAT_BACKOFF_MAX_MS)
-}
-
-/// Stores the terminal failure exactly once (poisoned locks ignored — the
-/// existing `if let Ok` convention).
-pub(super) fn record_terminal(cell: &Mutex<Option<ChatRetrievalError>>, error: ChatRetrievalError) {
-    if let Ok(mut recorded) = cell.lock() {
-        *recorded = Some(error);
-    }
-}
-
-pub(super) const CHAT_WORKER_PANIC_DETAIL: &str =
-    "the chat streaming worker panicked; its backtrace is on the standard error stream and the run fails with exit code 1";
-
-pub(super) fn transport_terminal(detail: String) -> ChatRetrievalError {
-    ChatRetrievalError::Transport { detail }
-}
-
-#[cfg(not(test))]
-fn sleep_slice(ms: u64) {
-    std::thread::sleep(std::time::Duration::from_millis(ms));
-}
-
 #[cfg(test)]
-fn sleep_slice(_ms: u64) {}
+#[path = "chat_delivery_diagnostics_tests.rs"]
+mod chat_delivery_diagnostics_tests;

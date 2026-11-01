@@ -52,6 +52,7 @@ fn stream_pipeline_passes_the_destination_to_the_ffmpeg_argv() {
             source: Box::new(source),
             stop_flag,
             destination: RtmpsDestination::new(DESTINATION_URL_FIXTURE.to_string()),
+            diagnostics: None,
         },
     )
     .expect("the production streaming pipeline must construct");

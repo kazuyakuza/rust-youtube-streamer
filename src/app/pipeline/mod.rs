@@ -13,6 +13,7 @@ mod error;
 mod interrupt;
 mod pacing;
 mod runner;
+mod runner_prepare;
 mod source;
 mod source_error;
 
@@ -20,9 +21,8 @@ pub(crate) use error::FramePipelineError;
 pub(crate) use interrupt::{
     install_interrupt_handler, install_stop_request_handler, InterruptHandlerError, StopFlag,
 };
-pub(crate) use runner::{
-    prepared_pipeline, prepared_stream_pipeline, PipelineConstruction, StreamParts,
-};
+pub(crate) use runner::{PipelineConstruction, StreamParts};
+pub(crate) use runner_prepare::{prepared_pipeline, prepared_stream_pipeline};
 pub(crate) use source::MessageSource;
 pub(crate) use source_error::{ChatRetrievalError, ChatSourceError};
 

@@ -62,6 +62,7 @@ fn demo_timeline_drives_the_frame_pipeline_to_full_completion() {
         clock: Box::new(FakeClock::fresh().0),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     let CompletedOutput::Recording(completed) =
         pipeline.run().expect("demo timeline run finalizes")

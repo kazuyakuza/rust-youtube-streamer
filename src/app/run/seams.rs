@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use crate::app::diagnostics::DiagnosticsCollector;
 use crate::app::pipeline::StopFlag;
 use crate::config::AppConfig;
 use crate::youtube::{
@@ -45,6 +46,9 @@ pub(super) type ChatStreamHandle = Box<dyn ChatStreamTransport>;
 pub(super) struct ChatStageSources {
     pub(super) lookup: ChatTransport,
     pub(super) stream: ChatStreamHandle,
+    /// The ONE opt-in collector shared with the frame loop; `None` when every
+    /// diagnostics capability is disabled.
+    pub(super) diagnostics: Option<DiagnosticsCollector>,
 }
 
 /// The transport factory's result: BOTH REST handles coerce from the ONE

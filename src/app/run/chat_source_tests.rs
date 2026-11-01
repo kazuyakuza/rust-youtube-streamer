@@ -107,6 +107,7 @@ fn chat_source_integrates_through_store_and_renderer_in_the_frame_pipeline() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     pipeline.run().expect("the three-frame run completes");
     drop(temp);

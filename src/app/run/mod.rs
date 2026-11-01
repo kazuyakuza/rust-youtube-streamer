@@ -16,24 +16,24 @@ mod error;
 mod gate;
 mod seams;
 mod source;
+mod stop_pair;
 mod streaming;
 
 use std::sync::Arc;
 
 use tracing::info;
 
-use crate::app::pipeline::{install_stop_request_handler, StopFlag};
+use crate::app::diagnostics::DiagnosticsCollector;
 use crate::config::AppConfig;
 use crate::streaming::RtmpsDestination;
-use crate::youtube::{
-    CredentialService, GoogleLiveApiTransport, GoogleLiveChatStreamTransport, WaitCanceller,
-};
+use crate::youtube::{CredentialService, GoogleLiveApiTransport, GoogleLiveChatStreamTransport};
 
 use broadcast::{prepare_broadcast, public_watch_url, StageRuntime};
 use credentials::{authorize_from_service, authorize_scope_evidence, establish_credentials};
 use error::RunError;
 use gate::{spawn_startup_gate, GatePlan};
-use seams::{BroadcastTransports, ChatStageSources, RunStops, RuntimeStart, ServiceStops};
+use seams::{BroadcastTransports, ChatStageSources, RuntimeStart, ServiceStops};
+use stop_pair::install_stop_pair;
 use streaming::{PreparedStreaming, StreamingExecution, StreamingRunner};
 
 /// Exit code of a clean run stop (D-T3-8).
@@ -99,23 +99,6 @@ fn run_outcome(app_config: &AppConfig) -> Result<(), RunError> {
     run_runtime(start, &PreparedStreaming)
 }
 
-/// D-T3-2 stage 1: the app's SINGLE Ctrl+C handler flips BOTH the frame-loop
-/// `StopFlag` AND a `WaitCanceller` clone (no youtube types in `pipeline`).
-fn install_stop_pair() -> Result<RunStops, RunError> {
-    let stops = RunStops {
-        stop_flag: StopFlag::new(),
-        canceller: WaitCanceller::new(),
-    };
-    let handler_flag = stops.stop_flag.clone();
-    let handler_canceller = stops.canceller.clone();
-    install_stop_request_handler(Box::new(move || {
-        handler_flag.request_stop();
-        handler_canceller.request_cancel();
-    }))
-    .map_err(RunError::Interrupt)?;
-    Ok(stops)
-}
-
 /// The WHOLE run startup after the Ctrl+C pair install, with injected
 /// collaborators + the streaming-stage runner (D-T3-9). Production
 /// `run_outcome` supplies the concrete seams; tests supply fakes
@@ -144,10 +127,12 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
     let stream_id = prepared.stream_id().to_string();
     let broadcast_id = prepared.broadcast_id().to_string();
     let destination = RtmpsDestination::new(prepared.into_ingestion().into_url());
+    let diagnostics = DiagnosticsCollector::from_config(start.config);
     let (source, chat_worker) = chat_worker::build_chat_stage(
         ChatStageSources {
             lookup: transports.chat,
             stream: transports.stream,
+            diagnostics: diagnostics.clone(),
         },
         &broadcast_id,
         start.stops.stop_flag.clone(),
@@ -170,6 +155,7 @@ fn run_runtime(start: RuntimeStart<'_>, runner: &dyn StreamingRunner) -> Result<
             stream_id,
             watch_url,
             gate,
+            diagnostics,
         },
     )
 }

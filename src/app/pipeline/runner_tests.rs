@@ -40,6 +40,7 @@ fn run_returns_completed_video_without_writing_when_stopped_before_start() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     let CompletedOutput::Recording(completed) =
         pipeline.run().expect("stopped run finalizes the sink")
@@ -73,6 +74,7 @@ fn run_emits_immediate_empty_first_frames_with_exact_byte_counts() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     pipeline.run().expect("three-frame run completes");
     let log = events.borrow();
@@ -105,6 +107,7 @@ fn run_rotates_new_messages_into_visible_text() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     pipeline.run().expect("three-frame run completes");
     let both = "alice: Hello!\nbob: Hi!";
@@ -130,6 +133,7 @@ fn run_propagates_render_failure_without_finalizing_sink() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     let Err(error) = pipeline.run() else {
         panic!("render failure must surface");
@@ -155,6 +159,7 @@ fn run_propagates_sink_write_failure_without_finalizing() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     let Err(error) = pipeline.run() else {
         panic!("sink write failure must surface");
@@ -184,6 +189,7 @@ fn run_propagates_message_source_failure_without_rendering() {
         clock: Box::new(clock),
         pacing: PipelinePacing::raw(TEST_INTERVAL_NANOS, TEST_FRAME_BYTES),
         stop_flag,
+        diagnostics: None,
     });
     let Err(error) = pipeline.run() else {
         panic!("source failure must surface");

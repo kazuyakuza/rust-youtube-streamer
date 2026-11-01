@@ -41,6 +41,7 @@ fn panicking_stream_plan(channel: &ChatChannel) -> ChatWorkerPlan {
         sender: channel.sender.clone(),
         terminal: Arc::clone(&channel.terminal),
         stop_flag: StopFlag::new(),
+        diagnostics: None,
     }
 }
 

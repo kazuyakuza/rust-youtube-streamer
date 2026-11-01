@@ -14,6 +14,7 @@
 
 use tracing::{info, warn};
 
+use crate::app::diagnostics::DiagnosticsCollector;
 use crate::app::pipeline::{prepared_stream_pipeline, FramePipelineError, StopFlag, StreamParts};
 use crate::config::AppConfig;
 use crate::streaming::{CompletedOutput, RtmpsDestination, StreamExit, StreamingError};
@@ -50,6 +51,7 @@ pub(super) struct StreamingExecution {
     pub(super) stream_id: String,
     pub(super) watch_url: String,
     pub(super) gate: SpawnedGate,
+    pub(super) diagnostics: Option<DiagnosticsCollector>,
 }
 
 /// The info event at the END of a streaming run when FFmpeg exited
@@ -85,6 +87,7 @@ impl StreamingRunner for PreparedStreaming {
             stream_id: _stream_id,
             watch_url: _watch_url,
             gate,
+            diagnostics,
         } = execution;
         let pipeline = prepared_stream_pipeline(
             app_config,
@@ -92,6 +95,7 @@ impl StreamingRunner for PreparedStreaming {
                 source: Box::new(source),
                 stop_flag: stop_flag.clone(),
                 destination,
+                diagnostics,
             },
         )
         .map_err(RunError::Pipeline)?;

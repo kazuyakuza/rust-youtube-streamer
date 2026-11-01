@@ -2,19 +2,22 @@
 //! complete visible chat text, writes exactly one full RGB24 frame per
 //! paced iteration, and finalizes the sink on stop (TODO Task 2; plan
 //! decisions S9/S10). It never names `FfmpegProcess` — the sink arrives as
-//! `S: FrameSink` from the caller.
+//! `S: FrameSink` from the caller. The diagnostics hook methods live in the
+//! `runner_diagnostics` child module (private-field access) and the
+//! production constructors in the `runner_prepare` sibling (line-cap split).
 
-use crate::app::pipeline::clock::{FrameClock, SystemFrameClock};
+use crate::app::diagnostics::DiagnosticsCollector;
+use crate::app::pipeline::clock::FrameClock;
 use crate::app::pipeline::error::FramePipelineError;
 use crate::app::pipeline::interrupt::StopFlag;
 use crate::app::pipeline::pacing::{PacingSchedule, PipelinePacing};
 use crate::app::pipeline::{source::MessageSource, source_error::pipeline_source_failure};
-use crate::chat::{ChatStore, ChatStoreSettings};
-use crate::config::model::AppConfig;
-use crate::renderer::{Frame, RenderInput, Renderer, RendererSettings, TextRenderer};
-use crate::streaming::{
-    resolve_output_path, CompletedOutput, FfmpegProcess, FrameSink, OutputKind, RtmpsDestination,
-};
+use crate::chat::ChatStore;
+use crate::renderer::{Frame, RenderInput, Renderer};
+use crate::streaming::{CompletedOutput, FrameSink, OutputKind, RtmpsDestination};
+
+#[path = "runner_diagnostics.rs"]
+mod runner_diagnostics;
 
 /// Assembled parts for one frame pipeline. Callers (TODO Task 3 demo mode,
 /// tests) populate the struct literal directly; fields are `pub(crate)`
@@ -28,6 +31,7 @@ pub(crate) struct PipelineParts<S> {
     pub(crate) clock: Box<dyn FrameClock>,
     pub(crate) pacing: PipelinePacing,
     pub(crate) stop_flag: StopFlag,
+    pub(crate) diagnostics: Option<DiagnosticsCollector>,
 }
 
 /// Cell types for `prepared_pipeline` (production convenience constructor;
@@ -44,6 +48,7 @@ pub(crate) struct StreamParts {
     pub(crate) source: Box<dyn MessageSource>,
     pub(crate) stop_flag: StopFlag,
     pub(crate) destination: RtmpsDestination,
+    pub(crate) diagnostics: Option<DiagnosticsCollector>,
 }
 
 /// The continuous frame pipeline: accepts at most one due message per frame
@@ -58,6 +63,7 @@ pub(crate) struct FramePipeline<S> {
     clock: Box<dyn FrameClock>,
     pacing: PipelinePacing,
     stop_flag: StopFlag,
+    diagnostics: Option<DiagnosticsCollector>,
 }
 
 impl<S: FrameSink> FramePipeline<S> {
@@ -70,6 +76,7 @@ impl<S: FrameSink> FramePipeline<S> {
             clock: parts.clock,
             pacing: parts.pacing,
             stop_flag: parts.stop_flag,
+            diagnostics: parts.diagnostics,
         }
     }
 
@@ -84,6 +91,8 @@ impl<S: FrameSink> FramePipeline<S> {
             self.accept_next_message()?;
             self.render_and_write_frame()?;
             let gap_nanos = schedule.next_gap(self.clock.now_nanos());
+            self.note_frame_tick();
+            self.maybe_emit_summary();
             self.clock.sleep_nanos(gap_nanos);
         }
         let sink = self.sink;
@@ -98,6 +107,9 @@ impl<S: FrameSink> FramePipeline<S> {
             .next_message()
             .map_err(pipeline_source_failure)?;
         if let Some(message) = due {
+            if let Some(diagnostics) = &self.diagnostics {
+                diagnostics.note_message_dequeued(&message);
+            }
             self.chat_store
                 .accept(message)
                 .map_err(FramePipelineError::Chat)?;
@@ -109,10 +121,16 @@ impl<S: FrameSink> FramePipeline<S> {
         let input = RenderInput {
             text: self.chat_store.visible_text(),
         };
+        if let Some(diagnostics) = &self.diagnostics {
+            diagnostics.note_render_started();
+        }
         let frame = self
             .renderer
             .render(&input)
             .map_err(FramePipelineError::Render)?;
+        if let Some(diagnostics) = &self.diagnostics {
+            diagnostics.note_render_completed();
+        }
         self.write_frame_bytes(frame)
     }
 
@@ -126,74 +144,20 @@ impl<S: FrameSink> FramePipeline<S> {
                 actual: frame.pixels().len(),
             });
         }
+        if let Some(diagnostics) = &self.diagnostics {
+            diagnostics.note_write_started();
+        }
         self.sink
             .write_frame(frame.pixels())
-            .map_err(FramePipelineError::Sink)
+            .map_err(FramePipelineError::Sink)?;
+        if let Some(diagnostics) = &self.diagnostics {
+            diagnostics.note_write_completed();
+        }
+        Ok(())
     }
 }
 
 /// Single-section boolean rule: the comparison lives behind a named helper.
 fn frame_has_expected_size(frame: &Frame, expected: usize) -> bool {
     frame.pixels().len() == expected
-}
-
-/// Production convenience constructor for TODO Task 3's demo command: builds
-/// output path, FFmpeg process, chat store, and text renderer from validated
-/// config; a `SystemFrameClock` is fixed inside. Tests do NOT use this (they
-/// assemble `PipelineParts` directly).
-pub(crate) fn prepared_pipeline(
-    config: &AppConfig,
-    construction: PipelineConstruction,
-) -> Result<FramePipeline<FfmpegProcess>, FramePipelineError> {
-    let pacing = PipelinePacing::from_config(&config.video)?;
-    let output_path =
-        resolve_output_path(construction.output_kind).map_err(FramePipelineError::Sink)?;
-    let process = FfmpegProcess::start(config, output_path).map_err(FramePipelineError::Sink)?;
-    let parts = PipelineParts {
-        chat_store: build_chat_store(config)?,
-        renderer: build_renderer(config)?,
-        sink: process,
-        source: construction.source,
-        clock: Box::new(SystemFrameClock::new()),
-        pacing,
-        stop_flag: construction.stop_flag,
-    };
-    Ok(FramePipeline::new(parts))
-}
-
-/// Production streaming constructor for the run mode (plan D-T3-10): the
-/// existing production assembly (`PipelinePacing::from_config`,
-/// `build_chat_store`, `build_renderer`, `SystemFrameClock`) with the ONLY
-/// difference that the sink is `FfmpegProcess::start_stream` toward the
-/// RTMPS destination (no local output file). `prepared_pipeline`,
-/// `PipelineConstruction` and `OutputKind` stay untouched.
-pub(crate) fn prepared_stream_pipeline(
-    config: &AppConfig,
-    parts: StreamParts,
-) -> Result<FramePipeline<FfmpegProcess>, FramePipelineError> {
-    let pacing = PipelinePacing::from_config(&config.video)?;
-    let process =
-        FfmpegProcess::start_stream(config, parts.destination).map_err(FramePipelineError::Sink)?;
-    let parts = PipelineParts {
-        chat_store: build_chat_store(config)?,
-        renderer: build_renderer(config)?,
-        sink: process,
-        source: parts.source,
-        clock: Box::new(SystemFrameClock::new()),
-        pacing,
-        stop_flag: parts.stop_flag,
-    };
-    Ok(FramePipeline::new(parts))
-}
-
-fn build_chat_store(config: &AppConfig) -> Result<ChatStore, FramePipelineError> {
-    let settings = ChatStoreSettings::from_config(config).map_err(FramePipelineError::Chat)?;
-    ChatStore::new(settings).map_err(FramePipelineError::Chat)
-}
-
-fn build_renderer(config: &AppConfig) -> Result<Box<dyn Renderer>, FramePipelineError> {
-    let settings = RendererSettings::from_config(&config.renderer, &config.video)
-        .map_err(FramePipelineError::Render)?;
-    let renderer = TextRenderer::new(settings).map_err(FramePipelineError::Render)?;
-    Ok(Box::new(renderer))
 }

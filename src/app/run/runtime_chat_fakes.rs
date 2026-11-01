@@ -114,6 +114,7 @@ pub(crate) fn worker_plan(
         sender: channel.sender.clone(),
         terminal: Arc::clone(&channel.terminal),
         stop_flag: StopFlag::new(),
+        diagnostics: None,
     }
 }
 
