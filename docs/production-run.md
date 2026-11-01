@@ -13,6 +13,7 @@ Operator guide for the production `run` command: what one invocation does, what 
 - [Live Chat (Behavior, Diagnostics, Recovery, Privacy, Quota)](#live-chat-behavior-diagnostics-recovery-privacy-quota)
 - [Ingest Probe Procedure (Operator-Run)](#ingest-probe-procedure-operator-run)
 - [Known Stream-Health Limitation (Pure-Black MVP Content)](#known-stream-health-limitation-pure-black-mvp-content)
+- [Pipeline Observability (Opt-In Diagnostics)](#pipeline-observability-opt-in-diagnostics)
 - [Manual Verification Procedure (Operator-Run)](#manual-verification-procedure-operator-run)
 - [Out of Scope](#out-of-scope)
 - [See Also](#see-also)
@@ -322,6 +323,63 @@ do not chase encoder/network causes for it.
 - The v0.11.1 CBR/MP3 remedy note and the Ingest Probe Procedure above remain fully valid for
   CONNECTION-level issues (publish-succeeded-but-inactive/"No data" shapes and the probe
   discrimination path); this note covers only the content-level Stream-Health flag.
+
+## Pipeline Observability (Opt-In Diagnostics)
+
+`run` can emit application-internal timing and queue diagnostics so an operator can see WHERE delay or backlog builds inside the chat → frame → FFmpeg pipeline. It is entirely opt-in: every capability is disabled by default (the `diagnostics` section of [`docs/configuration.md`](configuration.md)), and enabling it changes nothing about the streaming, exit-code, shutdown, or secret-redaction contracts.
+
+### What It Measures
+
+The instrumentation covers the application's own pipeline stages, correlated per message by the provider's message identifier (never by message content):
+
+- **Pipeline timing events** (`pipeline_timing_events: true`) — one `dequeued`, `rendered`, and `written` stage row per message plus the frame-loop interval/jitter and the render and FFmpeg-stdin-write duration histograms. A message that is dequeued, rendered into a frame, then written to FFmpeg yields three rows carrying the same provider id, so an operator can separate chat-delivery/worker delay from frame-render delay from the FFmpeg write. These are per-message rows only — **there is no log line per video frame**: frame-loop interval/jitter and render/write durations are aggregated into histograms, never emitted row-by-row.
+- **Queue/backpressure diagnostics** (`queue_metrics: true`) — per-batch received counts, enqueue outcomes, full-channel retry events, reconnect rows (with the backoff wait), and the running queue-depth estimate (a counter-derived figure; the bounded channel exposes no live depth read). This distinguishes a message the worker RETAINED during backpressure (the bounded channel was full) from one that was successfully enqueued.
+- **Periodic aggregate summaries** (`periodic_summary: true`) — one summary row every `summary_interval_seconds` reporting the counters (received / enqueued / dequeued / uncorrelated / full-retry / worker-retained / reconnect count + cumulative backoff / in-flight high-water / queue-depth estimate / oldest in-flight age) plus, for each measured duration, a bounded histogram with count, min, max, mean and nine fixed buckets (sub-millisecond through over five seconds).
+
+The shared aggregate is bounded by construction — fixed counters, fixed-size histograms, and a capped in-flight map that evicts its oldest entry on overflow — so memory never grows with stream duration.
+
+### Enabling It
+
+Add a `diagnostics` section to `config/config.json` and flip the capabilities you want on. The committed `config/config.example.json` ships every flag `false` (nothing enabled); an operator sets them to `true` as needed:
+
+```
+"diagnostics": {
+  "pipeline_timing_events": true,
+  "queue_metrics": true,
+  "periodic_summary": true,
+  "summary_interval_seconds": 30,
+  "output_file": "logs/diagnostics.log",
+  "max_file_bytes": 1048576,
+  "max_generations": 3
+}
+```
+
+### Diagnostic Output
+
+When `output_file` is configured and any capability is enabled, rows are written to that file as JSON Lines — one JSON object per line, flushed after every row for crash-safe tailing. The file is SEPARATE from the chat log: validation rejects an `output_file` equal to `chat.log_file`, and the diagnostics writer never opens the chat-log path. When `output_file` is absent but a capability is enabled, the same rows go out as `tracing` `debug` events tagged `diagnostics` (visible only with `RUST_LOG=debug`).
+
+Disk usage is bounded by rotation: on a size-cap roll the kept generations live at `<output_file>.1` … `<output_file>.<max_generations − 1>`, and **total diagnostics disk usage never exceeds `max_file_bytes × max_generations` bytes** (3 MiB at the example values).
+
+### What Diagnostics Never Contain
+
+Diagnostic output never includes message text, author names, access or refresh tokens, OAuth client secrets, RTMPS URLs, or stream keys; the only per-message correlation value is the provider's message identifier. This matches the standing secret guarantees for the operational logs above.
+
+### Clock Domains and Honest Limits
+
+Rows mix two clock domains, deliberately. Each row's `epoch_seconds` and any per-message `provider_epoch_seconds` are WALL-CLOCK (the provider's `publishedAt`, plus the row-emission time, for correlating across tools); every `*_ns` value is a LOCAL MONOTONIC delta on a single process anchor. Every summary row embeds this note verbatim:
+
+> "provider published timestamps are provider-supplied wall clock (publishedAt); all *_ns values are local monotonic deltas; subtracting stamps across clock domains is not a precise duration (uncorrectable clock skew)"
+
+Two honest limits follow:
+
+- These are **application-internal measurements only**. Viewer-side end-to-end latency — the delay a viewer perceives on the watch page, dominated by YouTube's own ingest and delivery pipeline (operators have reported figures on the order of ~35 s) — is an EXTERNAL measurement this instrumentation neither captures nor can capture; no value in the diagnostics output is a viewer-latency figure.
+- The periodic summary is driven by the frame loop, so the final partial interval is not flushed at shutdown (nothing is emitted on Ctrl+C beyond the last completed period).
+
+### Baseline Overhead When Disabled
+
+With every capability false/absent, the collector is never built (construction returns `None`), so `auth`, `demo`, and `run` behave exactly as before and create no diagnostics artifact. The only cost is:
+
+> "With every diagnostics feature disabled, the instrumentation costs one `Option`-check per instrumentation site per frame loop iteration (a handful of branch instructions at 30 FPS), one config-field read once at startup, and nothing else — no clock reads, no allocations, no Mutex locks, no file I/O, and no other clock, alloc or I/O call is made."
 
 ## Manual Verification Procedure (Operator-Run)
 

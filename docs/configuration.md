@@ -37,7 +37,7 @@ The example contains no secrets today, but treat the real `config/config.json` a
 
 ## Field Reference
 
-All six top-level sections are required. Each field below lists its rule and the value from `config/config.example.json`. Section and field names must match exactly as written.
+Six top-level sections are required; the seventh, `diagnostics`, is optional and enables nothing unless explicitly switched on. Each field below lists its rule and the value from `config/config.example.json`. Section and field names must match exactly as written.
 
 ### youtube.broadcast
 
@@ -82,19 +82,34 @@ All six top-level sections are required. Each field below lists its rule and the
 - `audio` (object, optional) — silent-audio configuration for the production `run` streaming vector only (`demo` ignores it). Contains one field:
   - `enabled` (boolean, optional) — when `true`, the streaming FFmpeg command gains a silent audio track: a second `lavfi` input (`anullsrc=channel_layout=stereo:sample_rate=48000`) encoded by `libmp3lame` (the officially accepted alternative audio codec) at 128 kbit/s with an output `-shortest` bound ("Finish encoding when the shortest output stream ends.") so stdin-EOF shutdown stays clean and bounded. The codec/bitrate pair sits inside the official encoder-settings recommendation ("AAC or MP3"; 128-Kbps for stereo) and answers the documented ingest expectation that the stream "must contain exactly one audio stream" (`noAudioStream` health issue, liveStreams reference); MP3-CBR pads silence to the real bitrate where the AAC-on-silence shape cannot be padded. When the `audio` section is absent, or `enabled` is absent or `false`, the streaming vector carries the same derived CBR video parameters (video-side health remedy applied to both audio shapes); configuration files written for versions before 0.11.0 are unchanged and keep parsing (no validation-rule change; wrong boolean types are rejected at deserialize time; the rule count stays 21). The operator's FFmpeg build must include libmp3lame (the standard full builds do); a build lacking it fails at stream start with the clear spawn-error path.
 
+### diagnostics
+
+The optional `diagnostics` section turns on opt-in, low-overhead pipeline observability for the `run` command. It offers four independently switchable capabilities — pipeline timing events, queue/backpressure diagnostics, periodic aggregate metrics summaries, and structured JSONL diagnostics output to a separate file — and every capability is disabled by default. The section is entirely optional: a configuration written before 0.14.0 (with no `diagnostics` key) parses unchanged and enables nothing. Fields:
+
+- `pipeline_timing_events` (boolean, optional) — when `true`, emits one per-message stage row at each of `dequeued`, `rendered`, and `written` (correlated by the provider message id) and accumulates the frame-loop interval/jitter plus render/write duration histograms in memory. Absent means `false`. Example: `false`.
+- `queue_metrics` (boolean, optional) — when `true`, emits queue/backpressure rows (batch receipt, enqueue outcome, full-channel retry, reconnect) that drive the queue-depth, in-flight, and reconnect counters. Absent means `false`. Example: `false`.
+- `periodic_summary` (boolean, optional) — when `true`, emits one aggregate summary row every `summary_interval_seconds` carrying all counters plus count/min/max/mean and fixed histogram buckets per measured duration. Absent means `false`. Example: `false`.
+- `summary_interval_seconds` (integer, optional) — the summary period in seconds; must be positive when present. Absent means `30`. Example: `30`.
+- `output_file` (string, optional) — structured JSONL diagnostics output; must be non-blank and different from `chat.log_file` (the diagnostics file stays strictly separate from the ordinary chat log). When absent, enabled diagnostics are emitted as `tracing` `debug` events (visible only with `RUST_LOG` at `debug` or higher). Example: `logs/diagnostics.log`.
+- `max_file_bytes` (integer, optional) — per-generation size cap in bytes; must be positive when present. Absent means `1048576` (1 MiB). Example: `1048576`.
+- `max_generations` (integer, optional) — number of rotated generations kept; must be positive and at most `1000` when present. Absent means `3`. Example: `3`.
+
+Every diagnostics feature is disabled by default. With all four features false/absent, no diagnostics state is built, no `RUST_LOG` row is formatted, and no diagnostics file is ever created — even when `output_file` is configured. The operator guide for reading the emitted data lives in [`docs/production-run.md`](production-run.md#pipeline-observability-opt-in-diagnostics).
+
 Existence of the font file or the FFmpeg executable is checked by the consuming component, not at configuration load: the renderer opens and parses the configured font at construction with typed errors (no file-existence or parseable-font check at configuration load — this follows the Phase 01 validation precedent). The renderer and the FFmpeg process are wired into the runtime for local recording (`demo`) and the production RTMPS stream (`run`); launch-process failures surface the same typed error text for both modes. FFmpeg itself is a separately provided external prerequisite — the project never installs or bundles it, and both commands launch the configured executable (a missing or unrunnable path surfaces as `unable to start the FFmpeg executable '<path>': …; check that the configured path is correct and FFmpeg is installed and runnable`).
 
 ## Validation Rules
 
 - Unknown fields are rejected at deserialize time.
 - Wrong value types are rejected at deserialize time.
-- Semantic checks (21 rules; all violations are collected and reported together):
+- Semantic checks (27 rules; all violations are collected and reported together):
   - `video.width`, `video.height`, `video.fps`, `renderer.font_size`, and `renderer.line_height` must be greater than 0.
   - `video.pixel_format` must be exactly `rgb24`.
   - Renderer margins must be 0 or greater, and `top_margin + bottom_margin + line_height` must not exceed `video.height`.
   - `privacy_status` must be one of `private`, `public`, `unlisted` (case-sensitive).
   - Required strings must be non-blank: broadcast `title` and `description`, `renderer.font`, `renderer.text_color`, `renderer.background_color`, `chat.log_file`, and all four `ffmpeg` fields.
   - `oauth.client_config_path` and `oauth.credentials_path` must be non-blank, and the two paths must be distinct (the credential file must not overwrite the client configuration).
+  - `diagnostics` section rules (each fires only when the section and the field are present): `summary_interval_seconds`, `max_file_bytes`, and `max_generations` must each be positive; `max_generations` must be at most `1000` (it bounds the per-rotation rename loop); `output_file` must be non-blank; and `output_file` must differ from `chat.log_file` (the diagnostics output must stay separate from the ordinary chat log). An absent `diagnostics` section — or an absent field within it — never fires any of these six rules, so pre-0.14.0 configurations keep validating exactly as before.
 - On failure (including a missing or unreadable configuration file): one actionable error names the configuration file and field, and the process exits with code 1.
 
 ## Command-Line Usage and Exit Codes
