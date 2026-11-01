@@ -49,11 +49,7 @@ fn pipeline_records_stage_cycle_for_one_message() {
 
     pipeline.run().expect("three-frame run completes");
 
-    let snapshot = harness
-        .state
-        .lock()
-        .expect("diagnostics state")
-        .snapshot(harness.now());
+    let snapshot = harness.snapshot();
     assert_eq!(snapshot.dequeued_total, 1);
     assert_eq!(snapshot.message_render_ns.count, 1);
     assert_eq!(snapshot.render_ns.count, 3);

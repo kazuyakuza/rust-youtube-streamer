@@ -8,7 +8,6 @@ use std::path::PathBuf;
 
 use crate::app::diagnostics::events::{QueueEnqueueFields, QueueEvent};
 use crate::app::diagnostics::state::InFlightEntry;
-use crate::chat::ChatMessage;
 use crate::config::diagnostics_config::DiagnosticsConfig;
 
 use super::collector::DiagnosticsCollector;
@@ -68,7 +67,7 @@ impl DiagnosticsCollector {
         }
     }
 
-    pub(crate) fn note_worker_receipt(&self, _correlation: Option<&str>) {
+    pub(crate) fn note_worker_receipt(&self) {
         self.local.borrow_mut().last_receipt_nanos = Some(self.now());
     }
 
@@ -80,10 +79,9 @@ impl DiagnosticsCollector {
         }
     }
 
-    pub(crate) fn report_enqueue_success(&self, message: &ChatMessage) {
+    pub(crate) fn report_enqueue_success(&self, correlation: Option<&str>) {
         let now = self.now();
         let (received_nanos, backpressured) = self.take_receipt();
-        let correlation = message.message_id();
         let entry = correlation.map(|id| InFlightEntry {
             correlation: id.to_string(),
             received_nanos,

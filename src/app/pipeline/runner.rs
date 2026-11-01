@@ -107,9 +107,7 @@ impl<S: FrameSink> FramePipeline<S> {
             .next_message()
             .map_err(pipeline_source_failure)?;
         if let Some(message) = due {
-            if let Some(diagnostics) = &self.diagnostics {
-                diagnostics.note_message_dequeued(&message);
-            }
+            self.note_message_dequeued(&message);
             self.chat_store
                 .accept(message)
                 .map_err(FramePipelineError::Chat)?;
@@ -121,16 +119,12 @@ impl<S: FrameSink> FramePipeline<S> {
         let input = RenderInput {
             text: self.chat_store.visible_text(),
         };
-        if let Some(diagnostics) = &self.diagnostics {
-            diagnostics.note_render_started();
-        }
+        self.note_render_started();
         let frame = self
             .renderer
             .render(&input)
             .map_err(FramePipelineError::Render)?;
-        if let Some(diagnostics) = &self.diagnostics {
-            diagnostics.note_render_completed();
-        }
+        self.note_render_completed();
         self.write_frame_bytes(frame)
     }
 
@@ -144,15 +138,11 @@ impl<S: FrameSink> FramePipeline<S> {
                 actual: frame.pixels().len(),
             });
         }
-        if let Some(diagnostics) = &self.diagnostics {
-            diagnostics.note_write_started();
-        }
+        self.note_write_started();
         self.sink
             .write_frame(frame.pixels())
             .map_err(FramePipelineError::Sink)?;
-        if let Some(diagnostics) = &self.diagnostics {
-            diagnostics.note_write_completed();
-        }
+        self.note_write_completed();
         Ok(())
     }
 }

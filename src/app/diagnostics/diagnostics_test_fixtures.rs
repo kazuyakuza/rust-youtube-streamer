@@ -10,17 +10,18 @@ use crate::config::diagnostics_config::DiagnosticsConfig;
 
 use super::collector::{DiagnosticsCollector, MonotonicNanos};
 use super::collector_stages::CollectorSettings;
+use super::events::SummarySnapshot;
 use super::state::DiagnosticsState;
 
-pub(crate) const TEST_PACING_INTERVAL_NANOS: u64 = 40;
+const TEST_PACING_INTERVAL_NANOS: u64 = 40;
 
 /// Deterministic monotonic clock: the test owns and advances the shared cell.
-pub(crate) struct FixedMonotonicNanos {
+struct FixedMonotonicNanos {
     shared_cell: Arc<AtomicU64>,
 }
 
 impl FixedMonotonicNanos {
-    pub(crate) fn new() -> (Self, Arc<AtomicU64>) {
+    fn new() -> (Self, Arc<AtomicU64>) {
         let shared_cell = Arc::new(AtomicU64::new(0));
         (
             Self {
@@ -39,8 +40,8 @@ impl MonotonicNanos for FixedMonotonicNanos {
 
 pub(crate) struct TestCollector {
     pub(crate) collector: DiagnosticsCollector,
-    pub(crate) state: Arc<Mutex<DiagnosticsState>>,
-    pub(crate) clock: Arc<AtomicU64>,
+    state: Arc<Mutex<DiagnosticsState>>,
+    clock: Arc<AtomicU64>,
 }
 
 impl TestCollector {
@@ -48,7 +49,14 @@ impl TestCollector {
         self.clock.fetch_add(nanos, Ordering::SeqCst);
     }
 
-    pub(crate) fn now(&self) -> u64 {
+    pub(crate) fn snapshot(&self) -> SummarySnapshot {
+        self.state
+            .lock()
+            .expect("diagnostics state")
+            .snapshot(self.now())
+    }
+
+    fn now(&self) -> u64 {
         self.clock.load(Ordering::SeqCst)
     }
 }

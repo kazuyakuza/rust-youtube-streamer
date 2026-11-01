@@ -75,7 +75,7 @@ impl StreamWorker {
                 continue;
             }
             if let Some(diagnostics) = &self.plan.diagnostics {
-                diagnostics.note_worker_receipt(carrier.message_id.as_deref());
+                diagnostics.note_worker_receipt();
             }
             let message = into_chat_message(&carrier);
             self.send_stop_aware(message);
@@ -90,13 +90,15 @@ impl StreamWorker {
             if self.plan.stop_flag.is_requested() {
                 return;
             }
-            let report_message = self.plan.diagnostics.as_ref().map(|_| message.clone());
+            let reported_correlation = self
+                .plan
+                .diagnostics
+                .as_ref()
+                .and_then(|_| message.message_id().map(str::to_owned));
             match self.plan.sender.try_send(message) {
                 Ok(()) => {
-                    if let (Some(diagnostics), Some(reported)) =
-                        (&self.plan.diagnostics, &report_message)
-                    {
-                        diagnostics.report_enqueue_success(reported);
+                    if let Some(diagnostics) = &self.plan.diagnostics {
+                        diagnostics.report_enqueue_success(reported_correlation.as_deref());
                     }
                     return;
                 }

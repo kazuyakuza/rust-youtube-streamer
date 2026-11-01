@@ -48,11 +48,7 @@ fn worker_reports_batch_received_and_enqueue_success() {
         .join()
         .expect("the worker thread joins");
 
-    let snapshot = harness
-        .state
-        .lock()
-        .expect("diagnostics state")
-        .snapshot(harness.now());
+    let snapshot = harness.snapshot();
     assert_eq!(snapshot.received_total, 1);
     assert_eq!(snapshot.enqueued_total, 1);
     assert_eq!(snapshot.full_retry_total, 0);
@@ -93,23 +89,14 @@ fn worker_marks_backpressured_on_full_channel() {
     }
     handle.join().expect("the worker thread joins");
 
-    let snapshot = harness
-        .state
-        .lock()
-        .expect("diagnostics state")
-        .snapshot(harness.now());
+    let snapshot = harness.snapshot();
     assert_eq!(snapshot.enqueued_total, 1);
     assert_eq!(snapshot.worker_retained_total, 1);
 }
 
 fn wait_for_full_retry(harness: &TestCollector) -> u64 {
     for _attempt in 0..1_000_000 {
-        let retries = harness
-            .state
-            .lock()
-            .expect("diagnostics state")
-            .snapshot(harness.now())
-            .full_retry_total;
+        let retries = harness.snapshot().full_retry_total;
         if retries > 0 {
             return retries;
         }
@@ -133,11 +120,7 @@ fn worker_reports_reconnect_with_backoff() {
         .join()
         .expect("the worker thread joins");
 
-    let snapshot = harness
-        .state
-        .lock()
-        .expect("diagnostics state")
-        .snapshot(harness.now());
+    let snapshot = harness.snapshot();
     assert_eq!(snapshot.reconnect_count, 1);
     assert_eq!(snapshot.reconnect_backoff_total_ms, 1_000);
 }

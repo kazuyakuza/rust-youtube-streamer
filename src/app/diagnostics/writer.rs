@@ -11,10 +11,10 @@ use std::sync::{Arc, Mutex};
 
 use super::collector_stages::CollectorSettings;
 
-pub(crate) struct WriterSettings {
-    pub(crate) path: PathBuf,
-    pub(crate) max_file_bytes: u32,
-    pub(crate) max_generations: u32,
+pub(super) struct WriterSettings {
+    pub(super) path: PathBuf,
+    pub(super) max_file_bytes: u32,
+    pub(super) max_generations: u32,
 }
 
 /// Builds the optional shared sink from the collector settings; `None`
@@ -32,7 +32,7 @@ pub(super) fn build_writer(
     })
 }
 
-pub(crate) struct DiagnosticsFileWriter {
+pub(super) struct DiagnosticsFileWriter {
     path: PathBuf,
     max_file_bytes: u32,
     max_generations: u32,
@@ -41,7 +41,7 @@ pub(crate) struct DiagnosticsFileWriter {
 }
 
 impl DiagnosticsFileWriter {
-    pub(crate) fn new(settings: WriterSettings) -> Self {
+    pub(super) fn new(settings: WriterSettings) -> Self {
         Self {
             path: settings.path,
             max_file_bytes: settings.max_file_bytes,

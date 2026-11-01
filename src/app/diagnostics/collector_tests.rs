@@ -3,18 +3,23 @@
 //! and the secret-free row contract.
 
 use crate::chat::ChatMessage;
+use crate::config::diagnostics_config::DiagnosticsConfig;
 use crate::config::valid_config;
+use crate::config::AppConfig;
 
 use super::diagnostics_test_fixtures::*;
 use super::DiagnosticsCollector;
 
-fn diagnostics_config() -> crate::config::AppConfig {
-    let mut config = valid_config();
+fn diagnostics_of(config: &mut AppConfig) -> &mut DiagnosticsConfig {
     config
         .diagnostics
         .as_mut()
         .expect("the fixture carries a diagnostics section")
-        .pipeline_timing_events = Some(false);
+}
+
+fn diagnostics_config() -> AppConfig {
+    let mut config = valid_config();
+    diagnostics_of(&mut config).pipeline_timing_events = Some(false);
     config
 }
 
@@ -27,9 +32,11 @@ fn secret_message() -> ChatMessage {
 fn drive_full_stage_cycle(harness: &TestCollector) {
     let message = secret_message();
     harness.collector.report_batch_received(1);
-    harness.collector.note_worker_receipt(Some("corr-1"));
+    harness.collector.note_worker_receipt();
     harness.advance(10);
-    harness.collector.report_enqueue_success(&message);
+    harness
+        .collector
+        .report_enqueue_success(message.message_id());
     harness.advance(20);
     harness.collector.note_message_dequeued(&message);
     harness.collector.note_render_started();
@@ -57,11 +64,7 @@ fn from_config_disabled_ignores_output_file() {
     let dir = tempfile::tempdir().expect("temp dir must be created");
     let path = dir.path().join("diagnostics.log");
     let mut config = diagnostics_config();
-    config
-        .diagnostics
-        .as_mut()
-        .expect("the fixture carries a diagnostics section")
-        .output_file = Some(path.to_string_lossy().into_owned());
+    diagnostics_of(&mut config).output_file = Some(path.to_string_lossy().into_owned());
     assert!(DiagnosticsCollector::from_config(&config).is_none());
     assert!(!path.exists(), "disabled diagnostics never creates a file");
 }
@@ -69,11 +72,7 @@ fn from_config_disabled_ignores_output_file() {
 #[test]
 fn from_config_enabled_returns_some() {
     let mut config = diagnostics_config();
-    config
-        .diagnostics
-        .as_mut()
-        .expect("the fixture carries a diagnostics section")
-        .pipeline_timing_events = Some(true);
+    diagnostics_of(&mut config).pipeline_timing_events = Some(true);
     assert!(DiagnosticsCollector::from_config(&config).is_some());
 }
 
@@ -81,11 +80,7 @@ fn from_config_enabled_returns_some() {
 fn stages_propagate_receive_enqueue_dequeue_render_write() {
     let harness = enabled_collector_for_tests();
     drive_full_stage_cycle(&harness);
-    let snapshot = harness
-        .state
-        .lock()
-        .expect("diagnostics state")
-        .snapshot(harness.now());
+    let snapshot = harness.snapshot();
     assert_eq!(snapshot.received_total, 1);
     assert_eq!(snapshot.enqueued_total, 1);
     assert_eq!(snapshot.dequeued_total, 1);
@@ -101,14 +96,12 @@ fn stages_propagate_receive_enqueue_dequeue_render_write() {
 fn uncorrelated_message_is_counted_not_dropped() {
     let harness = enabled_collector_for_tests();
     let message = ChatMessage::new("alice", "Hello!");
-    harness.collector.note_worker_receipt(None);
-    harness.collector.report_enqueue_success(&message);
+    harness.collector.note_worker_receipt();
+    harness
+        .collector
+        .report_enqueue_success(message.message_id());
     harness.collector.note_message_dequeued(&message);
-    let snapshot = harness
-        .state
-        .lock()
-        .expect("diagnostics state")
-        .snapshot(harness.now());
+    let snapshot = harness.snapshot();
     assert_eq!(snapshot.enqueued_total, 1);
     assert_eq!(snapshot.dequeued_total, 1);
     assert_eq!(snapshot.uncorrelated_total, 1);

@@ -16,15 +16,15 @@ use crate::app::diagnostics::state::DiagnosticsState;
 use crate::app::diagnostics::writer::{build_writer, DiagnosticsFileWriter};
 use crate::chat::ChatMessage;
 
-use super::collector_stages::{CollectorLocal, CollectorSettings};
+use super::collector_stages::{CollectorLocal, CollectorSettings, DequeuedMessage};
 
 /// The monotonic time seam: one process-global anchor so stamps taken on the
 /// worker thread stay diffable against stamps taken on the main thread.
-pub(crate) trait MonotonicNanos: Send + Sync {
+pub(super) trait MonotonicNanos: Send + Sync {
     fn now_nanos(&self) -> u64;
 }
 
-pub(crate) struct InstantMonotonicNanos;
+pub(super) struct InstantMonotonicNanos;
 
 static GLOBAL_ANCHOR: LazyLock<Instant> = LazyLock::new(Instant::now);
 
@@ -62,7 +62,7 @@ impl DiagnosticsCollector {
         if !self.settings.pipeline_timing {
             return;
         }
-        self.local.borrow_mut().last_dequeued = Some(super::collector_stages::DequeuedMessage {
+        self.local.borrow_mut().last_dequeued = Some(DequeuedMessage {
             correlation: correlation.map(str::to_string),
             stamp_nanos: now,
         });
@@ -80,7 +80,7 @@ impl DiagnosticsCollector {
     pub(crate) fn note_render_completed(&self) {
         let now = self.now();
         if let Some(start) = self.local.borrow_mut().render_start_nanos.take() {
-            self.state_depth(|state| state.record_render(now.saturating_sub(start)));
+            self.with_state(|state| state.record_render(now.saturating_sub(start)));
         }
         self.record_message_render(now);
     }
@@ -94,7 +94,7 @@ impl DiagnosticsCollector {
     pub(crate) fn note_write_completed(&self) {
         let now = self.now();
         if let Some(start) = self.local.borrow_mut().write_start_nanos.take() {
-            self.state_depth(|state| state.record_write(now.saturating_sub(start)));
+            self.with_state(|state| state.record_write(now.saturating_sub(start)));
         }
         let dequeued = self.local.borrow_mut().last_dequeued.take();
         if let Some(entry) = dequeued {
@@ -113,7 +113,7 @@ impl DiagnosticsCollector {
         if let Some(previous) = previous {
             let interval = now.saturating_sub(previous);
             let jitter = interval.abs_diff(self.settings.pacing_interval_nanos);
-            self.state_depth(|state| state.record_frame_tick(interval, jitter));
+            self.with_state(|state| state.record_frame_tick(interval, jitter));
         }
     }
 
@@ -133,13 +133,13 @@ impl DiagnosticsCollector {
             return;
         };
         let message_ns = now.saturating_sub(entry.stamp_nanos);
-        self.state_depth(|state| state.record_message_render(message_ns));
+        self.with_state(|state| state.record_message_render(message_ns));
         let details = TimingDetails::stage(entry.correlation.as_deref(), message_ns);
         self.emit(&TimingEvent::new("rendered", details));
     }
 
     fn summary_is_due(&self, now: u64) -> bool {
-        let interval = u64::from(self.settings.summary_interval_seconds) * 1_000_000_000;
+        let interval = u64::from(self.settings.summary_interval_seconds) * super::NANOS_PER_SECOND;
         let mut local = self.local.borrow_mut();
         if local.last_summary_nanos.is_none() {
             local.last_summary_nanos = Some(now);
@@ -155,10 +155,7 @@ impl DiagnosticsCollector {
     }
 
     fn emit_summary(&self, now: u64) {
-        let snapshot = self.state.lock().map_or_else(
-            |poisoned| poisoned.into_inner().snapshot(now),
-            |state| state.snapshot(now),
-        );
+        let snapshot = self.with_state(|state| state.snapshot(now));
         self.emit(&SummaryEvent::new(
             self.settings.summary_interval_seconds,
             snapshot,
@@ -179,13 +176,19 @@ impl DiagnosticsCollector {
         self.clock.now_nanos()
     }
 
-    pub(super) fn state_depth(&self, action: impl FnOnce(&mut DiagnosticsState)) -> u64 {
+    pub(super) fn with_state<T>(&self, action: impl FnOnce(&mut DiagnosticsState) -> T) -> T {
         let mut state = self
             .state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        action(&mut state);
-        state.queue_depth()
+        action(&mut state)
+    }
+
+    pub(super) fn state_depth(&self, action: impl FnOnce(&mut DiagnosticsState)) -> u64 {
+        self.with_state(|state| {
+            action(state);
+            state.queue_depth()
+        })
     }
 }
 

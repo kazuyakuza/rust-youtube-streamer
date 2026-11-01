@@ -23,6 +23,15 @@ fn load_example_section() -> DiagnosticsConfig {
         .expect("the embedded example declares the diagnostics section")
 }
 
+fn expect_rejected(value: &serde_json::Value) {
+    let dir = tempfile::tempdir().expect("temp dir must be created");
+    let path = write_temp_config(&dir, &value.to_string());
+    assert!(matches!(
+        expect_load_error(&path),
+        ConfigError::Deserialization { .. }
+    ));
+}
+
 #[test]
 fn loads_example_diagnostics_section() {
     let diagnostics = load_example_section();
@@ -102,18 +111,12 @@ fn unknown_diagnostics_field_rejected() {
         .as_object_mut()
         .expect("diagnostics JSON must be an object")
         .insert("bogus".to_string(), serde_json::json!(true));
-    let dir = tempfile::tempdir().expect("temp dir must be created");
-    let path = write_temp_config(&dir, &value.to_string());
-    let error = expect_load_error(&path);
-    assert!(matches!(error, ConfigError::Deserialization { .. }));
+    expect_rejected(&value);
 }
 
 #[test]
 fn wrong_type_flag_rejected() {
     let mut value = example_json_value();
     value["diagnostics"]["pipeline_timing_events"] = serde_json::json!("yes");
-    let dir = tempfile::tempdir().expect("temp dir must be created");
-    let path = write_temp_config(&dir, &value.to_string());
-    let error = expect_load_error(&path);
-    assert!(matches!(error, ConfigError::Deserialization { .. }));
+    expect_rejected(&value);
 }

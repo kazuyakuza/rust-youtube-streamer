@@ -19,7 +19,18 @@ pub(super) fn validate_diagnostics(config: &AppConfig, issues: &mut Vec<ConfigIs
     };
     validate_positive_fields(diagnostics, issues);
     validate_generation_count(diagnostics, issues);
-    validate_output_file(config, issues);
+    if is_unusable_output_file(diagnostics) {
+        issues.extend(blank_issue(
+            "diagnostics.output_file",
+            diagnostics.output_file().unwrap_or_default(),
+        ));
+    }
+    if is_chat_log_collision(diagnostics, &config.chat.log_file) {
+        issues.push(ConfigIssue::new(
+            "diagnostics.output_file".to_string(),
+            CHAT_LOG_COLLISION_PROBLEM.to_string(),
+        ));
+    }
 }
 
 fn validate_positive_fields(diagnostics: &DiagnosticsConfig, issues: &mut Vec<ConfigIssue>) {
@@ -51,24 +62,6 @@ fn validate_generation_count(diagnostics: &DiagnosticsConfig, issues: &mut Vec<C
                 "must be at most {MAX_GENERATIONS_LIMIT} (got {})",
                 diagnostics.max_generations.unwrap_or_default()
             ),
-        ));
-    }
-}
-
-fn validate_output_file(config: &AppConfig, issues: &mut Vec<ConfigIssue>) {
-    let Some(diagnostics) = config.diagnostics.as_ref() else {
-        return;
-    };
-    if is_unusable_output_file(diagnostics) {
-        issues.extend(blank_issue(
-            "diagnostics.output_file",
-            diagnostics.output_file().unwrap_or_default(),
-        ));
-    }
-    if is_chat_log_collision(diagnostics, &config.chat.log_file) {
-        issues.push(ConfigIssue::new(
-            "diagnostics.output_file".to_string(),
-            CHAT_LOG_COLLISION_PROBLEM.to_string(),
         ));
     }
 }

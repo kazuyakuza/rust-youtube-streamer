@@ -4,7 +4,7 @@
 
 use serde::Serialize;
 
-pub(crate) const HISTOGRAM_BOUNDARIES_NS: [u64; 8] = [
+pub(super) const HISTOGRAM_BOUNDARIES_NS: [u64; 8] = [
     1_000_000,
     5_000_000,
     10_000_000,
@@ -15,7 +15,7 @@ pub(crate) const HISTOGRAM_BOUNDARIES_NS: [u64; 8] = [
     5_000_000_000,
 ];
 
-pub(crate) const HISTOGRAM_BUCKET_COUNT: usize = 9;
+pub(super) const HISTOGRAM_BUCKET_COUNT: usize = 9;
 
 /// `(lower_ns, upper_ns, count)`; a `None` upper bound is the final bucket.
 pub(crate) type HistogramBuckets = [(u64, Option<u64>, u64); HISTOGRAM_BUCKET_COUNT];
@@ -31,7 +31,7 @@ pub(crate) struct HistogramSummary {
 }
 
 /// Fixed-size duration histogram: counters only, no sample storage.
-pub(crate) struct DurationHistogram {
+pub(super) struct DurationHistogram {
     count: u64,
     min_ns: Option<u64>,
     max_ns: u64,
@@ -40,7 +40,7 @@ pub(crate) struct DurationHistogram {
 }
 
 impl DurationHistogram {
-    pub(crate) fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             count: 0,
             min_ns: None,
@@ -52,7 +52,7 @@ impl DurationHistogram {
 
     /// Records one duration sample; saturating arithmetic keeps the
     /// aggregate total from wrapping on pathological inputs.
-    pub(crate) fn record(&mut self, nanos: u64) {
+    pub(super) fn record(&mut self, nanos: u64) {
         self.count = self.count.saturating_add(1);
         self.min_ns = Some(self.min_ns.map_or(nanos, |current| current.min(nanos)));
         self.max_ns = self.max_ns.max(nanos);
@@ -61,7 +61,7 @@ impl DurationHistogram {
         self.buckets[bucket] = self.buckets[bucket].saturating_add(1);
     }
 
-    pub(crate) fn snapshot(&self) -> HistogramSummary {
+    pub(super) fn snapshot(&self) -> HistogramSummary {
         HistogramSummary {
             count: self.count,
             min_ns: self.min_ns,

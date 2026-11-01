@@ -7,30 +7,30 @@ use serde::Serialize;
 
 use crate::app::diagnostics::histogram::HistogramSummary;
 
-pub(crate) const CLOCK_DOMAIN_NOTE: &str = "provider published timestamps are provider-supplied wall clock (publishedAt); all *_ns values are local monotonic deltas; subtracting stamps across clock domains is not a precise duration (uncorrectable clock skew)";
+const CLOCK_DOMAIN_NOTE: &str = "provider published timestamps are provider-supplied wall clock (publishedAt); all *_ns values are local monotonic deltas; subtracting stamps across clock domains is not a precise duration (uncorrectable clock skew)";
 
 /// One per-message stage row (`stage` is `dequeued`, `rendered`, or `written`).
 #[derive(Debug, Serialize)]
-pub(crate) struct TimingEvent<'a> {
-    pub(crate) event: &'static str,
-    pub(crate) epoch_seconds: u64,
-    pub(crate) correlation: Option<&'a str>,
-    pub(crate) provider_epoch_seconds: Option<u64>,
-    pub(crate) stage: &'static str,
-    pub(crate) lag_ns: Option<u64>,
-    pub(crate) queue_depth: Option<u64>,
+pub(super) struct TimingEvent<'a> {
+    event: &'static str,
+    epoch_seconds: u64,
+    correlation: Option<&'a str>,
+    provider_epoch_seconds: Option<u64>,
+    stage: &'static str,
+    lag_ns: Option<u64>,
+    queue_depth: Option<u64>,
 }
 
 /// The stage-specific fields of one timing row (≤2-args rule parameter object).
-pub(crate) struct TimingDetails<'a> {
-    pub(crate) correlation: Option<&'a str>,
-    pub(crate) provider_epoch_seconds: Option<u64>,
-    pub(crate) lag_ns: Option<u64>,
-    pub(crate) queue_depth: Option<u64>,
+pub(super) struct TimingDetails<'a> {
+    correlation: Option<&'a str>,
+    provider_epoch_seconds: Option<u64>,
+    lag_ns: Option<u64>,
+    queue_depth: Option<u64>,
 }
 
 impl<'a> TimingDetails<'a> {
-    pub(crate) fn dequeued(
+    pub(super) fn dequeued(
         correlation: Option<&'a str>,
         provider_epoch_seconds: Option<u64>,
     ) -> Self {
@@ -42,12 +42,12 @@ impl<'a> TimingDetails<'a> {
         }
     }
 
-    pub(crate) fn with_queue_depth(mut self, queue_depth: u64) -> Self {
+    pub(super) fn with_queue_depth(mut self, queue_depth: u64) -> Self {
         self.queue_depth = Some(queue_depth);
         self
     }
 
-    pub(crate) fn stage(correlation: Option<&'a str>, lag_ns: u64) -> Self {
+    pub(super) fn stage(correlation: Option<&'a str>, lag_ns: u64) -> Self {
         Self {
             correlation,
             provider_epoch_seconds: None,
@@ -58,7 +58,7 @@ impl<'a> TimingDetails<'a> {
 }
 
 impl<'a> TimingEvent<'a> {
-    pub(crate) fn new(stage: &'static str, details: TimingDetails<'a>) -> Self {
+    pub(super) fn new(stage: &'static str, details: TimingDetails<'a>) -> Self {
         Self {
             event: "message",
             epoch_seconds: epoch_seconds_now(),
@@ -73,65 +73,27 @@ impl<'a> TimingEvent<'a> {
 
 /// One queue/backpressure row: batch receipt, enqueue outcome, or reconnect.
 #[derive(Debug, Serialize)]
-pub(crate) struct QueueEvent<'a> {
-    pub(crate) event: &'static str,
-    pub(crate) epoch_seconds: u64,
-    pub(crate) correlation: Option<&'a str>,
-    pub(crate) batch_size: Option<u64>,
-    pub(crate) queue_depth: u64,
-    pub(crate) backpressure: Option<bool>,
-    pub(crate) wait_ns: Option<u64>,
-    pub(crate) backoff_ms: Option<u64>,
+pub(super) struct QueueEvent<'a> {
+    event: &'static str,
+    epoch_seconds: u64,
+    correlation: Option<&'a str>,
+    batch_size: Option<u64>,
+    queue_depth: u64,
+    backpressure: Option<bool>,
+    wait_ns: Option<u64>,
+    backoff_ms: Option<u64>,
 }
 
 /// The enqueue-outcome fields of one queue row (≤2-args rule parameter object).
-pub(crate) struct QueueEnqueueFields<'a> {
-    pub(crate) correlation: Option<&'a str>,
-    pub(crate) backpressured: bool,
-    pub(crate) wait_ns: u64,
+pub(super) struct QueueEnqueueFields<'a> {
+    pub(super) correlation: Option<&'a str>,
+    pub(super) backpressured: bool,
+    pub(super) wait_ns: u64,
 }
 
 impl<'a> QueueEvent<'a> {
-    pub(crate) fn enqueue(fields: QueueEnqueueFields<'a>, queue_depth: u64) -> Self {
-        Self {
-            event: "queue",
-            epoch_seconds: epoch_seconds_now(),
-            correlation: fields.correlation,
-            batch_size: None,
-            queue_depth,
-            backpressure: Some(fields.backpressured),
-            wait_ns: Some(fields.wait_ns),
-            backoff_ms: None,
-        }
-    }
-
-    pub(crate) fn batch(size: u64, queue_depth: u64) -> Self {
-        Self {
-            event: "queue",
-            epoch_seconds: epoch_seconds_now(),
-            correlation: None,
-            batch_size: Some(size),
-            queue_depth,
-            backpressure: None,
-            wait_ns: None,
-            backoff_ms: None,
-        }
-    }
-
-    pub(crate) fn full(correlation: Option<&'a str>, queue_depth: u64) -> Self {
-        Self {
-            event: "queue",
-            epoch_seconds: epoch_seconds_now(),
-            correlation,
-            batch_size: None,
-            queue_depth,
-            backpressure: Some(true),
-            wait_ns: None,
-            backoff_ms: None,
-        }
-    }
-
-    pub(crate) fn reconnect(backoff_ms: u64, queue_depth: u64) -> Self {
+    /// One queue row skeleton; the constructors fill their kind-specific fields.
+    fn with_depth(queue_depth: u64) -> Self {
         Self {
             event: "queue",
             epoch_seconds: epoch_seconds_now(),
@@ -140,8 +102,35 @@ impl<'a> QueueEvent<'a> {
             queue_depth,
             backpressure: None,
             wait_ns: None,
-            backoff_ms: Some(backoff_ms),
+            backoff_ms: None,
         }
+    }
+
+    pub(super) fn enqueue(fields: QueueEnqueueFields<'a>, queue_depth: u64) -> Self {
+        let mut event = Self::with_depth(queue_depth);
+        event.correlation = fields.correlation;
+        event.backpressure = Some(fields.backpressured);
+        event.wait_ns = Some(fields.wait_ns);
+        event
+    }
+
+    pub(super) fn batch(size: u64, queue_depth: u64) -> Self {
+        let mut event = Self::with_depth(queue_depth);
+        event.batch_size = Some(size);
+        event
+    }
+
+    pub(super) fn full(correlation: Option<&'a str>, queue_depth: u64) -> Self {
+        let mut event = Self::with_depth(queue_depth);
+        event.correlation = correlation;
+        event.backpressure = Some(true);
+        event
+    }
+
+    pub(super) fn reconnect(backoff_ms: u64, queue_depth: u64) -> Self {
+        let mut event = Self::with_depth(queue_depth);
+        event.backoff_ms = Some(backoff_ms);
+        event
     }
 }
 
@@ -192,7 +181,7 @@ pub(crate) struct SummarySnapshot {
 
 /// Wall-clock seconds since the UNIX epoch for row correlation (never diffed
 /// against monotonic values).
-pub(crate) fn epoch_seconds_now() -> u64 {
+fn epoch_seconds_now() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_secs())

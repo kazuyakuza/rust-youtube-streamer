@@ -8,17 +8,17 @@ use std::collections::VecDeque;
 use crate::app::diagnostics::events::SummarySnapshot;
 use crate::app::diagnostics::histogram::DurationHistogram;
 
-pub(crate) const IN_FLIGHT_CAP: usize = 128;
+pub(super) const IN_FLIGHT_CAP: usize = 128;
 
 /// One message inside the bounded application channel, tracked for latency.
-pub(crate) struct InFlightEntry {
-    pub(crate) correlation: String,
-    pub(crate) received_nanos: u64,
-    pub(crate) enqueued_nanos: u64,
-    pub(crate) backpressured: bool,
+pub(super) struct InFlightEntry {
+    pub(super) correlation: String,
+    pub(super) received_nanos: u64,
+    pub(super) enqueued_nanos: u64,
+    pub(super) backpressured: bool,
 }
 
-pub(crate) struct DiagnosticsState {
+pub(super) struct DiagnosticsState {
     received_total: u64,
     enqueued_total: u64,
     dequeued_total: u64,
@@ -38,7 +38,7 @@ pub(crate) struct DiagnosticsState {
 }
 
 impl DiagnosticsState {
-    pub(crate) fn new() -> Self {
+    pub(super) fn new() -> Self {
         Self {
             received_total: 0,
             enqueued_total: 0,
@@ -59,15 +59,15 @@ impl DiagnosticsState {
         }
     }
 
-    pub(crate) fn add_received(&mut self, batch_size: u64) {
+    pub(super) fn add_received(&mut self, batch_size: u64) {
         self.received_total = self.received_total.saturating_add(batch_size);
     }
 
-    pub(crate) fn add_full_retry(&mut self) {
+    pub(super) fn add_full_retry(&mut self) {
         self.full_retry_total = self.full_retry_total.saturating_add(1);
     }
 
-    pub(crate) fn add_enqueued(&mut self, entry: Option<InFlightEntry>, backpressured: bool) {
+    pub(super) fn add_enqueued(&mut self, entry: Option<InFlightEntry>, backpressured: bool) {
         self.enqueued_total = self.enqueued_total.saturating_add(1);
         let retained = entry
             .as_ref()
@@ -82,7 +82,7 @@ impl DiagnosticsState {
         }
     }
 
-    pub(crate) fn add_reconnect(&mut self, backoff_ms: u64) {
+    pub(super) fn add_reconnect(&mut self, backoff_ms: u64) {
         self.reconnect_count = self.reconnect_count.saturating_add(1);
         self.reconnect_backoff_total_ms =
             self.reconnect_backoff_total_ms.saturating_add(backoff_ms);
@@ -90,48 +90,46 @@ impl DiagnosticsState {
 
     /// Pops the matching in-flight entry and records channel latency; an
     /// absent or unmatched correlation is counted, never dropped silently.
-    pub(crate) fn take_dequeued(&mut self, correlation: Option<&str>, now_nanos: u64) {
+    pub(super) fn take_dequeued(&mut self, correlation: Option<&str>, now_nanos: u64) {
         self.dequeued_total = self.dequeued_total.saturating_add(1);
-        let Some(correlation) = correlation else {
-            self.uncorrelated_total = self.uncorrelated_total.saturating_add(1);
-            return;
-        };
-        let Some(index) = self
-            .in_flight
-            .iter()
-            .position(|entry| entry.correlation == correlation)
-        else {
-            self.uncorrelated_total = self.uncorrelated_total.saturating_add(1);
-            return;
-        };
-        if let Some(entry) = self.in_flight.remove(index) {
-            self.message_channel_ns
-                .record(now_nanos.saturating_sub(entry.enqueued_nanos));
+        match self.pop_in_flight(correlation) {
+            Some(entry) => self
+                .message_channel_ns
+                .record(now_nanos.saturating_sub(entry.enqueued_nanos)),
+            None => self.uncorrelated_total = self.uncorrelated_total.saturating_add(1),
         }
     }
 
-    pub(crate) fn record_message_render(&mut self, nanos: u64) {
+    fn pop_in_flight(&mut self, correlation: Option<&str>) -> Option<InFlightEntry> {
+        let index = self
+            .in_flight
+            .iter()
+            .position(|entry| Some(entry.correlation.as_str()) == correlation)?;
+        self.in_flight.remove(index)
+    }
+
+    pub(super) fn record_message_render(&mut self, nanos: u64) {
         self.message_render_ns.record(nanos);
     }
 
-    pub(crate) fn record_frame_tick(&mut self, interval_ns: u64, jitter_ns: u64) {
+    pub(super) fn record_frame_tick(&mut self, interval_ns: u64, jitter_ns: u64) {
         self.frame_interval_ns.record(interval_ns);
         self.frame_jitter_ns.record(jitter_ns);
     }
 
-    pub(crate) fn record_render(&mut self, nanos: u64) {
+    pub(super) fn record_render(&mut self, nanos: u64) {
         self.render_ns.record(nanos);
     }
 
-    pub(crate) fn record_write(&mut self, nanos: u64) {
+    pub(super) fn record_write(&mut self, nanos: u64) {
         self.write_ns.record(nanos);
     }
 
-    pub(crate) fn queue_depth(&self) -> u64 {
+    pub(super) fn queue_depth(&self) -> u64 {
         self.enqueued_total.saturating_sub(self.dequeued_total)
     }
 
-    pub(crate) fn snapshot(&self, now_nanos: u64) -> SummarySnapshot {
+    pub(super) fn snapshot(&self, now_nanos: u64) -> SummarySnapshot {
         SummarySnapshot {
             received_total: self.received_total,
             enqueued_total: self.enqueued_total,
