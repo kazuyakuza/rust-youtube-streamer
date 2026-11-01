@@ -7,9 +7,7 @@ use crate::config::diagnostics_config::{
     DiagnosticsConfig, DEFAULT_MAX_FILE_BYTES, DEFAULT_MAX_GENERATIONS,
     DEFAULT_SUMMARY_INTERVAL_SECONDS,
 };
-use crate::config::test_fixtures::{
-    example_json_value, expect_load_error, write_temp_config,
-};
+use crate::config::test_fixtures::{example_json_value, expect_load_error, write_temp_config};
 
 use super::*;
 

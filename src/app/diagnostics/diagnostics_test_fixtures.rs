@@ -1,0 +1,91 @@
+//! Shared diagnostics test support: a fixed monotonic clock, a config
+//! carrying every capability, and a harness exposing the aggregate state so
+//! deterministic tests can assert stage propagation without sleeps.
+
+use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+
+use crate::config::diagnostics_config::DiagnosticsConfig;
+
+use super::collector::{DiagnosticsCollector, MonotonicNanos};
+use super::collector_stages::CollectorSettings;
+use super::state::DiagnosticsState;
+
+pub(crate) const TEST_PACING_INTERVAL_NANOS: u64 = 40;
+
+/// Deterministic monotonic clock: the test owns and advances the shared cell.
+pub(crate) struct FixedMonotonicNanos {
+    shared_cell: Arc<AtomicU64>,
+}
+
+impl FixedMonotonicNanos {
+    pub(crate) fn new() -> (Self, Arc<AtomicU64>) {
+        let shared_cell = Arc::new(AtomicU64::new(0));
+        (
+            Self {
+                shared_cell: Arc::clone(&shared_cell),
+            },
+            shared_cell,
+        )
+    }
+}
+
+impl MonotonicNanos for FixedMonotonicNanos {
+    fn now_nanos(&self) -> u64 {
+        self.shared_cell.load(Ordering::SeqCst)
+    }
+}
+
+pub(crate) struct TestCollector {
+    pub(crate) collector: DiagnosticsCollector,
+    pub(crate) state: Arc<Mutex<DiagnosticsState>>,
+    pub(crate) clock: Arc<AtomicU64>,
+}
+
+impl TestCollector {
+    pub(crate) fn advance(&self, nanos: u64) {
+        self.clock.fetch_add(nanos, Ordering::SeqCst);
+    }
+
+    pub(crate) fn now(&self) -> u64 {
+        self.clock.load(Ordering::SeqCst)
+    }
+}
+
+pub(crate) fn enabled_collector_for_tests() -> TestCollector {
+    test_collector(&enabled_diagnostics(None), TEST_PACING_INTERVAL_NANOS)
+}
+
+pub(crate) fn collector_with_output_file(path: &Path) -> TestCollector {
+    let output_file = Some(path.to_string_lossy().into_owned());
+    test_collector(
+        &enabled_diagnostics(output_file),
+        TEST_PACING_INTERVAL_NANOS,
+    )
+}
+
+fn enabled_diagnostics(output_file: Option<String>) -> DiagnosticsConfig {
+    DiagnosticsConfig {
+        pipeline_timing_events: Some(true),
+        queue_metrics: Some(true),
+        periodic_summary: Some(true),
+        summary_interval_seconds: Some(1),
+        output_file,
+        max_file_bytes: Some(1_048_576),
+        max_generations: Some(3),
+    }
+}
+
+fn test_collector(diagnostics: &DiagnosticsConfig, pacing_interval_nanos: u64) -> TestCollector {
+    let settings = CollectorSettings::from_diagnostics(diagnostics, pacing_interval_nanos);
+    let (clock, clock_cell) = FixedMonotonicNanos::new();
+    let mut collector = DiagnosticsCollector::from_settings(settings);
+    collector.clock = Arc::new(clock);
+    let state = Arc::clone(&collector.state);
+    TestCollector {
+        collector,
+        state,
+        clock: clock_cell,
+    }
+}

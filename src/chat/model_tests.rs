@@ -37,6 +37,14 @@ fn normalization_flattens_all_line_breaks() {
 }
 
 #[test]
+fn message_id_accessor_returns_attached_id() {
+    let with_id = ChatMessage::new("alice", "Hello!").with_message_id("msg-123");
+    assert_eq!(with_id.message_id(), Some("msg-123"));
+    let without_id = ChatMessage::new("bob", "Hi!");
+    assert_eq!(without_id.message_id(), None);
+}
+
+#[test]
 fn metadata_accessors_return_input_verbatim() {
     let with_metadata = ChatMessage::new("alice", "Hello!")
         .with_message_id("msg-123")

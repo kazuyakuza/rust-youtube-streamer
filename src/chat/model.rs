@@ -54,6 +54,10 @@ impl ChatMessage {
         &self.text
     }
 
+    pub(crate) fn message_id(&self) -> Option<&str> {
+        self.message_id.as_deref()
+    }
+
     pub(crate) fn timestamp(&self) -> Option<u64> {
         self.timestamp
     }

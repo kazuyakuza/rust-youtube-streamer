@@ -13,6 +13,7 @@
 mod auth;
 mod cli;
 mod demo;
+mod diagnostics;
 mod error;
 mod logging;
 mod pipeline;
