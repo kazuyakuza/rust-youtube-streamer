@@ -1,0 +1,104 @@
+//! Loss, shutdown, and pure-pin coverage for the latency harness: the
+//! accounting equality proves no silent mid-session loss, the stop-with-queue
+//! scenario documents the queued shutdown loss, and the rational-rate and FPS
+//! derivations are pinned without running a scenario.
+
+use crate::app::pipeline::PipelinePacing;
+use crate::config::valid_config;
+
+use super::{
+    assert_full_round_trip_accounting, run_scenario, LatencyScenario, RatePhase, RateProfile,
+};
+
+const CHANNEL_CAPACITY: u64 = crate::app::run::chat_worker::CHAT_CHANNEL_CAPACITY as u64;
+const MIXED_DUE_TOTAL: u64 = 40 + 16 * 2 + 64 / 2;
+
+fn phase(frames: u64, numerator: u64, denominator: u64) -> RatePhase {
+    RatePhase {
+        frames,
+        rate: RateProfile {
+            numerator,
+            denominator,
+        },
+    }
+}
+
+fn scenario(label: &'static str, phases: Vec<RatePhase>) -> LatencyScenario {
+    LatencyScenario { label, phases }
+}
+
+fn configured_interval_nanos() -> u64 {
+    PipelinePacing::from_config(&valid_config().video)
+        .expect("validated FPS derives pacing")
+        .interval_nanos()
+}
+
+#[test]
+fn round_trip_counts_prove_no_silent_loss_and_bounded_memory() {
+    let scenario = scenario(
+        "latency-mixed-profile",
+        vec![
+            phase(1, 40, 1),
+            phase(16, 2, 1),
+            phase(64, 1, 2),
+            phase(4 * CHANNEL_CAPACITY, 0, 1),
+        ],
+    );
+    assert_eq!(scenario.due_total(), MIXED_DUE_TOTAL);
+    let run = run_scenario(scenario);
+    assert_eq!(
+        run.pacing_interval_nanos,
+        configured_interval_nanos(),
+        "the scenario interval derives from the configured FPS"
+    );
+    assert_full_round_trip_accounting(MIXED_DUE_TOTAL, &run);
+}
+
+#[test]
+fn stop_with_messages_queued_documents_shutdown_loss() {
+    let interval = configured_interval_nanos();
+    let run = run_scenario(scenario(
+        "latency-queued-shutdown",
+        vec![phase(1, CHANNEL_CAPACITY, 1), phase(23, 0, 1)],
+    ));
+    assert_eq!(run.total_frames, 24);
+    let snapshot = &run.snapshot;
+    assert_eq!(snapshot.received_total, CHANNEL_CAPACITY);
+    assert_eq!(snapshot.dequeued_total, 23);
+    assert_eq!(run.leftover.len() as u64, CHANNEL_CAPACITY - 23);
+    assert_eq!(snapshot.queue_depth_estimate, CHANNEL_CAPACITY - 23);
+    assert_eq!(snapshot.oldest_in_flight_age_ns, Some(23 * interval));
+    assert!(run
+        .leftover
+        .iter()
+        .all(|message| message.to_string() == "author-fixture: text-fixture"));
+}
+
+#[test]
+fn rate_profile_due_counts_follow_rational_schedule() {
+    let profile = RateProfile {
+        numerator: 2,
+        denominator: 3,
+    };
+    let mut credit = 0;
+    let released: Vec<u64> = (0..6).map(|_| profile.advance(&mut credit)).collect();
+    assert_eq!(released, vec![0, 1, 1, 0, 1, 1]);
+    assert_eq!(credit, 0, "a full cycle leaves no remainder");
+    let burst = RateProfile {
+        numerator: 64,
+        denominator: 1,
+    };
+    let mut credit = 0;
+    assert_eq!(burst.advance(&mut credit), 64);
+    assert_eq!(burst.advance(&mut credit), 64);
+    assert_eq!(burst.advance(&mut credit), 64);
+    assert_eq!(credit, 0);
+}
+
+#[test]
+fn scenario_pacing_interval_derives_from_configured_fps() {
+    let fps = u64::from(valid_config().video.fps);
+    let interval = configured_interval_nanos();
+    assert_eq!(interval, 1_000_000_000 / fps);
+    assert!(interval * fps + fps > 1_000_000_000);
+}
