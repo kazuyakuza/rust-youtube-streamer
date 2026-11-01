@@ -49,3 +49,7 @@ mod broadcast_made_for_kids_parse_tests;
 #[cfg(test)]
 #[path = "ffmpeg_audio_parse_tests.rs"]
 mod ffmpeg_audio_parse_tests;
+
+#[cfg(test)]
+#[path = "diagnostics_parse_tests.rs"]
+mod diagnostics_parse_tests;

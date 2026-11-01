@@ -13,6 +13,7 @@
 //! project brief
 //! ([`.agent/project-info/brief.md`](../../.agent/project-info/brief.md)).
 
+pub(crate) mod diagnostics_config;
 mod error;
 mod loader;
 pub(crate) mod model;

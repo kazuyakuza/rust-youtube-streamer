@@ -39,5 +39,14 @@
     "audio": {
       "enabled": true
     }
+  },
+  "diagnostics": {
+    "pipeline_timing_events": false,
+    "queue_metrics": false,
+    "periodic_summary": false,
+    "summary_interval_seconds": 30,
+    "output_file": "logs/diagnostics.log",
+    "max_file_bytes": 1048576,
+    "max_generations": 3
   }
 }

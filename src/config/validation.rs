@@ -23,6 +23,7 @@ pub(super) fn validate(config: &AppConfig) -> Result<(), ConfigError> {
     validate_required_strings(config, &mut issues);
     validate_oauth(config, &mut issues);
     validate_privacy_status(config, &mut issues);
+    validate_diagnostics(config, &mut issues);
     if issues.is_empty() {
         Ok(())
     } else {
@@ -169,3 +170,8 @@ fn is_unsupported_privacy_status(value: &str) -> bool {
 #[cfg(test)]
 #[path = "validation_tests.rs"]
 mod validation_tests;
+
+#[path = "validation_diagnostics.rs"]
+mod validation_diagnostics;
+
+use validation_diagnostics::validate_diagnostics;

@@ -5,6 +5,8 @@
 
 use serde::Deserialize;
 
+use crate::config::diagnostics_config::DiagnosticsConfig;
+
 /// Root configuration document. Every section is required, and unknown fields
 /// are rejected so configuration typos fail fast instead of being ignored.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -17,6 +19,9 @@ pub struct AppConfig {
     pub renderer: RendererConfig,
     pub chat: ChatConfig,
     pub ffmpeg: FfmpegConfig,
+    /// Optional opt-in diagnostics section: every capability is disabled when
+    /// the section or its flags are absent, so pre-0.14.0 configs are unchanged.
+    pub diagnostics: Option<DiagnosticsConfig>,
 }
 
 /// YouTube integration settings; currently the live broadcast metadata.

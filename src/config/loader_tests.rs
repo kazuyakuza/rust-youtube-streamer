@@ -1,9 +1,9 @@
 //! Loading-pipeline tests: valid load, missing or unreadable files, malformed
 //! JSON, and schema violations, all against temporary files only.
 
-use std::path::PathBuf;
-
-use crate::config::test_fixtures::valid_config;
+use crate::config::test_fixtures::{
+    example_json, example_json_value, expect_load_error, valid_config, write_temp_config,
+};
 
 use super::*;
 
@@ -135,66 +135,4 @@ fn oauth_section_missing_rejected() {
     let error = expect_load_error(&path);
     assert!(matches!(error, ConfigError::Deserialization { .. }));
     assert!(error.to_string().contains("missing field"));
-}
-
-fn expect_load_error(path: &std::path::Path) -> ConfigError {
-    match load_from_path(path) {
-        Err(error) => error,
-        Ok(_) => panic!("expected configuration loading to fail"),
-    }
-}
-
-fn write_temp_config(dir: &tempfile::TempDir, contents: &str) -> PathBuf {
-    let path = dir.path().join("config.json");
-    std::fs::write(&path, contents).expect("test config file must be writable");
-    path
-}
-
-fn example_json() -> String {
-    r##"{
-  "youtube": {
-    "broadcast": {
-      "title": "Rust YouTube Streamer Prototype",
-      "description": "YouTube Live streaming prototype",
-      "privacy_status": "unlisted",
-      "made_for_kids": false
-    }
-  },
-  "oauth": {
-    "client_config_path": "credentials/client_secret.json",
-    "credentials_path": "credentials/tokens.json"
-  },
-  "video": {
-    "width": 1920,
-    "height": 1080,
-    "fps": 30,
-    "pixel_format": "rgb24"
-  },
-  "renderer": {
-    "font": "fonts/console.ttf",
-    "font_size": 32,
-    "line_height": 40,
-    "left_margin": 20,
-    "top_margin": 20,
-    "right_margin": 20,
-    "bottom_margin": 20,
-    "text_color": "#FFFFFF",
-    "background_color": "#000000"
-  },
-  "chat": {
-    "log_file": "logs/chat.log"
-  },
-  "ffmpeg": {
-    "executable": "ffmpeg",
-    "video_codec": "libx264",
-    "preset": "veryfast",
-    "bitrate": "6000k",
-    "audio": { "enabled": true }
-  }
-}"##
-    .to_string()
-}
-
-fn example_json_value() -> serde_json::Value {
-    serde_json::from_str(&example_json()).expect("embedded example JSON must be valid")
 }
