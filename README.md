@@ -238,6 +238,7 @@ toolchain/target choice, runtime DLLs and limitations: [`docs/build-windows.md`]
 - [`product.md`](.agent/project-info/product.md) — problem, product goals, non-goals.
 - [`context.md`](.agent/project-info/context.md) — living status log (current focus, recent changes, next steps).
 - [`architecture.md`](.agent/project-info/architecture.md) — module map, data flow, boundary rules.
+- [Game foundation handoff](docs/game-foundation.md) — how to reuse this repository (auth/run/demo, chat→frame→FFmpeg pipeline, seams) as the base for a future chat-controlled game.
 - [`tech.md`](.agent/project-info/tech.md) — stack, external processes, dependency policy.
 - [`WORKFLOWS.md`](.agent/WORKFLOWS.md) and [`RULES.md`](.agent/RULES.md) — agent workflows and rules.
 

@@ -140,3 +140,4 @@ Every automated check on this page is **offline**: the ten `latency_load` tests 
 - [`docs/production-run.md`](production-run.md#pipeline-observability-opt-in-diagnostics) — Pipeline Observability (Opt-In Diagnostics): what each capability emits, the bounded JSONL output, and the canonical operator Manual Verification Procedure this page's procedure supplements (not duplicates).
 - [`docs/configuration.md#diagnostics`](configuration.md#diagnostics) — the authoritative diagnostics field reference.
 - [`docs/production-run.md`](production-run.md#live-chat-behavior-diagnostics-recovery-privacy-quota) — Live Chat behavior, the bounded channel, and the shutdown-loss facts.
+- [docs/game-foundation.md](game-foundation.md) — the game-foundation handoff consuming this page's timing facts.

@@ -414,3 +414,4 @@ The canonical safe test plan (D-T4-8). It is performed by the human operator aga
 - [`docs/authentication.md`](authentication.md) — the `auth` flow, credential files, unattended refresh, and the failure/recovery table.
 - [`docs/google-cloud-prerequisites.md`](google-cloud-prerequisites.md) — the Google Cloud setup behind the prerequisites.
 - [`docs/demo.md`](demo.md) — the local-only demo recording (no YouTube, no OAuth).
+- [docs/game-foundation.md](game-foundation.md) — how this mode's pipeline becomes the base for a future chat-controlled game (architecture map, extension points, frozen contracts).

@@ -143,4 +143,5 @@ rust-youtube-streamer-service --help
 - [README](../README.md) — project overview, commands, and the operator logging guide.
 - [`docs/authentication.md`](authentication.md) — the OAuth authorization flow, credential files, and recovery guidance.
 - [`docs/latency-test-map.md`](latency-test-map.md) — how to read the emitted diagnostics against the offline stage-boundary test map and the operator-run live-latency procedure.
+- [docs/game-foundation.md](game-foundation.md) — the game-foundation handoff guide (when and why to extend the validated configuration).
 - [`config/config.example.json`](../config/config.example.json) — committed example template.

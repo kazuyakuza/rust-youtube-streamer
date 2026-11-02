@@ -20,7 +20,7 @@ Principles:
 
 ## Module Map
 
-Target layout (brief §4). For current repo state, see `context.md`.
+Target layout (brief §4). For current repo state, see `context.md`. The implemented layout and the actual chat→frame→FFmpeg data-flow map (v0.14.0 tree) live in `docs/game-foundation.md`.
 
 | Path | Responsibility |
 | --- | --- |
@@ -30,6 +30,7 @@ Target layout (brief §4). For current repo state, see `context.md`.
 | `src/chat/` | Application-level chat message types; bounded FIFO queue (`VecDeque<ChatMessage>`) of visible messages. |
 | `src/renderer/` | Converts `RenderInput` into raw RGB24 video frames; trait contract `Renderer` / `TextRenderer` (brief §9.2). Must NOT depend on the YouTube API or broadcast lifecycle. |
 | `src/streaming/` | Starts and supervises FFmpeg; manages the raw frame input pipeline. |
+| `src/app/diagnostics/` | Opt-in read-only pipeline diagnostics collector (disabled by default). |
 
 ## Data Flow
 
@@ -72,6 +73,7 @@ Summary: YouTube → Chat → ChatStore → RenderInput → Renderer → raw fra
 * FFmpeg knows nothing about chat messages, users, or game mechanics; it receives raw video frames via its standard input only (brief §2.2, §10.1–10.2). Rust never implements H.264 encoding or RTMPS transport itself.
 * The chat store is transient in-memory state, never persisted or restored across restarts; the chat log is independent of the visible queue (brief §8.4, §11.2).
 * Secrets — access/refresh tokens, stream keys, client secrets — are never logged or committed (brief §6.4, §7.4).
+* Game logic must not depend on YouTube API types, OAuth, broadcast IDs, RTMPS URLs, or FFmpeg command details — the extension-point map and frozen contracts are in `docs/game-foundation.md`.
 
 ## Application Lifecycle
 
