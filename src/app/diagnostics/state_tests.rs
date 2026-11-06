@@ -15,6 +15,19 @@ fn entry(correlation: &str, received_nanos: u64) -> InFlightEntry {
 }
 
 #[test]
+fn take_dequeued_returns_the_popped_entry_provider_stamp() {
+    let mut state = DiagnosticsState::new();
+    let mut stamped = entry("m-1", 1);
+    stamped.provider_epoch_seconds = Some(42);
+    state.add_enqueued(Some(stamped), false);
+    state.add_enqueued(Some(entry("m-2", 2)), false);
+    assert_eq!(state.take_dequeued(Some("m-1"), 10), Some(42));
+    assert_eq!(state.take_dequeued(Some("m-2"), 10), None);
+    assert_eq!(state.take_dequeued(Some("absent"), 10), None);
+    assert_eq!(state.snapshot(10).uncorrelated_total, 1);
+}
+
+#[test]
 fn inflight_pop_matches_correlation() {
     let mut state = DiagnosticsState::new();
     state.add_enqueued(Some(entry("first", 1)), false);

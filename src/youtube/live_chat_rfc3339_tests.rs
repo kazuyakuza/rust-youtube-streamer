@@ -30,3 +30,15 @@ fn rfc3339_parsing_covers_documented_utc_forms() {
     );
     assert_eq!(parse_rfc3339_seconds("2026-10-25T12:30:45.Z"), None);
 }
+
+#[test]
+fn micro_and_nano_fraction_shapes_parse_to_the_same_second() {
+    assert_eq!(
+        parse_rfc3339_seconds("2026-10-25T12:30:45.236707Z"),
+        Some(1_792_931_445)
+    );
+    assert_eq!(
+        parse_rfc3339_seconds("2026-10-25T12:30:45.000000001Z"),
+        Some(1_792_931_445)
+    );
+}

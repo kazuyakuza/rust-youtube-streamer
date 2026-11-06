@@ -66,5 +66,9 @@ mod state_tests;
 mod collector_tests;
 
 #[cfg(test)]
+#[path = "collector_provider_tests.rs"]
+mod collector_provider_tests;
+
+#[cfg(test)]
 #[path = "writer_tests.rs"]
 mod writer_tests;

@@ -7,7 +7,7 @@
 use std::sync::Mutex;
 
 use crate::app::diagnostics::diagnostics_test_fixtures::{
-    enabled_collector_for_tests, TestCollector,
+    collector_with_output_file, enabled_collector_for_tests, TestCollector,
 };
 use crate::app::run::chat_worker::runtime_chat_fakes::{
     worker_plan, ChatFakes, LIVE_CHAT_ID_FIXTURE,
@@ -53,6 +53,44 @@ fn worker_reports_batch_received_and_enqueue_success() {
     assert_eq!(snapshot.enqueued_total, 1);
     assert_eq!(snapshot.full_retry_total, 0);
     assert_eq!(snapshot.queue_depth_estimate, 1);
+}
+
+#[test]
+fn worker_stamp_survives_the_bounded_in_flight_entry() {
+    let dir = tempfile::tempdir().expect("temp dir must be created");
+    let path = dir.path().join("diagnostics.log");
+    let fakes = ChatFakes::new();
+    script_lookup(&fakes);
+    fakes.script_token_batch_session();
+    fakes.stream_ledger.script_session(vec![
+        Some(Ok(yielded(&response_plain(vec![text_item("m-1")])))),
+        Some(Ok(yielded(&response_offline(vec![])))),
+    ]);
+    let channel = chat_channel();
+    let harness = collector_with_output_file(&path);
+    let mut plan = worker_plan(&fakes, &channel);
+    plan.diagnostics = Some(harness.collector.clone());
+
+    spawn_chat_worker(plan)
+        .join()
+        .expect("the worker thread joins");
+
+    let message = channel
+        .receiver
+        .recv()
+        .expect("the enqueued message arrives");
+    harness.collector.note_message_dequeued(&message);
+    harness.collector.note_render_started();
+    harness.advance(5);
+    harness.collector.note_render_completed();
+
+    let content = std::fs::read_to_string(&path).expect("stage rows must be written");
+    assert_eq!(
+        content
+            .matches("\"provider_epoch_seconds\":1792931445")
+            .count(),
+        2
+    );
 }
 
 #[test]

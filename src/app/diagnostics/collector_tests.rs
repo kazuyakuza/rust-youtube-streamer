@@ -126,6 +126,10 @@ fn emits_summary_after_interval_and_not_earlier() {
     assert_eq!(content.lines().count(), 1);
     assert!(content.contains("\"event\":\"summary\""));
     assert!(content.contains("\"clock_note\""));
+    assert!(
+        !content.contains("\"provider_epoch_seconds\""),
+        "summary rows never carry the per-message field"
+    );
 }
 
 #[test]
