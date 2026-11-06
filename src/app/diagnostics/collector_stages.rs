@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use crate::app::diagnostics::events::{QueueEnqueueFields, QueueEvent};
+use crate::app::diagnostics::events::{QueueEnqueueFields, QueueEvent, TimingDetails, TimingEvent};
 use crate::app::diagnostics::state::InFlightEntry;
 use crate::config::diagnostics_config::DiagnosticsConfig;
 
@@ -57,6 +57,7 @@ pub(super) struct CollectorLocal {
 pub(super) struct DequeuedMessage {
     pub(super) correlation: Option<String>,
     pub(super) stamp_nanos: u64,
+    pub(super) provider_epoch_seconds: Option<u64>,
 }
 
 impl DiagnosticsCollector {
@@ -79,7 +80,11 @@ impl DiagnosticsCollector {
         }
     }
 
-    pub(crate) fn report_enqueue_success(&self, correlation: Option<&str>) {
+    pub(crate) fn report_enqueue_success(
+        &self,
+        correlation: Option<&str>,
+        provider_epoch_seconds: Option<u64>,
+    ) {
         let now = self.now();
         let (received_nanos, backpressured) = self.take_receipt();
         let entry = correlation.map(|id| InFlightEntry {
@@ -87,6 +92,7 @@ impl DiagnosticsCollector {
             received_nanos,
             enqueued_nanos: now,
             backpressured,
+            provider_epoch_seconds,
         });
         let depth = self.state_depth(|state| state.add_enqueued(entry, backpressured));
         if self.settings.queue_metrics {
@@ -104,6 +110,18 @@ impl DiagnosticsCollector {
         if self.settings.queue_metrics {
             self.emit(&QueueEvent::reconnect(backoff_ms, depth));
         }
+    }
+
+    pub(super) fn record_message_render(&self, now: u64) {
+        let dequeued = self.local.borrow();
+        let Some(entry) = dequeued.last_dequeued.as_ref() else {
+            return;
+        };
+        let message_ns = now.saturating_sub(entry.stamp_nanos);
+        self.with_state(|state| state.record_message_render(message_ns));
+        let details = TimingDetails::stage(entry.correlation.as_deref(), message_ns)
+            .with_provider(entry.provider_epoch_seconds);
+        self.emit(&TimingEvent::new("rendered", details));
     }
 
     fn take_receipt(&self) -> (u64, bool) {

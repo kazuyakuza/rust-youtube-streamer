@@ -16,6 +16,7 @@ pub(super) struct InFlightEntry {
     pub(super) received_nanos: u64,
     pub(super) enqueued_nanos: u64,
     pub(super) backpressured: bool,
+    pub(super) provider_epoch_seconds: Option<u64>,
 }
 
 pub(super) struct DiagnosticsState {
@@ -88,15 +89,25 @@ impl DiagnosticsState {
             self.reconnect_backoff_total_ms.saturating_add(backoff_ms);
     }
 
-    /// Pops the matching in-flight entry and records channel latency; an
-    /// absent or unmatched correlation is counted, never dropped silently.
-    pub(super) fn take_dequeued(&mut self, correlation: Option<&str>, now_nanos: u64) {
+    /// Pops the matching in-flight entry and records channel latency,
+    /// returning the popped entry's provider stamp; an absent or unmatched
+    /// correlation is counted, never dropped silently.
+    pub(super) fn take_dequeued(
+        &mut self,
+        correlation: Option<&str>,
+        now_nanos: u64,
+    ) -> Option<u64> {
         self.dequeued_total = self.dequeued_total.saturating_add(1);
         match self.pop_in_flight(correlation) {
-            Some(entry) => self
-                .message_channel_ns
-                .record(now_nanos.saturating_sub(entry.enqueued_nanos)),
-            None => self.uncorrelated_total = self.uncorrelated_total.saturating_add(1),
+            Some(entry) => {
+                self.message_channel_ns
+                    .record(now_nanos.saturating_sub(entry.enqueued_nanos));
+                entry.provider_epoch_seconds
+            }
+            None => {
+                self.uncorrelated_total = self.uncorrelated_total.saturating_add(1);
+                None
+            }
         }
     }
 

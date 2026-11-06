@@ -55,6 +55,11 @@ impl<'a> TimingDetails<'a> {
             queue_depth: None,
         }
     }
+
+    pub(super) fn with_provider(mut self, provider_epoch_seconds: Option<u64>) -> Self {
+        self.provider_epoch_seconds = provider_epoch_seconds;
+        self
+    }
 }
 
 impl<'a> TimingEvent<'a> {

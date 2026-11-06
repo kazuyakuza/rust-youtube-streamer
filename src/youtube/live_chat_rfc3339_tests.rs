@@ -20,5 +20,13 @@ fn rfc3339_parsing_covers_documented_utc_forms() {
     assert_eq!(parse_rfc3339_seconds("2026-13-01T00:00:00Z"), None);
     assert_eq!(parse_rfc3339_seconds("2026-10-25T24:00:00Z"), None);
     assert_eq!(parse_rfc3339_seconds("2026-10-25T12:30:45"), None);
-    assert_eq!(parse_rfc3339_seconds("2026-10-25T12:30:45.1234Z"), None);
+    assert_eq!(
+        parse_rfc3339_seconds("2026-10-25T12:30:45.1234Z"),
+        Some(1_792_931_445)
+    );
+    assert_eq!(
+        parse_rfc3339_seconds("2026-10-25T12:30:45.1234567890Z"),
+        None
+    );
+    assert_eq!(parse_rfc3339_seconds("2026-10-25T12:30:45.Z"), None);
 }

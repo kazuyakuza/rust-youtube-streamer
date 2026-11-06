@@ -56,13 +56,14 @@ impl DiagnosticsCollector {
     pub(crate) fn note_message_dequeued(&self, message: &ChatMessage) {
         let now = self.now();
         let correlation = message.message_id();
-        let depth = self.state_depth(|state| state.take_dequeued(correlation, now));
+        let (depth, enqueued_provider) = self.state_dequeue(correlation, now);
         if !self.settings.pipeline_timing {
             return;
         }
         self.local.borrow_mut().last_dequeued = Some(DequeuedMessage {
             correlation: correlation.map(str::to_string),
             stamp_nanos: now,
+            provider_epoch_seconds: enqueued_provider,
         });
         let details =
             TimingDetails::dequeued(correlation, message.timestamp()).with_queue_depth(depth);
@@ -98,7 +99,8 @@ impl DiagnosticsCollector {
             let dequeued = self.local.borrow_mut().last_dequeued.take();
             if let Some(entry) = dequeued {
                 let lag_ns = now.saturating_sub(entry.stamp_nanos);
-                let details = TimingDetails::stage(entry.correlation.as_deref(), lag_ns);
+                let details = TimingDetails::stage(entry.correlation.as_deref(), lag_ns)
+                    .with_provider(entry.provider_epoch_seconds);
                 self.emit(&TimingEvent::new("written", details));
             }
         }
@@ -125,17 +127,6 @@ impl DiagnosticsCollector {
         if self.summary_is_due(now) {
             self.emit_summary(now);
         }
-    }
-
-    fn record_message_render(&self, now: u64) {
-        let dequeued = self.local.borrow();
-        let Some(entry) = dequeued.last_dequeued.as_ref() else {
-            return;
-        };
-        let message_ns = now.saturating_sub(entry.stamp_nanos);
-        self.with_state(|state| state.record_message_render(message_ns));
-        let details = TimingDetails::stage(entry.correlation.as_deref(), message_ns);
-        self.emit(&TimingEvent::new("rendered", details));
     }
 
     fn summary_is_due(&self, now: u64) -> bool {
@@ -188,6 +179,13 @@ impl DiagnosticsCollector {
         self.with_state(|state| {
             action(state);
             state.queue_depth()
+        })
+    }
+
+    fn state_dequeue(&self, correlation: Option<&str>, now: u64) -> (u64, Option<u64>) {
+        self.with_state(|state| {
+            let provider_epoch_seconds = state.take_dequeued(correlation, now);
+            (state.queue_depth(), provider_epoch_seconds)
         })
     }
 }

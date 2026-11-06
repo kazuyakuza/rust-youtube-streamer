@@ -36,7 +36,7 @@ fn drive_full_stage_cycle(harness: &TestCollector) {
     harness.advance(10);
     harness
         .collector
-        .report_enqueue_success(message.message_id());
+        .report_enqueue_success(message.message_id(), message.timestamp());
     harness.advance(20);
     harness.collector.note_message_dequeued(&message);
     harness.collector.note_render_started();
@@ -99,7 +99,7 @@ fn uncorrelated_message_is_counted_not_dropped() {
     harness.collector.note_worker_receipt();
     harness
         .collector
-        .report_enqueue_success(message.message_id());
+        .report_enqueue_success(message.message_id(), message.timestamp());
     harness.collector.note_message_dequeued(&message);
     let snapshot = harness.snapshot();
     assert_eq!(snapshot.enqueued_total, 1);
@@ -155,7 +155,7 @@ fn queue_metrics_alone_does_not_emit_timing_rows_or_histograms() {
     harness.advance(10);
     harness
         .collector
-        .report_enqueue_success(message.message_id());
+        .report_enqueue_success(message.message_id(), message.timestamp());
     harness.advance(20);
     harness.collector.note_message_dequeued(&message);
     harness.collector.note_render_started();

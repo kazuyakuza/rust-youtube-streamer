@@ -10,6 +10,7 @@ fn entry(correlation: &str, received_nanos: u64) -> InFlightEntry {
         received_nanos,
         enqueued_nanos: received_nanos,
         backpressured: false,
+        provider_epoch_seconds: None,
     }
 }
 
@@ -18,7 +19,7 @@ fn inflight_pop_matches_correlation() {
     let mut state = DiagnosticsState::new();
     state.add_enqueued(Some(entry("first", 1)), false);
     state.add_enqueued(Some(entry("second", 2)), false);
-    state.take_dequeued(Some("second"), 10);
+    let _ = state.take_dequeued(Some("second"), 10);
     let snapshot = state.snapshot(10);
     assert_eq!(snapshot.dequeued_total, 1);
     assert_eq!(snapshot.uncorrelated_total, 0);
@@ -59,7 +60,7 @@ fn high_water_tracks_peak_depth() {
     state.add_enqueued(Some(entry("m-1", 0)), false);
     state.add_enqueued(Some(entry("m-2", 0)), false);
     state.add_enqueued(Some(entry("m-3", 0)), false);
-    state.take_dequeued(Some("m-1"), 1);
+    let _ = state.take_dequeued(Some("m-1"), 1);
     let snapshot = state.snapshot(1);
     assert_eq!(snapshot.in_flight_high_water, 3);
     assert_eq!(snapshot.queue_depth_estimate, 2);
@@ -79,9 +80,9 @@ fn queue_depth_is_enqueued_minus_dequeued() {
     let mut state = DiagnosticsState::new();
     state.add_enqueued(Some(entry("m-1", 0)), false);
     state.add_enqueued(Some(entry("m-2", 0)), false);
-    state.take_dequeued(Some("m-1"), 1);
+    let _ = state.take_dequeued(Some("m-1"), 1);
     assert_eq!(state.snapshot(1).queue_depth_estimate, 1);
-    state.take_dequeued(None, 2);
+    let _ = state.take_dequeued(None, 2);
     let snapshot = state.snapshot(2);
     assert_eq!(snapshot.queue_depth_estimate, 0);
     assert_eq!(snapshot.uncorrelated_total, 1);

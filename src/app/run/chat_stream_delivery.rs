@@ -95,9 +95,15 @@ impl StreamWorker {
                 .diagnostics
                 .as_ref()
                 .and_then(|_| message.message_id().map(str::to_owned));
+            let provider_stamp = self
+                .plan
+                .diagnostics
+                .as_ref()
+                .and_then(|_| message.timestamp());
             match self.plan.sender.try_send(message) {
                 Ok(()) => {
-                    self.report_enqueue_success_if_enabled(reported_correlation.as_deref());
+                    let correlation = reported_correlation.as_deref();
+                    self.report_enqueue_success_if_enabled(correlation, provider_stamp);
                     return;
                 }
                 Err(TrySendError::Full(returned)) => {
@@ -110,9 +116,9 @@ impl StreamWorker {
         }
     }
 
-    fn report_enqueue_success_if_enabled(&self, correlation: Option<&str>) {
+    fn report_enqueue_success_if_enabled(&self, correlation: Option<&str>, stamp: Option<u64>) {
         if let Some(diagnostics) = &self.plan.diagnostics {
-            diagnostics.report_enqueue_success(correlation);
+            diagnostics.report_enqueue_success(correlation, stamp);
         }
     }
 

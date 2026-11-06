@@ -2,9 +2,11 @@
 //! (record D-4/D-11, plan §3.7; caller-authorized sibling split): the
 //! hand-rolled reverse of the existing civil-from-days family — documented
 //! ISO 8601 UTC forms `YYYY-MM-DDThh:mm:ssZ` and `YYYY-MM-DDThh:mm:ss.fffZ`
-//! only; `None` for a missing `Z` terminator, wrong component widths,
-//! out-of-range fields, a non-leap 02-29, or more than 3 fractional
-//! digits; never panics, no `.expect()`, NO time crate.
+//! with 1–9 fractional digits only; `None` for a missing `Z` terminator,
+//! wrong component widths, out-of-range fields, a non-leap 02-29, an empty
+//! fraction, or more than 9 fractional digits; never panics, no
+//! `.expect()`, NO time crate. The fraction is validated and then discarded:
+//! the stored epoch deliberately keeps second granularity.
 //!
 //! Grounding: S1 `snippet.publishedAt` (citation + access date in
 //! `.kilo/plans/20261025-phase06-task1-live-chat-research-design.md` §1).
@@ -12,7 +14,7 @@
 
 const YEAR_DIGITS: usize = 4;
 const PAIR_DIGITS: usize = 2;
-const MAX_FRACTION_DIGITS: usize = 3;
+const MAX_FRACTION_DIGITS: usize = 9;
 const MAX_HOUR: u32 = 23;
 const MAX_MINUTE_SECOND: u32 = 59;
 const EPOCH_CIVIL_YEAR: u32 = 1_970;
@@ -36,7 +38,7 @@ fn split_utc_date_time(value: &str) -> Option<(&str, &str)> {
     utc.split_once('T')
 }
 
-/// Keeps the clock part only when the optional fraction is 1–3 digits.
+/// Keeps the clock part only when the optional fraction is 1–9 digits.
 fn split_validated_fraction(time: &str) -> Option<&str> {
     let Some((clock, fraction)) = time.split_once('.') else {
         return Some(time);
