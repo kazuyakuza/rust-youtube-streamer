@@ -6,12 +6,16 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use crate::chat::ChatMessage;
 use crate::config::diagnostics_config::DiagnosticsConfig;
 
 use super::collector::{DiagnosticsCollector, MonotonicNanos};
 use super::collector_stages::CollectorSettings;
 pub(crate) use super::events::SummarySnapshot;
 use super::state::DiagnosticsState;
+
+/// The pinned epoch seconds of `PUBLISHED_AT_FIXTURE` (`2026-10-25T12:30:45Z`).
+pub(crate) const PROVIDER_EPOCH_FIXTURE: u64 = 1_792_931_445;
 
 const TEST_PACING_INTERVAL_NANOS: u64 = 40;
 
@@ -76,6 +80,25 @@ pub(crate) fn collector_with_output_file(path: &Path) -> TestCollector {
         &enabled_diagnostics(output_file),
         TEST_PACING_INTERVAL_NANOS,
     )
+}
+
+/// The deterministic full stage cycle: receive → receipt → enqueue →
+/// dequeue → render → write, with the provider stamp read from `message`.
+pub(crate) fn drive_stage_cycle(harness: &TestCollector, message: &ChatMessage) {
+    harness.collector.report_batch_received(1);
+    harness.collector.note_worker_receipt();
+    harness.advance(10);
+    harness
+        .collector
+        .report_enqueue_success(message.message_id(), message.timestamp());
+    harness.advance(20);
+    harness.collector.note_message_dequeued(message);
+    harness.collector.note_render_started();
+    harness.advance(5);
+    harness.collector.note_render_completed();
+    harness.collector.note_write_started();
+    harness.advance(7);
+    harness.collector.note_write_completed();
 }
 
 pub(super) fn diagnostics_with_capabilities(

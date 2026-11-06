@@ -5,26 +5,9 @@
 
 use crate::chat::ChatMessage;
 
-use super::diagnostics_test_fixtures::{collector_with_output_file, TestCollector};
-
-const PROVIDER_EPOCH_FIXTURE: u64 = 1_792_931_445;
-
-fn drive_stage_cycle(harness: &TestCollector, message: &ChatMessage) {
-    harness.collector.report_batch_received(1);
-    harness.collector.note_worker_receipt();
-    harness.advance(10);
-    harness
-        .collector
-        .report_enqueue_success(message.message_id(), message.timestamp());
-    harness.advance(20);
-    harness.collector.note_message_dequeued(message);
-    harness.collector.note_render_started();
-    harness.advance(5);
-    harness.collector.note_render_completed();
-    harness.collector.note_write_started();
-    harness.advance(7);
-    harness.collector.note_write_completed();
-}
+use super::diagnostics_test_fixtures::{
+    collector_with_output_file, drive_stage_cycle, PROVIDER_EPOCH_FIXTURE,
+};
 
 fn fixture_message(id: &str) -> ChatMessage {
     ChatMessage::new("author-fixture", "text-fixture").with_message_id(id)
@@ -40,12 +23,8 @@ fn timestamp_bearing_message_populates_all_three_stage_rows() {
     drive_stage_cycle(&harness, &message);
 
     let content = std::fs::read_to_string(&path).expect("stage rows must be written");
-    assert_eq!(
-        content
-            .matches("\"provider_epoch_seconds\":1792931445")
-            .count(),
-        3
-    );
+    let stamped_row = format!("\"provider_epoch_seconds\":{PROVIDER_EPOCH_FIXTURE}");
+    assert_eq!(content.matches(stamped_row.as_str()).count(), 3);
 }
 
 #[test]

@@ -29,24 +29,6 @@ fn secret_message() -> ChatMessage {
         .with_timestamp(Some(1_728_381_296))
 }
 
-fn drive_full_stage_cycle(harness: &TestCollector) {
-    let message = secret_message();
-    harness.collector.report_batch_received(1);
-    harness.collector.note_worker_receipt();
-    harness.advance(10);
-    harness
-        .collector
-        .report_enqueue_success(message.message_id(), message.timestamp());
-    harness.advance(20);
-    harness.collector.note_message_dequeued(&message);
-    harness.collector.note_render_started();
-    harness.advance(5);
-    harness.collector.note_render_completed();
-    harness.collector.note_write_started();
-    harness.advance(7);
-    harness.collector.note_write_completed();
-}
-
 #[test]
 fn from_config_disabled_returns_none_for_absent_section() {
     let mut config = valid_config();
@@ -79,7 +61,7 @@ fn from_config_enabled_returns_some() {
 #[test]
 fn stages_propagate_receive_enqueue_dequeue_render_write() {
     let harness = enabled_collector_for_tests();
-    drive_full_stage_cycle(&harness);
+    drive_stage_cycle(&harness, &secret_message());
     let snapshot = harness.snapshot();
     assert_eq!(snapshot.received_total, 1);
     assert_eq!(snapshot.enqueued_total, 1);
@@ -137,7 +119,7 @@ fn rows_never_carry_message_text_or_author() {
     let dir = tempfile::tempdir().expect("temp dir must be created");
     let path = dir.path().join("diagnostics.log");
     let harness = collector_with_output_file(&path);
-    drive_full_stage_cycle(&harness);
+    drive_stage_cycle(&harness, &secret_message());
     let content = std::fs::read_to_string(&path).expect("timing rows must be written");
     assert!(content.contains("corr-1"));
     assert!(!content.contains("SECRET-AUTHOR"));
@@ -152,22 +134,7 @@ fn queue_metrics_alone_does_not_emit_timing_rows_or_histograms() {
     let mut diagnostics = diagnostics_with_capabilities(false, true, false);
     diagnostics.output_file = Some(path.to_string_lossy().into_owned());
     let harness = collector_for_config(&diagnostics);
-    let message = secret_message();
-
-    harness.collector.report_batch_received(1);
-    harness.collector.note_worker_receipt();
-    harness.advance(10);
-    harness
-        .collector
-        .report_enqueue_success(message.message_id(), message.timestamp());
-    harness.advance(20);
-    harness.collector.note_message_dequeued(&message);
-    harness.collector.note_render_started();
-    harness.advance(5);
-    harness.collector.note_render_completed();
-    harness.collector.note_write_started();
-    harness.advance(7);
-    harness.collector.note_write_completed();
+    drive_stage_cycle(&harness, &secret_message());
 
     let content = std::fs::read_to_string(&path).expect("queue rows must be written");
     assert!(

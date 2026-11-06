@@ -99,9 +99,7 @@ impl DiagnosticsCollector {
             let dequeued = self.local.borrow_mut().last_dequeued.take();
             if let Some(entry) = dequeued {
                 let lag_ns = now.saturating_sub(entry.stamp_nanos);
-                let details = TimingDetails::stage(entry.correlation.as_deref(), lag_ns)
-                    .with_provider(entry.provider_epoch_seconds);
-                self.emit(&TimingEvent::new("written", details));
+                self.emit(&TimingEvent::new("written", entry.stage_details(lag_ns)));
             }
         }
     }

@@ -7,7 +7,7 @@
 use std::sync::Mutex;
 
 use crate::app::diagnostics::diagnostics_test_fixtures::{
-    collector_with_output_file, enabled_collector_for_tests, TestCollector,
+    collector_with_output_file, enabled_collector_for_tests, TestCollector, PROVIDER_EPOCH_FIXTURE,
 };
 use crate::app::run::chat_worker::runtime_chat_fakes::{
     worker_plan, ChatFakes, LIVE_CHAT_ID_FIXTURE,
@@ -85,12 +85,8 @@ fn worker_stamp_survives_the_bounded_in_flight_entry() {
     harness.collector.note_render_completed();
 
     let content = std::fs::read_to_string(&path).expect("stage rows must be written");
-    assert_eq!(
-        content
-            .matches("\"provider_epoch_seconds\":1792931445")
-            .count(),
-        2
-    );
+    let stamped_row = format!("\"provider_epoch_seconds\":{PROVIDER_EPOCH_FIXTURE}");
+    assert_eq!(content.matches(stamped_row.as_str()).count(), 2);
 }
 
 #[test]

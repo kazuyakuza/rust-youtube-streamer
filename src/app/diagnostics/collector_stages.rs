@@ -60,6 +60,14 @@ pub(super) struct DequeuedMessage {
     pub(super) provider_epoch_seconds: Option<u64>,
 }
 
+impl DequeuedMessage {
+    /// The shared rendered/written stage-row payload for one dequeued entry.
+    pub(super) fn stage_details(&self, lag_ns: u64) -> TimingDetails<'_> {
+        TimingDetails::stage(self.correlation.as_deref(), lag_ns)
+            .with_provider(self.provider_epoch_seconds)
+    }
+}
+
 impl DiagnosticsCollector {
     pub(crate) fn report_batch_received(&self, size: u64) {
         let depth = self.state_depth(|state| state.add_received(size));
@@ -119,9 +127,10 @@ impl DiagnosticsCollector {
         };
         let message_ns = now.saturating_sub(entry.stamp_nanos);
         self.with_state(|state| state.record_message_render(message_ns));
-        let details = TimingDetails::stage(entry.correlation.as_deref(), message_ns)
-            .with_provider(entry.provider_epoch_seconds);
-        self.emit(&TimingEvent::new("rendered", details));
+        self.emit(&TimingEvent::new(
+            "rendered",
+            entry.stage_details(message_ns),
+        ));
     }
 
     fn take_receipt(&self) -> (u64, bool) {
