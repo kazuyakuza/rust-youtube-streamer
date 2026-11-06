@@ -44,7 +44,7 @@ Backpressure and queue-shape metrics ride alongside: `in_flight_high_water` (que
 
 Provider-side publication (`publishedAt`, carried on the message) and the two external legs are different in kind:
 
-- Upstream delivery (provider send → this app's batch receipt) and viewer-side end-to-end (app FFmpeg write → first visible on the watch page) **require an external observer** — the app cannot see when YouTube published a message nor when a viewer's player displays the frame. The provider `publishedAt` stamp is wall-clock upstream and is never diffed against the app's monotonic durations (the `CLOCK_DOMAIN_NOTE` above).
+- Upstream delivery (provider send → this app's batch receipt) and viewer-side end-to-end (app FFmpeg write → first visible on the watch page) **require an external observer** — the app cannot see when YouTube published a message nor when a viewer's player displays the frame. The provider `publishedAt` stamp is wall-clock upstream and is never diffed against the app's monotonic durations (the `CLOCK_DOMAIN_NOTE` above). The per-message diagnostics rows carry that provider-supplied wall-clock in `provider_epoch_seconds` when available — the row description lives in the [`production-run.md` Pipeline Observability section](production-run.md#pipeline-observability-opt-in-diagnostics), not duplicated here.
 - FFmpeg's internal encode and YouTube's live ingest are outside the app's measurement surface: the app measures only its own stdin write (`write_ns`); everything after the pipe belongs to the external-process and viewer legs.
 
 ## Capacity Math (Config-Driven, Never Hardcoded)
