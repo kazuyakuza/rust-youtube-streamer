@@ -190,3 +190,7 @@ mod gate_chat_tests;
 #[cfg(test)]
 #[path = "chat_worker_panic_tests.rs"]
 mod chat_worker_panic_tests;
+
+#[cfg(test)]
+#[path = "chat_reconnect_reason_tests.rs"]
+mod chat_reconnect_reason_tests;
