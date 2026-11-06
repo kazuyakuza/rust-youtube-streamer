@@ -8,6 +8,7 @@
 mod collector;
 mod collector_stages;
 mod events;
+mod events_summary;
 mod histogram;
 mod state;
 mod writer;

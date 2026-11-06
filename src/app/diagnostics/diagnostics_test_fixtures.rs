@@ -11,7 +11,7 @@ use crate::config::diagnostics_config::DiagnosticsConfig;
 
 use super::collector::{DiagnosticsCollector, MonotonicNanos};
 use super::collector_stages::CollectorSettings;
-pub(crate) use super::events::SummarySnapshot;
+pub(crate) use super::events_summary::SummarySnapshot;
 use super::state::DiagnosticsState;
 
 /// The pinned epoch seconds of `PUBLISHED_AT_FIXTURE` (`2026-10-25T12:30:45Z`).

@@ -9,7 +9,8 @@ use std::time::Instant;
 
 use serde::Serialize;
 
-use crate::app::diagnostics::events::{SummaryEvent, TimingDetails, TimingEvent};
+use crate::app::diagnostics::events::{TimingDetails, TimingEvent};
+use crate::app::diagnostics::events_summary::SummaryEvent;
 use crate::app::diagnostics::state::DiagnosticsState;
 use crate::app::diagnostics::writer::{build_writer, DiagnosticsFileWriter};
 use crate::chat::ChatMessage;

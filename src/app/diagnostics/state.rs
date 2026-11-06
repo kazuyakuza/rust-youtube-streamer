@@ -5,7 +5,7 @@
 
 use std::collections::VecDeque;
 
-use crate::app::diagnostics::events::SummarySnapshot;
+use crate::app::diagnostics::events_summary::SummarySnapshot;
 use crate::app::diagnostics::histogram::DurationHistogram;
 
 pub(super) const IN_FLIGHT_CAP: usize = 128;
