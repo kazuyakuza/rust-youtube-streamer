@@ -10,9 +10,7 @@ use crate::app::run::chat_worker::runtime_chat_fakes::{
     worker_plan, ChatFakes, LIVE_CHAT_ID_FIXTURE,
 };
 use crate::app::run::chat_worker::{chat_channel, spawn_chat_worker};
-use crate::youtube::{
-    response_plain, response_with_token, text_item, yielded, LiveApiError, RESUME_TOKEN_FIXTURE,
-};
+use crate::youtube::{response_plain, text_item, yielded, LiveApiError};
 
 use super::{CHAT_CLEAN_CLOSE_REASON, CHAT_TRANSIENT_FAILURE_REASON};
 
@@ -45,12 +43,7 @@ fn clean_close_reconnect_rows_carry_the_clean_close_label() {
     let fakes = ChatFakes::new();
     script_lookup(&fakes);
     fakes.script_token_batch_session();
-    fakes
-        .stream_ledger
-        .script_session(vec![Some(Ok(yielded(&response_with_token(
-            vec![],
-            RESUME_TOKEN_FIXTURE,
-        ))))]);
+    fakes.script_token_batch_session();
     fakes.script_graceful_end_session();
 
     run_worker_to_output_file(&fakes, &path);
