@@ -113,10 +113,10 @@ impl DiagnosticsCollector {
         }
     }
 
-    pub(crate) fn report_reconnect(&self, backoff_ms: u64) {
+    pub(crate) fn report_reconnect(&self, backoff_ms: u64, reason: &'static str) {
         let depth = self.state_depth(|state| state.add_reconnect(backoff_ms));
         if self.settings.queue_metrics {
-            self.emit(&QueueEvent::reconnect(backoff_ms, depth));
+            self.emit(&QueueEvent::reconnect(backoff_ms, depth).with_reason(reason));
         }
     }
 

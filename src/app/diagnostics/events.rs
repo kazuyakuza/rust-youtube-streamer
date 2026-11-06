@@ -83,6 +83,8 @@ pub(super) struct QueueEvent<'a> {
     backpressure: Option<bool>,
     wait_ns: Option<u64>,
     backoff_ms: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason: Option<&'a str>,
 }
 
 /// The enqueue-outcome fields of one queue row (≤2-args rule parameter object).
@@ -104,6 +106,7 @@ impl<'a> QueueEvent<'a> {
             backpressure: None,
             wait_ns: None,
             backoff_ms: None,
+            reason: None,
         }
     }
 
@@ -132,6 +135,11 @@ impl<'a> QueueEvent<'a> {
         let mut event = Self::with_depth(queue_depth);
         event.backoff_ms = Some(backoff_ms);
         event
+    }
+
+    pub(super) fn with_reason(mut self, reason: &'static str) -> Self {
+        self.reason = Some(reason);
+        self
     }
 }
 

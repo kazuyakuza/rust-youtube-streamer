@@ -18,8 +18,8 @@ use crate::youtube::{ChatTextMessage, LiveApiError, YieldedChatStreamBatch};
 use super::chat_failure::{is_transient_failure, terminal_retrieval_error};
 use super::chat_stream_worker::{StreamWorker, STREAM_CLEAN_CLOSE_DETAIL};
 use super::chat_worker::{
-    CHAT_BASELINE_MESSAGE, CHAT_ENDED_MESSAGE, CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES,
-    CHAT_SLEEP_SLICE_MS,
+    CHAT_BASELINE_MESSAGE, CHAT_CLEAN_CLOSE_REASON, CHAT_ENDED_MESSAGE,
+    CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES, CHAT_SLEEP_SLICE_MS, CHAT_TRANSIENT_FAILURE_REASON,
 };
 
 #[path = "chat_worker_helpers.rs"]
@@ -148,19 +148,20 @@ impl StreamWorker {
             record_terminal(&self.plan.terminal, terminal_retrieval_error(&error));
             return true;
         }
-        self.await_reestablishment(error.to_string())
+        self.await_reestablishment(error.to_string(), CHAT_TRANSIENT_FAILURE_REASON)
     }
 
     /// Clean close = the transient re-establishment arm (§A.4/A.5).
     pub(super) fn handle_clean_close(&mut self) -> bool {
-        self.await_reestablishment(STREAM_CLEAN_CLOSE_DETAIL.to_string())
+        let reason = CHAT_CLEAN_CLOSE_REASON;
+        self.await_reestablishment(STREAM_CLEAN_CLOSE_DETAIL.to_string(), reason)
     }
 
     /// The shared transient path (P7-5.3): budget exhaustion writes the
     /// Transport terminal keyed on the LAST transient detail; otherwise the
     /// capped 1 s × 2^(n−1) backoff precedes re-establishment. The poll
     /// worker's budget test (>=) is kept byte-exact.
-    fn await_reestablishment(&mut self, last_detail: String) -> bool {
+    fn await_reestablishment(&mut self, last_detail: String, reason: &'static str) -> bool {
         self.consecutive_failures += 1;
         if self.consecutive_failures >= CHAT_MAX_CONSECUTIVE_TRANSIENT_FAILURES {
             record_terminal(&self.plan.terminal, transport_terminal(last_detail));
@@ -168,7 +169,7 @@ impl StreamWorker {
         }
         let delay = backoff_delay_ms(self.consecutive_failures, CHAT_SLEEP_SLICE_MS);
         if let Some(diagnostics) = &self.plan.diagnostics {
-            diagnostics.report_reconnect(delay);
+            diagnostics.report_reconnect(delay, reason);
         }
         sleep_in_stop_slices(delay, &self.plan.stop_flag);
         false

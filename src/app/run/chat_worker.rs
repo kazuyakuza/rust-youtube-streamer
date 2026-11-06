@@ -54,6 +54,9 @@ pub(super) const CHAT_BASELINE_MESSAGE: &str =
 pub(super) const CHAT_ENDED_MESSAGE: &str =
     "live chat ended; the stream continues without new chat messages";
 
+pub(super) const CHAT_CLEAN_CLOSE_REASON: &str = "clean_close";
+pub(super) const CHAT_TRANSIENT_FAILURE_REASON: &str = "transient_failure";
+
 /// The confined runtime start failure reason (a typed Transport detail; no
 /// panic — a runtime that cannot start is a typed terminal).
 const CHAT_RUNTIME_START_FAILURE: &str = "the confined chat streaming runtime failed to start";
